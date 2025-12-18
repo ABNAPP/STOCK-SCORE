@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { Search, Settings, RefreshCw, Trophy } from 'lucide-react'
+import { Search, Settings as SettingsIcon, RefreshCw, Trophy } from 'lucide-react'
 import { translations } from './translations'
 import { SOURCES, getEnabledSources, buildSourceUrl } from './config/sources'
 import { fetchDataFromUrl, parseCsv, parseXlsx, parseJson } from './utils/dataFetcher'
