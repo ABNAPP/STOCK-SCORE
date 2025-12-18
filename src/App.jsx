@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { Search, Settings, RefreshCw, Trophy } from 'lucide-react'
 import { translations } from './translations'
 import { SOURCES, getEnabledSources, buildSourceUrl } from './config/sources'
 import { fetchDataFromUrl, parseCsv, parseXlsx, parseJson } from './utils/dataFetcher'
@@ -418,15 +419,27 @@ export default function App() {
     }
   }
 
-  // Calculate groups and distribution
-  const groups = normalizedData.length > 0
-    ? groupByScore(normalizedData, settings.highThreshold, settings.mediumThreshold)
+  // Filtered data based on search query
+  const filteredData = useMemo(() => {
+    if (!searchQuery || !normalizedData.length) return normalizedData
+    const lowerQuery = searchQuery.toLowerCase()
+    return normalizedData.filter(item => {
+      const nameMatch = item.name?.toLowerCase().includes(lowerQuery)
+      const tickerMatch = item.ticker?.toLowerCase().includes(lowerQuery)
+      return nameMatch || tickerMatch
+    })
+  }, [normalizedData, searchQuery])
+
+  // Calculate groups and distribution (use filtered data)
+  const dataForGroups = filteredData.length > 0 ? filteredData : normalizedData
+  const groups = dataForGroups.length > 0
+    ? groupByScore(dataForGroups, settings.highThreshold, settings.mediumThreshold)
     : { high: [], medium: [], low: [] }
 
-  const distribution = calculateDistribution(groups, normalizedData.length)
+  const distribution = calculateDistribution(groups, dataForGroups.length)
 
-  // Filter watchlist items
-  const watchlistItems = normalizedData.filter(item => watchlist.includes(item.id))
+  // Filter watchlist items (based on filtered data if search is active)
+  const watchlistItems = dataForGroups.filter(item => watchlist.includes(item.id))
 
   // Calculate stats
   const stats = normalizedData.length > 0 && rawData.length > 0
@@ -580,7 +593,7 @@ export default function App() {
 
             {activeView === 'all' && (
               <DataTable
-                data={normalizedData}
+                data={filteredData.length > 0 ? filteredData : normalizedData}
                 columns={{ otherColumns }}
                 watchlist={watchlist}
                 onToggleWatchlist={handleToggleWatchlist}

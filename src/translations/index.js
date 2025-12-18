@@ -66,7 +66,8 @@ export const translations = {
     thresholdMedium: 'Medel tröskel',
     close: 'Stäng',
     scriptBaseUrl: 'Apps Script Base URL eller Google Sheets URL',
-    scriptBaseUrlPlaceholder: 'Apps Script URL eller Google Sheets URL'
+    scriptBaseUrlPlaceholder: 'Apps Script URL eller Google Sheets URL',
+    searchPlaceholder: 'Sök bolag eller ticker...'
   },
   en: {
     appTitle: 'Stock Score Dashboard',
@@ -135,7 +136,8 @@ export const translations = {
     thresholdMedium: 'Medium Threshold',
     close: 'Close',
     scriptBaseUrl: 'Apps Script Base URL or Google Sheets URL',
-    scriptBaseUrlPlaceholder: 'Apps Script URL or Google Sheets URL'
+    scriptBaseUrlPlaceholder: 'Apps Script URL or Google Sheets URL',
+    searchPlaceholder: 'Search company or ticker...'
   }
 }
 
