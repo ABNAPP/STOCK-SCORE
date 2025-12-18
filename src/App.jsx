@@ -192,15 +192,25 @@ export default function App() {
           setLoading(false)
           return
         } catch (err) {
+          // Detektera CORS-fel som indikerar att filen inte är publicerad
+          const errorMsg = err.message || 'Kunde inte hämta data'
+          const isCorsError = errorMsg.includes('CORS') || errorMsg.includes('ServiceLogin') || errorMsg.includes('accounts.google.com')
+          
           enabledSources.forEach(source => {
             newStatuses[source.key] = {
               status: 'error',
-              message: err.message || 'Kunde inte hämta data',
+              message: errorMsg,
               count: 0
             }
           })
           setSourceStatuses(newStatuses)
-          setError(err.message || 'Kunde inte hämta data från Google Sheets')
+          
+          // Använd mer specifikt felmeddelande för Sheets CORS
+          if (isCorsError) {
+            setError('CORS_SHEETS')
+          } else {
+            setError(errorMsg)
+          }
           setLoading(false)
           return
         }
