@@ -61,8 +61,8 @@ export const translations = {
     thresholdHigh: 'Hög tröskel',
     thresholdMedium: 'Medel tröskel',
     close: 'Stäng',
-    scriptBaseUrl: 'Apps Script Base URL',
-    scriptBaseUrlPlaceholder: 'https://script.google.com/macros/s/.../exec'
+    scriptBaseUrl: 'Apps Script Base URL eller Google Sheets URL',
+    scriptBaseUrlPlaceholder: 'Apps Script URL eller Google Sheets URL'
   },
   en: {
     appTitle: 'Stock Score Dashboard',
@@ -126,8 +126,8 @@ export const translations = {
     thresholdHigh: 'High Threshold',
     thresholdMedium: 'Medium Threshold',
     close: 'Close',
-    scriptBaseUrl: 'Apps Script Base URL',
-    scriptBaseUrlPlaceholder: 'https://script.google.com/macros/s/.../exec'
+    scriptBaseUrl: 'Apps Script Base URL or Google Sheets URL',
+    scriptBaseUrlPlaceholder: 'Apps Script URL or Google Sheets URL'
   }
 }
 

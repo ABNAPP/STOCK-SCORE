@@ -1,8 +1,8 @@
 /**
- * Hämtar data från Google Apps Script endpoint
+ * Hämtar data från Google Apps Script endpoint eller direkt från Google Sheets
  * Stödjer både CSV och JSON-respons
  */
-export async function fetchAppsScriptData(url) {
+export async function fetchDataFromUrl(url) {
   if (!url) {
     throw new Error('URL is required')
   }
@@ -35,13 +35,13 @@ export async function fetchAppsScriptData(url) {
       return { type: 'json', data: [json] }
     }
 
-    // Om XLSX
+    // Om XLSX eller Excel-format
     if (contentType.includes('spreadsheet') || contentType.includes('excel') || url.includes('.xlsx')) {
       const arrayBuffer = await response.arrayBuffer()
       return { type: 'xlsx', data: arrayBuffer }
     }
 
-    // Annars CSV (default)
+    // Annars CSV (default) - kan vara text/csv eller text/plain
     const text = await response.text()
     return { type: 'csv', data: text }
   } catch (error) {
@@ -50,6 +50,14 @@ export async function fetchAppsScriptData(url) {
     }
     throw new Error(`Failed to fetch: ${error.message}`)
   }
+}
+
+/**
+ * Legacy: Hämtar data från Google Apps Script endpoint
+ * @deprecated Använd fetchDataFromUrl istället
+ */
+export async function fetchAppsScriptData(url) {
+  return fetchDataFromUrl(url)
 }
 
 /**

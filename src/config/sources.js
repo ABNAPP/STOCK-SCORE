@@ -47,21 +47,20 @@ export function getEnabledSources() {
 /**
  * Bygger full URL för en källa
  * @param {Object} source - Källobjekt
- * @param {string} scriptBaseUrl - Bas-URL till Apps Script
+ * @param {string} scriptBaseUrl - Bas-URL till Apps Script eller Google Sheets
  */
 export function buildSourceUrl(source, scriptBaseUrl) {
   if (!scriptBaseUrl) {
     throw new Error('SCRIPT_BASE_URL is not configured')
   }
 
-  // Validera att det är en Apps Script URL, inte en Sheets URL
+  // Om det är en Google Sheets URL, returnera null (hanteras separat)
   const isSheetsUrl = scriptBaseUrl.includes('docs.google.com/spreadsheets')
-  const isAppsScriptUrl = scriptBaseUrl.includes('script.google.com/macros')
-  
-  if (isSheetsUrl && !isAppsScriptUrl) {
-    throw new Error('Invalid URL format: Use Apps Script Web App URL (script.google.com/macros/s/.../exec), not Google Sheets URL')
+  if (isSheetsUrl) {
+    return null // Indikerar att detta ska hanteras som direkt Sheets-URL
   }
   
+  // Annars bygg Apps Script URL
   const base = scriptBaseUrl.replace(/\/$/, '') // Ta bort trailing slash
   const endpoint = source.endpoint.startsWith('/') ? source.endpoint : `/${source.endpoint}`
   const url = `${base}${endpoint}`

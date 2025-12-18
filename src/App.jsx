@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { translations } from './translations'
 import { SOURCES, getEnabledSources, buildSourceUrl } from './config/sources'
-import { fetchAppsScriptData, parseCsv, parseXlsx, parseJson } from './utils/dataFetcher'
+import { fetchDataFromUrl, parseCsv, parseXlsx, parseJson } from './utils/dataFetcher'
+import { convertSheetsUrlToCsv, isSheetsUrl, isAppsScriptUrl } from './utils/sheetsUrlConverter'
 import { identifyColumns, normalizeData } from './utils/parser'
 import { groupByScore, calculateDistribution } from './utils/grouping'
 import { getNumericColumns, calculateColumnStats } from './utils/stats'
@@ -122,11 +123,100 @@ export default function App() {
     setSourceStatuses(newStatuses)
 
     try {
+      // Kontrollera om det är en Google Sheets URL eller Apps Script URL
+      const isSheets = isSheetsUrl(settings.scriptBaseUrl)
+      const isAppsScript = isAppsScriptUrl(settings.scriptBaseUrl)
+
+      // Om det är en Sheets URL, hantera direkt Sheets-hämtning
+      if (isSheets && !isAppsScript) {
+        // Konvertera Sheets URL till CSV-export URL
+        const csvUrl = convertSheetsUrlToCsv(settings.scriptBaseUrl)
+        
+        if (!csvUrl) {
+          throw new Error('Kunde inte konvertera Google Sheets URL. Kontrollera att URL:en är korrekt.')
+        }
+
+        // Hämta data direkt från Sheets (behandla som en enda källa)
+        try {
+          const result = await fetchDataFromUrl(csvUrl)
+          
+          let parsedData = []
+          
+          if (result.type === 'json') {
+            parsedData = parseJson(result.data)
+          } else if (result.type === 'xlsx') {
+            parsedData = parseXlsx(result.data)
+          } else {
+            parsedData = parseCsv(result.data)
+          }
+
+          if (parsedData.length === 0) {
+            throw new Error('Ingen data hittades i filen.')
+          }
+
+          // Identify columns
+          const identifiedColumns = identifyColumns(parsedData)
+          
+          // Normalize data (använd första enabled source som sourceKey)
+          const firstSource = enabledSources[0]
+          const normalized = normalizeData(parsedData, identifiedColumns, firstSource.key, firstSource.name)
+
+          // Update statuses
+          enabledSources.forEach(source => {
+            if (source.key === firstSource.key) {
+              newStatuses[source.key] = {
+                status: 'success',
+                message: '',
+                count: normalized.length
+              }
+            } else {
+              newStatuses[source.key] = {
+                status: 'idle',
+                message: 'Ej använd (direkt Sheets-URL)',
+                count: 0
+              }
+            }
+          })
+
+          setSourceStatuses(newStatuses)
+          setColumns(identifiedColumns)
+          setNormalizedData(normalized)
+          setRawData(parsedData)
+
+          // Update previous data for notifications
+          previousDataRef.current = normalized
+          setPreviousTopPerformers(
+            groupByScore(normalized, settings.highThreshold, settings.mediumThreshold).high
+          )
+
+          setLoading(false)
+          return
+        } catch (err) {
+          enabledSources.forEach(source => {
+            newStatuses[source.key] = {
+              status: 'error',
+              message: err.message || 'Kunde inte hämta data',
+              count: 0
+            }
+          })
+          setSourceStatuses(newStatuses)
+          setError(err.message || 'Kunde inte hämta data från Google Sheets')
+          setLoading(false)
+          return
+        }
+      }
+
+      // Om det är Apps Script URL, använd flera källor
       // Fetch all sources in parallel
       const fetchPromises = enabledSources.map(async (source) => {
         try {
           const url = buildSourceUrl(source, settings.scriptBaseUrl)
-          const result = await fetchAppsScriptData(url)
+          
+          if (!url) {
+            throw new Error('Kunde inte bygga URL för källa')
+          }
+          
+          const result = await fetchDataFromUrl(url)
           
           let parsedData = []
           
