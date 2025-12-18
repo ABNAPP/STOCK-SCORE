@@ -1,0 +1,93 @@
+.item-list {
+  margin-bottom: 2rem;
+}
+
+.item-list h2 {
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.item-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.item-card {
+  background: var(--card-bg);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.item-name {
+  flex: 1;
+}
+
+.item-name strong {
+  display: block;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.item-ticker {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: normal;
+}
+
+.item-score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.score-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.score-value {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.watchlist-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  transition: transform 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.watchlist-btn:hover {
+  transform: scale(1.2);
+}
+
+.watchlist-btn.active {
+  color: var(--warning);
+}
+
+.item-list-empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+}
+

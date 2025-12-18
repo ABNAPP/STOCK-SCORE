@@ -1,0 +1,86 @@
+.settings-container {
+  margin-bottom: 2rem;
+}
+
+.settings-toggle {
+  background: var(--accent);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background 0.2s;
+  width: 100%;
+  text-align: left;
+}
+
+.settings-toggle:hover {
+  background: var(--accent-hover);
+}
+
+.settings-panel {
+  background: var(--card-bg);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.settings-section {
+  margin-bottom: 1.5rem;
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-primary);
+}
+
+.settings-section label span {
+  min-width: 150px;
+  font-weight: 500;
+}
+
+.settings-section input[type="number"],
+.settings-section select {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 1rem;
+  flex: 1;
+  max-width: 200px;
+}
+
+.settings-section input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.notification-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.notification-permission-btn {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+  align-self: flex-start;
+}
+
+.notification-permission-btn:hover {
+  background: var(--border-color);
+}
+

@@ -1,0 +1,69 @@
+.market-overview {
+  margin-bottom: 2rem;
+}
+
+.market-overview h2 {
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.distribution-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.distribution-card {
+  background: var(--card-bg);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  border-left: 4px solid;
+  transition: transform 0.2s;
+}
+
+.distribution-card:hover {
+  transform: translateY(-2px);
+}
+
+.distribution-card.high {
+  border-left-color: var(--success);
+}
+
+.distribution-card.medium {
+  border-left-color: var(--warning);
+}
+
+.distribution-card.low {
+  border-left-color: var(--danger);
+}
+
+.distribution-card.total {
+  border-left-color: var(--accent);
+}
+
+.distribution-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.distribution-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.distribution-value .count {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.distribution-value .percent {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+}
+
