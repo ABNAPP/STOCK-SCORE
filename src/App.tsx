@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from './contexts/AuthContext';
 import { RefreshProvider } from './contexts/RefreshContext';
 import { LoadingProgressProvider } from './contexts/LoadingProgressContext';
-import { ToastProvider, useToast } from './contexts/ToastContext';
+import { useToast } from './contexts/ToastContext';
 import ToastContainer from './components/ToastContainer';
 import LoadingFallback from './components/LoadingFallback';
 import SkipLinks from './components/SkipLinks';
@@ -132,23 +132,21 @@ function App() {
 
   return (
     <LoadingProgressProvider>
-      <ToastProvider>
-        <RefreshProvider>
-          <AppContent
-            activeView={activeView}
-            setActiveView={setActiveView}
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-            conditionsModalOpen={conditionsModalOpen}
-            handleOpenConditionsModal={handleOpenConditionsModal}
-            handleCloseConditionsModal={handleCloseConditionsModal}
-            selectedViewForModal={selectedViewForModal}
-            renderView={renderView}
-            metadata={metadata}
-            pageName={pageName}
-          />
-        </RefreshProvider>
-      </ToastProvider>
+      <RefreshProvider>
+        <AppContent
+          activeView={activeView}
+          setActiveView={setActiveView}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          conditionsModalOpen={conditionsModalOpen}
+          handleOpenConditionsModal={handleOpenConditionsModal}
+          handleCloseConditionsModal={handleCloseConditionsModal}
+          selectedViewForModal={selectedViewForModal}
+          renderView={renderView}
+          metadata={metadata}
+          pageName={pageName}
+        />
+      </RefreshProvider>
     </LoadingProgressProvider>
   );
 }
