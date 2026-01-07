@@ -2,6 +2,8 @@
 
 En React-webbapplikation som hämtar stock score-data från Google Sheets och visar en dashboard med kategoriserade aktier baserat på score-trösklar.
 
+**Repository:** [https://github.com/ABNAPP/STOCK-SCORE](https://github.com/ABNAPP/STOCK-SCORE)
+
 ## Funktioner
 
 - 📊 Hämtar data från Google Sheets automatiskt
