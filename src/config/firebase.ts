@@ -12,6 +12,18 @@ const requiredEnvVars = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// Debug: Log environment variables (masked for security)
+if (import.meta.env.DEV) {
+  console.log('🔍 Firebase Config Check:', {
+    apiKey: requiredEnvVars.apiKey ? `${requiredEnvVars.apiKey.substring(0, 10)}...` : 'MISSING',
+    authDomain: requiredEnvVars.authDomain || 'MISSING',
+    projectId: requiredEnvVars.projectId || 'MISSING',
+    storageBucket: requiredEnvVars.storageBucket || 'MISSING',
+    messagingSenderId: requiredEnvVars.messagingSenderId || 'MISSING',
+    appId: requiredEnvVars.appId ? `${requiredEnvVars.appId.substring(0, 20)}...` : 'MISSING',
+  });
+}
+
 const missingVars = Object.entries(requiredEnvVars)
   .filter(([_, value]) => !value || value === 'undefined')
   .map(([key]) => {
@@ -50,22 +62,56 @@ let auth: Auth;
 let db: Firestore;
 
 try {
+  // Validate API key format (Firebase API keys start with AIza)
+  if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('AIza') && firebaseConfig.apiKey !== 'missing-api-key') {
+    console.warn('⚠️ Firebase API Key format looks incorrect. It should start with "AIza"');
+  }
+  
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
   console.log('✅ Firebase initialized successfully');
+  console.log('📍 Firebase Project ID:', firebaseConfig.projectId);
 } catch (error) {
   const errorMessage = error instanceof Error ? error.message : String(error);
   console.error('🔥 Firebase initialization error:', errorMessage);
   console.error('Full error:', error);
   
-  // Re-throw with more context
+  // Check if it's an API key error
+  if (errorMessage.includes('api-key-not-valid') || errorMessage.includes('API key')) {
+    const detailedError = 
+      `Firebase API Key Error: ${errorMessage}\n\n` +
+      `This means your Firebase API key is invalid or incorrect.\n\n` +
+      `How to fix:\n` +
+      `1. Go to Firebase Console: https://console.firebase.google.com\n` +
+      `2. Select your project: stock-score-df698\n` +
+      `3. Go to Project Settings (gear icon) → General tab\n` +
+      `4. Scroll down to "Your apps" section\n` +
+      `5. If you have a web app, click on it, otherwise:\n` +
+      `   - Click the web icon (</>)\n` +
+      `   - Register a new app with a name\n` +
+      `6. Copy the ENTIRE apiKey from the config object (it should start with "AIza")\n` +
+      `7. Go to Vercel → Your Project → Settings → Environment Variables\n` +
+      `8. Update VITE_FIREBASE_API_KEY with the correct value\n` +
+      `9. Make sure you select all environments (Production, Preview, Development)\n` +
+      `10. Redeploy your application\n\n` +
+      `Current API Key (first 10 chars): ${firebaseConfig.apiKey?.substring(0, 10) || 'MISSING'}...\n` +
+      `Make sure it starts with "AIza" and is the FULL key from Firebase Console.`;
+    
+    throw new Error(detailedError);
+  }
+  
+  // Re-throw with more context for other errors
   throw new Error(
     `Firebase initialization failed: ${errorMessage}\n\n` +
     `This usually means:\n` +
     `1. Environment variables are missing (check Vercel or .env.local)\n` +
     `2. Firebase configuration values are incorrect\n` +
-    `3. Network connectivity issues`
+    `3. Network connectivity issues\n\n` +
+    `Current config values:\n` +
+    `- API Key: ${firebaseConfig.apiKey ? firebaseConfig.apiKey.substring(0, 10) + '...' : 'MISSING'}\n` +
+    `- Project ID: ${firebaseConfig.projectId || 'MISSING'}\n` +
+    `- Auth Domain: ${firebaseConfig.authDomain || 'MISSING'}`
   );
 }
 
