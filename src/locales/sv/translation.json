@@ -145,7 +145,15 @@
     "passwordTooShort": "Lösenordet måste vara minst 6 tecken",
     "passwordMinLength": "Minst 6 tecken",
     "alreadyHaveAccount": "Har redan konto? Logga in",
-    "createAccount": "Skapa konto"
+    "createAccount": "Skapa konto",
+    "forgotPassword": "Glömt lösenord?",
+    "enterEmailForReset": "Ange din e-postadress för att få en återställningslänk skickad till din inkorg.",
+    "sendResetEmail": "Skicka",
+    "resetEmailSent": "Återställningslänk skickad! Kontrollera din inkorg.",
+    "resetFailed": "Kunde inte skicka återställningslänk",
+    "emailRequired": "E-postadress krävs",
+    "sending": "Skickar...",
+    "cancel": "Avbryt"
   }
 }
 
