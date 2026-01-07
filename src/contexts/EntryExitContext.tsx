@@ -1,0 +1,128 @@
+import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
+import { EntryExitData } from '../types/stock';
+
+interface EntryExitValues {
+  entry1: number;
+  entry2: number;
+  exit1: number;
+  exit2: number;
+  dateOfUpdate: string | null;
+}
+
+interface EntryExitContextType {
+  getEntryExitValue: (ticker: string, companyName: string) => EntryExitValues | undefined;
+  setEntryExitValue: (ticker: string, companyName: string, values: Partial<EntryExitValues>) => void;
+  initializeFromData: (data: EntryExitData[]) => void;
+  entryExitValues: Map<string, EntryExitValues>;
+}
+
+export const EntryExitContext = createContext<EntryExitContextType | undefined>(undefined);
+
+const STORAGE_KEY = 'entryExitValues';
+
+// Load from localStorage
+const loadFromStorage = (): Map<string, EntryExitValues> => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return new Map(Object.entries(parsed));
+    }
+  } catch (error) {
+    console.error('Error loading EntryExit values from localStorage:', error);
+  }
+  return new Map();
+};
+
+// Save to localStorage
+const saveToStorage = (values: Map<string, EntryExitValues>) => {
+  try {
+    const obj = Object.fromEntries(values);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+  } catch (error) {
+    console.error('Error saving EntryExit values to localStorage:', error);
+  }
+};
+
+interface EntryExitProviderProps {
+  children: ReactNode;
+}
+
+export function EntryExitProvider({ children }: EntryExitProviderProps) {
+  const [entryExitValues, setEntryExitValues] = useState<Map<string, EntryExitValues>>(() => loadFromStorage());
+
+  // Save to localStorage whenever entryExitValues changes
+  useEffect(() => {
+    saveToStorage(entryExitValues);
+  }, [entryExitValues]);
+
+  const getEntryExitValue = useCallback((ticker: string, companyName: string): EntryExitValues | undefined => {
+    const key = `${ticker}-${companyName}`;
+    return entryExitValues.get(key);
+  }, [entryExitValues]);
+
+  const setEntryExitValue = useCallback((ticker: string, companyName: string, values: Partial<EntryExitValues>) => {
+    const key = `${ticker}-${companyName}`;
+    setEntryExitValues((prev) => {
+      const newMap = new Map(prev);
+      const current = newMap.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+      
+      const updated: EntryExitValues = {
+        ...current,
+        ...values,
+      };
+      
+      // Kontrollera om alla fält är 0/tomma
+      const allEmpty = updated.entry1 === 0 && updated.entry2 === 0 && updated.exit1 === 0 && updated.exit2 === 0;
+      
+      // Uppdatera dateOfUpdate baserat på om alla fält är tomma
+      if (allEmpty) {
+        updated.dateOfUpdate = null;
+      } else if (!updated.dateOfUpdate) {
+        const currentDate = new Date().toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        updated.dateOfUpdate = currentDate;
+      }
+      
+      newMap.set(key, updated);
+      return newMap;
+    });
+  }, []);
+
+  const initializeFromData = useCallback((data: EntryExitData[]) => {
+    setEntryExitValues((prev) => {
+      const newMap = new Map(prev);
+      data.forEach((item) => {
+        const key = `${item.ticker}-${item.companyName}`;
+        // Only initialize if key doesn't exist (preserve manually entered values)
+        if (!newMap.has(key)) {
+          newMap.set(key, {
+            entry1: item.entry1 || 0,
+            entry2: item.entry2 || 0,
+            exit1: item.exit1 || 0,
+            exit2: item.exit2 || 0,
+            dateOfUpdate: item.dateOfUpdate || null,
+          });
+        }
+      });
+      return newMap;
+    });
+  }, []);
+
+  const value: EntryExitContextType = {
+    getEntryExitValue,
+    setEntryExitValue,
+    initializeFromData,
+    entryExitValues,
+  };
+
+  return <EntryExitContext.Provider value={value}>{children}</EntryExitContext.Provider>;
+}
+
+export function useEntryExitValues(): EntryExitContextType {
+  const context = useContext(EntryExitContext);
+  if (context === undefined) {
+    throw new Error('useEntryExitValues must be used within an EntryExitProvider');
+  }
+  return context;
+}
+
