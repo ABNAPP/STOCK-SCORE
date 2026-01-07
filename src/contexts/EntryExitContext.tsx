@@ -1,7 +1,7 @@
 import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
 import { EntryExitData } from '../types/stock';
 
-interface EntryExitValues {
+export interface EntryExitValues {
   entry1: number;
   entry2: number;
   exit1: number;

@@ -161,7 +161,7 @@ function AppContent({
   conditionsModalOpen,
   handleOpenConditionsModal,
   handleCloseConditionsModal,
-  selectedViewForModal,
+  selectedViewForModal: _selectedViewForModal,
   renderView,
   metadata,
   pageName,

@@ -21,7 +21,7 @@ export default function ThresholdIndustryView() {
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Tröskelvärden per bransch</p>
           </div>
           <button
-            onClick={refetch}
+            onClick={() => refetch()}
             disabled={loading}
             className="px-4 py-2 sm:px-5 sm:py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-lg hover:scale-105 active:scale-95 self-start sm:self-auto inline-flex items-center gap-2"
           >
