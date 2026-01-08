@@ -1,27 +1,16 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo, useCallback } from 'react';
 import { ThresholdIndustryData } from '../types/stock';
 import BaseTable, { ColumnDefinition, HeaderRenderProps } from './BaseTable';
 import ColumnTooltip from './ColumnTooltip';
 import { getColumnMetadata } from '../config/tableMetadata';
 import { FilterConfig } from './AdvancedFilters';
 import { useTranslation } from 'react-i18next';
+import { useThresholdValues, ThresholdValues } from '../contexts/ThresholdContext';
 
 interface ThresholdIndustryTableProps {
   data: ThresholdIndustryData[];
   loading: boolean;
   error: string | null;
-}
-
-interface ThresholdValues {
-  irr: number;
-  leverageF2Min: number;
-  leverageF2Max: number;
-  ro40Min: number;
-  ro40Max: number;
-  cashSdebtMin: number;
-  cashSdebtMax: number;
-  currentRatioMin: number;
-  currentRatioMax: number;
 }
 
 const THRESHOLD_INDUSTRY_COLUMNS: ColumnDefinition<ThresholdIndustryData>[] = [
@@ -40,7 +29,7 @@ const THRESHOLD_INDUSTRY_COLUMNS: ColumnDefinition<ThresholdIndustryData>[] = [
 
 export default function ThresholdIndustryTable({ data, loading, error }: ThresholdIndustryTableProps) {
   const { t } = useTranslation();
-  const [thresholdValues, setThresholdValues] = useState<Map<string, ThresholdValues>>(new Map());
+  const { thresholdValues, getThresholdValue, setThresholdValue, initializeFromData } = useThresholdValues();
 
   // Get unique industries for filter dropdown
   const uniqueIndustries = useMemo(() => {
@@ -94,38 +83,12 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
 
   // Initialize threshold values from data
   useEffect(() => {
-    setThresholdValues((prev) => {
-      const newMap = new Map(prev);
-      data.forEach((item) => {
-        if (!newMap.has(item.industry)) {
-          newMap.set(item.industry, {
-            irr: item.irr || 0,
-            leverageF2Min: item.leverageF2Min || 0,
-            leverageF2Max: item.leverageF2Max || 0,
-            ro40Min: item.ro40Min || 0,
-            ro40Max: item.ro40Max || 0,
-            cashSdebtMin: item.cashSdebtMin || 0,
-            cashSdebtMax: item.cashSdebtMax || 0,
-            currentRatioMin: item.currentRatioMin || 0,
-            currentRatioMax: item.currentRatioMax || 0,
-          });
-        }
-      });
-      return newMap;
-    });
-  }, [data]);
+    initializeFromData(data);
+  }, [data, initializeFromData]);
 
   const handleThresholdChange = useCallback((industry: string, field: keyof ThresholdValues, value: number) => {
-    setThresholdValues((prev) => {
-      const newMap = new Map(prev);
-      const current = newMap.get(industry) || { irr: 0, leverageF2Min: 0, leverageF2Max: 0, ro40Min: 0, ro40Max: 0, cashSdebtMin: 0, cashSdebtMax: 0, currentRatioMin: 0, currentRatioMax: 0 };
-      newMap.set(industry, {
-        ...current,
-        [field]: value,
-      });
-      return newMap;
-    });
-  }, []);
+    setThresholdValue(industry, field, value);
+  }, [setThresholdValue]);
 
   // Custom header renderer with ColumnTooltip
   const renderHeader = useCallback((props: HeaderRenderProps<ThresholdIndustryData>) => {
@@ -185,7 +148,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
 
   // Render cell content with editable inputs
   const renderCell = useCallback((item: ThresholdIndustryData, column: ColumnDefinition<ThresholdIndustryData>, index: number, globalIndex: number) => {
-    const values = thresholdValues.get(item.industry) || {
+    const values = getThresholdValue(item.industry) || {
       irr: item.irr || 0,
       leverageF2Min: item.leverageF2Min || 0,
       leverageF2Max: item.leverageF2Max || 0,
@@ -331,7 +294,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
       default:
         return null;
     }
-  }, [thresholdValues, handleThresholdChange]);
+  }, [getThresholdValue, handleThresholdChange]);
 
   // Render mobile card
   const renderMobileCard = useCallback((item: ThresholdIndustryData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
@@ -340,7 +303,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
       ? 'bg-white dark:bg-gray-800' 
       : 'bg-gray-50 dark:bg-gray-800/50';
     
-    const values = thresholdValues.get(item.industry) || {
+    const values = getThresholdValue(item.industry) || {
       irr: item.irr || 0,
       leverageF2Min: item.leverageF2Min || 0,
       leverageF2Max: item.leverageF2Max || 0,
@@ -425,7 +388,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
         )}
       </div>
     );
-  }, [thresholdValues, handleThresholdChange]);
+  }, [getThresholdValue, handleThresholdChange]);
 
   return (
     <BaseTable<ThresholdIndustryData>

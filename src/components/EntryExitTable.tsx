@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { EntryExitData } from '../types/stock';
 import BaseTable, { ColumnDefinition, HeaderRenderProps } from './BaseTable';
 import ColumnTooltip from './ColumnTooltip';
 import { getColumnMetadata } from '../config/tableMetadata';
 import { FilterConfig } from './AdvancedFilters';
 import { useEntryExitValues } from '../contexts/EntryExitContext';
+import { useAuth } from '../contexts/AuthContext';
+import { saveCurrencyValues, loadCurrencyValues } from '../services/userDataService';
 import { DATE_NEAR_OLD_THRESHOLD_DAYS } from '../config/constants';
 
 interface EntryExitTableProps {
@@ -75,69 +77,122 @@ const ENTRY_EXIT_FILTERS: FilterConfig[] = [
 ];
 
 export default function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
+  const { currentUser } = useAuth();
   const [currencyMap, setCurrencyMap] = useState<Map<string, string>>(new Map());
+  const [isLoadingCurrency, setIsLoadingCurrency] = useState(true);
   const { getEntryExitValue, setEntryExitValue, initializeFromData } = useEntryExitValues();
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const STORAGE_KEY = 'tachart-currency-map';
 
-  // Initialize currency map with saved values from localStorage or default USD for all rows
+  // Load currency values from Firestore when component mounts or user changes
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      let savedMap = new Map<string, string>();
-      
-      if (stored) {
-        try {
-          const parsedMap = JSON.parse(stored);
-          savedMap = new Map<string, string>(Object.entries(parsedMap));
-        } catch (error) {
-          console.error('Failed to parse currency map from localStorage:', error);
+    const loadCurrencyData = async () => {
+      setIsLoadingCurrency(true);
+      try {
+        const loaded = await loadCurrencyValues(currentUser);
+        let savedMap = new Map<string, string>();
+        
+        if (loaded) {
+          savedMap = new Map(Object.entries(loaded));
+        } else {
+          // Fallback to localStorage
+          try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+              const parsedMap = JSON.parse(stored);
+              savedMap = new Map(Object.entries(parsedMap));
+            }
+          } catch (error) {
+            console.error('Failed to parse currency map from localStorage:', error);
+          }
         }
-      }
 
-      setCurrencyMap((prev) => {
-        const newMap = new Map(savedMap);
-        data.forEach((item) => {
-          const key = `${item.ticker}-${item.companyName}`;
-          if (!newMap.has(key)) {
-            newMap.set(key, item.currency || 'USD');
-          }
+        setCurrencyMap((prev) => {
+          const newMap = new Map(savedMap);
+          data.forEach((item) => {
+            const key = `${item.ticker}-${item.companyName}`;
+            if (!newMap.has(key)) {
+              newMap.set(key, item.currency || 'USD');
+            }
+          });
+          return newMap;
         });
-        return newMap;
-      });
-    } catch (error) {
-      console.error('Failed to initialize currency map:', error);
-      setCurrencyMap((prev) => {
-        const newMap = new Map(prev);
-        data.forEach((item) => {
-          const key = `${item.ticker}-${item.companyName}`;
-          if (!newMap.has(key)) {
-            newMap.set(key, item.currency || 'USD');
+      } catch (error) {
+        console.error('Failed to load currency map:', error);
+        // Fallback to localStorage
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          let savedMap = new Map<string, string>();
+          if (stored) {
+            const parsedMap = JSON.parse(stored);
+            savedMap = new Map(Object.entries(parsedMap));
           }
-        });
-        return newMap;
-      });
-    }
-  }, [data]);
+          setCurrencyMap((prev) => {
+            const newMap = new Map(savedMap);
+            data.forEach((item) => {
+              const key = `${item.ticker}-${item.companyName}`;
+              if (!newMap.has(key)) {
+                newMap.set(key, item.currency || 'USD');
+              }
+            });
+            return newMap;
+          });
+        } catch (localError) {
+          console.error('Failed to initialize currency map from localStorage:', localError);
+        }
+      } finally {
+        setIsLoadingCurrency(false);
+      }
+    };
+
+    loadCurrencyData();
+  }, [data, currentUser?.uid]);
 
   // Initialize entry/exit values from data
   useEffect(() => {
     initializeFromData(data);
   }, [data, initializeFromData]);
 
+  // Save currency values to Firestore when they change (debounced)
+  useEffect(() => {
+    if (isLoadingCurrency) return; // Don't save during initial load
+
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Save to localStorage immediately (fast fallback)
+    try {
+      const mapObject = Object.fromEntries(currencyMap);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(mapObject));
+    } catch (error) {
+      console.error('Failed to save currency map to localStorage:', error);
+    }
+
+    // Debounce Firestore save to avoid too many writes
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        const mapObject = Object.fromEntries(currencyMap);
+        await saveCurrencyValues(currentUser, mapObject);
+      } catch (error) {
+        console.error('Error saving currency values to Firestore:', error);
+      }
+    }, 1000); // Wait 1 second after last change
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [currencyMap, currentUser, isLoadingCurrency]);
+
   const handleCurrencyChange = useCallback((ticker: string, companyName: string, currency: string) => {
     const key = `${ticker}-${companyName}`;
     setCurrencyMap((prev) => {
       const newMap = new Map(prev);
       newMap.set(key, currency);
-      
-      try {
-        const mapObject = Object.fromEntries(newMap);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(mapObject));
-      } catch (error) {
-        console.error('Failed to save currency map to localStorage:', error);
-      }
-      
       return newMap;
     });
   }, []);

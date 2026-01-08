@@ -1,5 +1,7 @@
-import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, ReactNode, useState, useCallback, useEffect, useRef } from 'react';
 import { EntryExitData } from '../types/stock';
+import { useAuth } from './AuthContext';
+import { saveEntryExitValues, loadEntryExitValues } from '../services/userDataService';
 
 export interface EntryExitValues {
   entry1: number;
@@ -20,7 +22,7 @@ export const EntryExitContext = createContext<EntryExitContextType | undefined>(
 
 const STORAGE_KEY = 'entryExitValues';
 
-// Load from localStorage
+// Load from localStorage (fallback)
 const loadFromStorage = (): Map<string, EntryExitValues> => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -34,7 +36,7 @@ const loadFromStorage = (): Map<string, EntryExitValues> => {
   return new Map();
 };
 
-// Save to localStorage
+// Save to localStorage (fallback)
 const saveToStorage = (values: Map<string, EntryExitValues>) => {
   try {
     const obj = Object.fromEntries(values);
@@ -49,12 +51,69 @@ interface EntryExitProviderProps {
 }
 
 export function EntryExitProvider({ children }: EntryExitProviderProps) {
+  const { currentUser } = useAuth();
   const [entryExitValues, setEntryExitValues] = useState<Map<string, EntryExitValues>>(() => loadFromStorage());
+  const [isLoading, setIsLoading] = useState(true);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Save to localStorage whenever entryExitValues changes
+  // Load data from Firestore when user logs in or component mounts
   useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const loaded = await loadEntryExitValues(currentUser);
+        if (loaded) {
+          setEntryExitValues(new Map(Object.entries(loaded)));
+        } else {
+          // If no Firestore data, try localStorage
+          const localData = loadFromStorage();
+          if (localData.size > 0) {
+            setEntryExitValues(localData);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading EntryExit values:', error);
+        // Fallback to localStorage
+        const localData = loadFromStorage();
+        if (localData.size > 0) {
+          setEntryExitValues(localData);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [currentUser?.uid]); // Reload when user changes
+
+  // Save to Firestore whenever entryExitValues changes (debounced)
+  useEffect(() => {
+    if (isLoading) return; // Don't save during initial load
+
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Save to localStorage immediately (fast fallback)
     saveToStorage(entryExitValues);
-  }, [entryExitValues]);
+
+    // Debounce Firestore save to avoid too many writes
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        const obj = Object.fromEntries(entryExitValues);
+        await saveEntryExitValues(currentUser, obj);
+      } catch (error) {
+        console.error('Error saving EntryExit values to Firestore:', error);
+      }
+    }, 1000); // Wait 1 second after last change
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [entryExitValues, currentUser, isLoading]);
 
   const getEntryExitValue = useCallback((ticker: string, companyName: string): EntryExitValues | undefined => {
     const key = `${ticker}-${companyName}`;
