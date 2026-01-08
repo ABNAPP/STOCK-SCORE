@@ -57,7 +57,7 @@ interface ThresholdProviderProps {
 
 export function ThresholdProvider({ children }: ThresholdProviderProps) {
   const { currentUser } = useAuth();
-  const [thresholdValues, setThresholdValues] = useState<Map<string, ThresholdValues>>(() => loadFromStorage());
+  const [thresholdValues, setThresholdValuesState] = useState<Map<string, ThresholdValues>>(() => loadFromStorage());
   const [isLoading, setIsLoading] = useState(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -68,12 +68,12 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
       try {
         const loaded = await loadThresholdValues(currentUser);
         if (loaded) {
-          setThresholdValues(new Map(Object.entries(loaded)));
+          setThresholdValuesState(new Map(Object.entries(loaded)));
         } else {
           // If no Firestore data, try localStorage
           const localData = loadFromStorage();
           if (localData.size > 0) {
-            setThresholdValues(localData);
+            setThresholdValuesState(localData);
           }
         }
       } catch (error) {
@@ -81,7 +81,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
         // Fallback to localStorage
         const localData = loadFromStorage();
         if (localData.size > 0) {
-          setThresholdValues(localData);
+          setThresholdValuesState(localData);
         }
       } finally {
         setIsLoading(false);
@@ -125,7 +125,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
   }, [thresholdValues]);
 
   const setThresholdValue = useCallback((industry: string, field: keyof ThresholdValues, value: number) => {
-    setThresholdValues((prev) => {
+    setThresholdValuesState((prev) => {
       const newMap = new Map(prev);
       const current = newMap.get(industry) || {
         irr: 0,
@@ -148,7 +148,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
   }, []);
 
   const setThresholdValues = useCallback((industry: string, values: Partial<ThresholdValues>) => {
-    setThresholdValues((prev) => {
+    setThresholdValuesState((prev) => {
       const newMap = new Map(prev);
       const current = newMap.get(industry) || {
         irr: 0,
@@ -171,7 +171,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
   }, []);
 
   const initializeFromData = useCallback((data: ThresholdIndustryData[]) => {
-    setThresholdValues((prev) => {
+    setThresholdValuesState((prev) => {
       const newMap = new Map(prev);
       data.forEach((item) => {
         if (!newMap.has(item.industry)) {
