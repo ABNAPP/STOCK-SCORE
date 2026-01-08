@@ -43,8 +43,26 @@ export function AutoRefreshProvider({ children }: AutoRefreshProviderProps) {
   });
   
   const [interval, setIntervalState] = useState<number>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_INTERVAL);
-    return saved !== null ? parseInt(saved, 10) : DEFAULT_INTERVAL;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_INTERVAL);
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        // Validate that parsed value is a valid interval
+        const validIntervals = [
+          AUTO_REFRESH_INTERVALS.OFF,
+          AUTO_REFRESH_INTERVALS.MIN_15,
+          AUTO_REFRESH_INTERVALS.MIN_30,
+          AUTO_REFRESH_INTERVALS.MIN_60,
+        ];
+        if (!isNaN(parsed) && validIntervals.includes(parsed)) {
+          return parsed;
+        }
+      }
+      return DEFAULT_INTERVAL;
+    } catch (error) {
+      console.warn('Failed to load auto-refresh interval from localStorage:', error);
+      return DEFAULT_INTERVAL;
+    }
   });
   
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);

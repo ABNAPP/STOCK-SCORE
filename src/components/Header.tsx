@@ -48,7 +48,17 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate }: HeaderP
   };
 
   const getAutoRefreshValue = () => {
-    if (!enabled) {
+    if (!enabled || !interval || interval === 0) {
+      return AUTO_REFRESH_INTERVALS.OFF.toString();
+    }
+    // Ensure interval matches one of the valid intervals
+    const validIntervals = [
+      AUTO_REFRESH_INTERVALS.OFF,
+      AUTO_REFRESH_INTERVALS.MIN_15,
+      AUTO_REFRESH_INTERVALS.MIN_30,
+      AUTO_REFRESH_INTERVALS.MIN_60,
+    ];
+    if (!validIntervals.includes(interval)) {
       return AUTO_REFRESH_INTERVALS.OFF.toString();
     }
     return interval.toString();
