@@ -1,0 +1,92 @@
+# Quick Setup: Apps Script URL
+
+## Snabbinstruktion för att fixa CORS-problemet
+
+### ✅ Steg 1: Skapa .env.local (för lokal utveckling)
+
+Skapa en fil `.env.local` i projektets root med följande innehåll:
+
+```
+VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec
+```
+
+**OBS**: Filen `.env.local` ignoreras av Git (det är bra för säkerhet).
+
+### ✅ Steg 2: Konfigurera i Vercel (för produktion)
+
+1. Gå till [Vercel Dashboard](https://vercel.com/dashboard)
+2. Välj projektet "STOCK SCORE" (eller ditt projektsnamn)
+3. Klicka på **Settings** i toppmenyn
+4. Klicka på **Environment Variables** i sidomenyn
+5. Klicka på knappen **Add New** (eller **Add**)
+6. Fyll i formuläret:
+   - **Key**: `VITE_APPS_SCRIPT_URL`
+   - **Value**: `https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec`
+   - **Environments**: Välj alla tre (Production, Preview, Development)
+7. Klicka på **Save**
+
+### ⚠️ Steg 3: VIKTIGT - Redeploya projektet!
+
+Efter att ha lagt till environment variables i Vercel **måste** du redeploya:
+
+**Alternativ A: Via Vercel Dashboard**
+1. Gå till **Deployments**-fliken
+2. Hitta senaste deployment (överst i listan)
+3. Klicka på de tre prickarna (⋮) bredvid deploymenten
+4. Välj **Redeploy**
+5. Bekräfta
+
+**Alternativ B: Via Git push**
+1. Gör en liten ändring i koden (eller skapa en tom commit)
+2. Pusha till GitHub
+3. Vercel deployar automatiskt
+
+### ✅ Steg 4: Verifiera
+
+1. **Lokalt**: 
+   - Starta appen: `npm run dev`
+   - Öppna Developer Console (F12)
+   - Du bör se: `✅ Apps Script URL configured successfully!`
+
+2. **I produktion**:
+   - Besök din Vercel-URL
+   - Öppna Developer Console (F12)
+   - Du bör se: `✅ Apps Script URL configured successfully!`
+   - Om du ser fel, kontrollera att du har redeployat efter att ha lagt till environment variable
+
+3. **Testa Apps Script direkt**:
+   Öppna denna URL i webbläsaren:
+   ```
+   https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec?sheet=DashBoard
+   ```
+   Du bör se JSON-data. Om du ser en inloggningssida eller felmeddelande, kontrollera att Apps Script är deployat med "Who has access" = "Anyone".
+
+## Felsökning
+
+### Problemet kvarstår efter redeploy?
+
+1. **Rensa cache**: 
+   - Hård refresh i webbläsaren: `Ctrl+Shift+R` (Windows) eller `Cmd+Shift+R` (Mac)
+   - Eller öppna i Incognito/Private mode
+
+2. **Kontrollera environment variable**:
+   - Gå tillbaka till Vercel → Settings → Environment Variables
+   - Verifiera att `VITE_APPS_SCRIPT_URL` finns
+   - Verifiera att värdet är exakt: `https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec`
+   - Verifiera att alla tre environments (Production, Preview, Development) är ikryssade
+
+3. **Kontrollera Apps Script deployment**:
+   - Gå till [Apps Script](https://script.google.com)
+   - Välj ditt projekt
+   - Gå till **Deploy** → **Manage deployments**
+   - Kontrollera att "Who has access" är satt till **"Anyone"**
+   - Om inte, klicka på redigeringsikonen och ändra till "Anyone", spara och deploya igen
+
+4. **Kontrollera i browser console**:
+   - Öppna Network tab i Developer Tools
+   - Filtrera på "script.google.com"
+   - Se om requests görs till Apps Script eller om det fortfarande använder CSV proxy
+
+## Ytterligare hjälp
+
+Se `APPS_SCRIPT_SETUP.md` för detaljerad dokumentation om Apps Script setup.

@@ -13,11 +13,59 @@ import { getCachedData, setCachedData, DEFAULT_TTL, CACHE_KEYS } from './cacheSe
 // To deploy: Create Apps Script bound to sheet → Deploy as Web App → Copy URL
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
 
+// Validate Apps Script URL format at startup (warn only, don't fail)
+if (APPS_SCRIPT_URL) {
+  if (APPS_SCRIPT_URL.includes('/library/')) {
+    console.error(
+      '❌ Invalid Apps Script URL: Looks like a library deployment, not a Web App!\n' +
+      'Expected format: https://script.google.com/macros/s/SCRIPT_ID/exec\n' +
+      'Current URL: ' + APPS_SCRIPT_URL + '\n' +
+      'SOLUTION: Redeploy as "Web app" (not "Library") in Apps Script → Deploy → New deployment'
+    );
+  } else if (!APPS_SCRIPT_URL.includes('script.google.com/macros/s/') || !APPS_SCRIPT_URL.endsWith('/exec')) {
+    console.warn(
+      '⚠️ Apps Script URL format may be incorrect:\n' +
+      'Expected: https://script.google.com/macros/s/SCRIPT_ID/exec\n' +
+      'Current: ' + APPS_SCRIPT_URL
+    );
+  } else {
+    console.log(
+      '✅ Apps Script URL configured successfully!\n' +
+      '   URL: ' + APPS_SCRIPT_URL + '\n' +
+      '   Status: Ready to use (will bypass CSV proxy)'
+    );
+  }
+} else {
+  const isProduction = import.meta.env.PROD;
+  const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
+  
+  if (isProduction || isVercel) {
+    console.error(
+      '❌ Apps Script URL NOT configured in Vercel!\n' +
+      'App will fall back to slower CSV proxy method.\n\n' +
+      'TO FIX:\n' +
+      '1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables\n' +
+      '2. Add: VITE_APPS_SCRIPT_URL = https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec\n' +
+      '3. Select all environments (Production, Preview, Development)\n' +
+      '4. Save and REDEPLOY your project!\n'
+    );
+  } else {
+    console.info(
+      'ℹ️ Apps Script URL not configured locally. App will use CSV fallback.\n' +
+      'To enable locally: Create .env.local file with:\n' +
+      '  VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec\n'
+    );
+  }
+}
+
 // Fallback: Use CORS proxy if Apps Script URL is not configured
 const CORS_PROXIES = [
   'https://api.allorigins.win/raw?url=',
   'https://corsproxy.io/?',
 ];
+
+// Request timeout in milliseconds (30 seconds)
+const FETCH_TIMEOUT = 30000;
 
 // Type for row data (compatible with both CSV and JSON)
 // Values can be string, number, or undefined
@@ -143,9 +191,36 @@ async function fetchJSONData<T>(
 
   // If Apps Script URL is not configured, fall back to CSV
   if (!APPS_SCRIPT_URL) {
-    console.warn(`Apps Script URL not configured, falling back to CSV for ${dataTypeName}`);
+    const isProduction = import.meta.env.PROD;
+    const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
+    
+    if (isProduction || isVercel) {
+      console.error(
+        `❌ Apps Script URL NOT configured in Vercel for ${dataTypeName}!\n` +
+        `App will fall back to slower CSV proxy method.\n\n` +
+        `TO FIX:\n` +
+        `1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables\n` +
+        `2. Add: VITE_APPS_SCRIPT_URL = https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec\n` +
+        `3. Select all environments (Production, Preview, Development)\n` +
+        `4. Save and REDEPLOY your project!\n`
+      );
+    } else {
+      console.warn(
+        `⚠️ Apps Script URL not configured locally for ${dataTypeName}, falling back to CSV.\n` +
+        `To enable locally: Create .env.local file in project root with:\n` +
+        `  VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec\n` +
+        `Then restart dev server: npm run dev\n`
+      );
+    }
     // This will be handled by the calling function
     throw new Error('Apps Script URL not configured');
+  }
+
+  // Validate Apps Script URL format
+  if (!APPS_SCRIPT_URL.includes('script.google.com/macros/s/') || !APPS_SCRIPT_URL.endsWith('/exec')) {
+    console.error('Invalid Apps Script URL format. Expected: https://script.google.com/macros/s/SCRIPT_ID/exec');
+    console.error('Current URL:', APPS_SCRIPT_URL);
+    throw new Error('Invalid Apps Script URL format. Please check VITE_APPS_SCRIPT_URL environment variable.');
   }
 
   // Report fetch start
@@ -158,13 +233,46 @@ async function fetchJSONData<T>(
   try {
     // Fetch from Apps Script with sheet name as parameter
     const url = `${APPS_SCRIPT_URL}?sheet=${encodeURIComponent(sheetName)}`;
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
+    
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        mode: 'cors', // Explicitly request CORS
+      });
+    } catch (fetchError) {
+      // Handle CORS and network errors
+      if (fetchError instanceof TypeError && fetchError.message.includes('fetch')) {
+        const isCorsError = fetchError.message.includes('CORS') || 
+                           fetchError.message.includes('cross-origin') ||
+                           fetchError.message.includes('Access-Control-Allow-Origin');
+        
+        if (isCorsError || url.includes('script.google.com')) {
+          throw new Error(
+            `CORS error: Apps Script is blocking cross-origin requests. ` +
+            `SOLUTION: In Apps Script → Deploy → Manage deployments → Edit → ` +
+            `Set "Who has access" to "Anyone" → Save and redeploy. ` +
+            `Also verify the URL format: ${APPS_SCRIPT_URL}`
+          );
+        }
+      }
+      throw fetchError;
+    }
 
     if (!response.ok) {
+      // Handle specific error codes
+      if (response.status === 404) {
+        throw new Error(`Apps Script not found (404). Please verify the URL: ${APPS_SCRIPT_URL}`);
+      } else if (response.status === 401 || response.status === 403) {
+        throw new Error(
+          `Apps Script access denied (${response.status}). ` +
+          `SOLUTION: In Apps Script → Deploy → Manage deployments → Edit → ` +
+          `Set "Who has access" to "Anyone" → Save and redeploy.`
+        );
+      }
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
@@ -249,9 +357,30 @@ async function fetchJSONData<T>(
     return transformedData;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    
+    // Provide specific guidance based on error type
+    let errorGuidance = '';
+    if (message.includes('CORS') || message.includes('cross-origin')) {
+      errorGuidance = `\n\nTroubleshooting CORS:\n` +
+        `1. Go to Apps Script → Deploy → Manage deployments\n` +
+        `2. Click edit (pencil icon) on your deployment\n` +
+        `3. Verify "Who has access" is set to "Anyone"\n` +
+        `4. Save and redeploy\n` +
+        `5. Verify URL format: https://script.google.com/macros/s/SCRIPT_ID/exec`;
+    } else if (message.includes('404') || message.includes('not found')) {
+      errorGuidance = `\n\nTroubleshooting 404:\n` +
+        `1. Verify VITE_APPS_SCRIPT_URL in Vercel Environment Variables\n` +
+        `2. Test the URL directly in browser: ${APPS_SCRIPT_URL}?sheet=${sheetName}\n` +
+        `3. Ensure Apps Script is deployed as "Web app" (not "Library")\n` +
+        `4. URL should end with /exec (not /library/...)`;
+    } else if (message.includes('Invalid Apps Script URL')) {
+      errorGuidance = `\n\nExpected URL format: https://script.google.com/macros/s/SCRIPT_ID/exec\n` +
+        `Current URL: ${APPS_SCRIPT_URL || '(not set)'}`;
+    }
+    
     throw new Error(
       `Failed to fetch ${dataTypeName} data from Apps Script: ${message}. ` +
-      `Please check your Apps Script URL configuration and ensure the sheet "${sheetName}" exists.`
+      `Please check your Apps Script URL configuration and ensure the sheet "${sheetName}" exists.${errorGuidance}`
     );
   }
 }
@@ -299,19 +428,52 @@ async function fetchCSVData<T>(
   });
 
   let lastError: Error | null = null;
+  const proxyErrors: Array<{ proxy: string; error: string }> = [];
   
   // Try each proxy in sequence
-  for (const proxy of CORS_PROXIES) {
+  for (let i = 0; i < CORS_PROXIES.length; i++) {
+    const proxy = CORS_PROXIES[i];
     try {
       const proxyUrl = `${proxy}${encodeURIComponent(csvUrl)}`;
-      const response = await fetch(proxyUrl, {
-        headers: {
-          'Accept': 'text/csv',
-        },
-      });
+      
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+      
+      // Fetch with timeout
+      let response: Response;
+      try {
+        response = await fetch(proxyUrl, {
+          headers: {
+            'Accept': 'text/csv',
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        // Check if it was aborted (timeout)
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          throw new Error('Request timeout');
+        }
+        throw fetchError;
+      }
       
       if (!response.ok) {
+        // Don't log 408 timeouts as errors - just try next proxy
+        if (response.status === 408) {
+          proxyErrors.push({ proxy, error: 'Request timeout (408)' });
+          continue;
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      // Success! Log which proxy worked (only in development)
+      if (import.meta.env.DEV && proxyErrors.length > 0) {
+        console.log(
+          `✅ ${dataTypeName}: Successfully fetched via ${proxy.replace(/^https?:\/\//, '').replace(/\/.*$/, '')} ` +
+          `(after ${proxyErrors.length} failed attempt${proxyErrors.length > 1 ? 's' : ''})`
+        );
       }
       
       // Report response received
@@ -412,15 +574,55 @@ async function fetchCSVData<T>(
     } catch (error) {
       // Save error and try next proxy
       lastError = error instanceof Error ? error : new Error(String(error));
-      console.warn(`${dataTypeName} proxy failed, trying next...`, error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Categorize the error
+      const isCorsError = errorMessage.includes('CORS') || 
+                         errorMessage.includes('cross-origin') ||
+                         errorMessage.includes('Access-Control-Allow-Origin');
+      const isTimeoutError = errorMessage.includes('timeout') || 
+                            errorMessage.includes('408') ||
+                            errorMessage.includes('Request timeout');
+      const isNetworkError = errorMessage.includes('Failed to fetch') ||
+                            errorMessage.includes('network');
+      
+      // Store error info (only log if all proxies fail)
+      proxyErrors.push({ 
+        proxy, 
+        error: isCorsError ? 'CORS blocked' : 
+               isTimeoutError ? 'Request timeout' :
+               isNetworkError ? 'Network error' :
+               errorMessage.substring(0, 50)
+      });
+      
+      // Only log detailed error if this is the last proxy attempt
+      if (i === CORS_PROXIES.length - 1) {
+        console.warn(
+          `${dataTypeName}: All proxy attempts failed. Errors:`,
+          proxyErrors.map(e => `${e.proxy.replace(/^https?:\/\//, '').replace(/\/.*$/, '')}: ${e.error}`).join(', ')
+        );
+      }
+      
+      // Add a small delay before trying next proxy (except for last attempt)
+      if (i < CORS_PROXIES.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
+      }
       continue;
     }
   }
   
-  // If all proxies failed, throw the last error
+  // If all proxies failed, provide detailed error message
+  const errorSummary = proxyErrors.length > 0 
+    ? `\nProxy failures:\n${proxyErrors.map((e, idx) => `  ${idx + 1}. ${e.proxy.replace(/^https?:\/\//, '').replace(/\/.*$/, '')}: ${e.error}`).join('\n')}`
+    : '';
+  
   throw new Error(
-    `Failed to fetch ${dataTypeName} data from all proxies. Last error: ${lastError?.message || 'Unknown error'}. ` +
-    `Please check your internet connection and ensure the Google Sheet is publicly accessible.`
+    `Failed to fetch ${dataTypeName} data from all proxies (tried ${CORS_PROXIES.length} proxy${CORS_PROXIES.length > 1 ? 'ies' : ''}).${errorSummary}\n\n` +
+    `SOLUTIONS:\n` +
+    `1. Check your internet connection\n` +
+    `2. Verify the Google Sheet is publicly accessible (Share → Anyone with the link → Viewer)\n` +
+    `3. Configure Apps Script URL to bypass proxies: Set VITE_APPS_SCRIPT_URL environment variable\n` +
+    `4. Wait a moment and refresh the page (proxy services may be temporarily unavailable)`
   );
 }
 

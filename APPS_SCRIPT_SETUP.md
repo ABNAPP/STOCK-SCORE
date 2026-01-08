@@ -10,45 +10,73 @@ Denna guide visar hur du skapar en Google Apps Script för att ersätta CORS pro
 
 ```javascript
 function doGet(e) {
-  const sheetName = e.parameter.sheet || 'DashBoard';
-  const ss = SpreadsheetApp.openById('1KOOSLJVGdDZHBV1MUmb4D9oVIKUJj5TIgYCerjkWYcE');
-  const sheet = ss.getSheetByName(sheetName);
-  
-  if (!sheet) {
+  try {
+    const sheetName = e.parameter.sheet || 'DashBoard';
+    const ss = SpreadsheetApp.openById('1KOOSLJVGdDZHBV1MUmb4D9oVIKUJj5TIgYCerjkWYcE');
+    const sheet = ss.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      const errorData = { error: `Sheet "${sheetName}" not found` };
+      return ContentService
+        .createTextOutput(JSON.stringify(errorData))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const values = sheet.getDataRange().getValues();
+    const output = ContentService
+      .createTextOutput(JSON.stringify(values))
+      .setMimeType(ContentService.MimeType.JSON);
+    
+    return output;
+  } catch (error) {
+    const errorData = { 
+      error: 'Server error', 
+      message: error.toString() 
+    };
     return ContentService
-      .createTextOutput(JSON.stringify({ error: `Sheet "${sheetName}" not found` }))
+      .createTextOutput(JSON.stringify(errorData))
       .setMimeType(ContentService.MimeType.JSON);
   }
-  
-  const values = sheet.getDataRange().getValues();
-  return ContentService
-    .createTextOutput(JSON.stringify(values))
-    .setMimeType(ContentService.MimeType.JSON);
 }
 ```
 
 ## Steg 2: Deploya som Web App
 
 1. Klicka på **Deploy** → **New deployment**
-2. Välj typ: **Web app**
+2. Välj typ: **Web app** (INTE "Library"!)
 3. Fyll i:
    - **Description**: "Stock Score Data API"
    - **Execute as**: "Me"
-   - **Who has access**: "Anyone" (eller "Anyone with Google account" om du vill ha autentisering)
+   - **Who has access**: **"Anyone"** (viktigt för CORS!)
 4. Klicka på **Deploy**
-5. **Kopiera Web App URL** (ser ut som: `https://script.google.com/macros/s/.../exec`)
+5. **VIKTIGT**: Godkänn behörighetsgivningen när Google ber om det
+6. **Kopiera Web App URL** (måste sluta med `/exec`, t.ex: `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec`)
+   - ⚠️ **INTE** `/library/...` - det är för libraries, inte Web Apps
+   - ✅ Måste vara `/s/.../exec` format
 
 ## Steg 3: Konfigurera i appen
 
-1. Skapa en `.env.local` fil i projektets root (eller lägg till i Vercel Environment Variables):
-   ```
-   VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
-   ```
+### För lokal utveckling:
 
-2. För Vercel deployment:
-   - Gå till Vercel Dashboard → Ditt Projekt → Settings → Environment Variables
-   - Lägg till: `VITE_APPS_SCRIPT_URL` med din Apps Script URL
-   - Välj alla miljöer (Production, Preview, Development)
+Skapa en `.env.local` fil i projektets root:
+```
+VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec
+```
+
+### För Vercel deployment (VIKTIGT!):
+
+1. Gå till [Vercel Dashboard](https://vercel.com/dashboard)
+2. Välj ditt projekt "STOCK SCORE"
+3. Gå till **Settings** → **Environment Variables**
+4. Klicka på **Add New**
+5. Fyll i:
+   - **Key**: `VITE_APPS_SCRIPT_URL`
+   - **Value**: `https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec`
+   - **Environment**: Välj alla (Production, Preview, Development)
+6. Klicka **Save**
+7. **VIKTIGT**: Du måste **redeploya** projektet efter att ha lagt till environment variables!
+   - Gå till **Deployments** → Välj senaste deployment → **Redeploy**
+   - Eller pusha en ny commit till GitHub (detta triggar automatisk redeploy)
 
 ## Steg 4: Testa
 
@@ -67,6 +95,46 @@ function doGet(e) {
 
 ## Felsökning
 
-- Om du får CORS-fel: Kontrollera att "Who has access" är satt till "Anyone"
-- Om data inte kommer: Kontrollera att sheet-namnet matchar exakt ("DashBoard" eller "SMA")
-- Om URL inte fungerar: Se till att du har kopierat hela URL:en inklusive `/exec`
+### CORS-fel (Access-Control-Allow-Origin)
+Om du ser CORS-fel i konsolen:
+1. **Kontrollera deployment**: Gå till **Deploy** → **Manage deployments**
+2. **Redigera deployment**: Klicka på pennikonen (edit) bredvid din deployment
+3. **Kontrollera "Who has access"**: Måste vara **"Anyone"** (inte "Anyone with Google account")
+4. **Spara och deploya igen**: Även om inställningarna är rätt, kan det behöva omdeployas
+5. **Testa URL direkt**: Öppna Apps Script URL i webbläsaren, du bör se JSON-data direkt
+6. **Kontrollera URL-format**: 
+   - ✅ Rätt: `https://script.google.com/macros/s/SCRIPT_ID/exec`
+   - ❌ Fel: `https://script.google.com/macros/library/LIBRARY_ID/...`
+
+### Data kommer inte
+- Kontrollera att sheet-namnet matchar exakt ("DashBoard" eller "SMA" - case-sensitive!)
+- Testa Apps Script URL direkt i webbläsaren med parameter: `?sheet=DashBoard`
+- Kontrollera att sheet-ID är korrekt i Apps Script-koden
+
+### URL fungerar inte
+- Se till att du har kopierat hela URL:en inklusive `/exec`
+- Kontrollera att du har deployat som "Web app", inte "Library"
+- Testa URL:en i en ny inkognitofönster för att undvika cache-problem
+
+### Ytterligare tips
+- Om du ändrar Apps Script-koden, måste du deploya en **ny version** eller **uppdatera** den befintliga
+- Google kan kräva att du godkänner behörigheter första gången du deployar
+- Vercel environment variables måste vara satta för Production, Preview, och Development miljöer
+- **VIKTIGT**: Efter att ha lagt till environment variables i Vercel, måste du **redeploya** projektet för att ändringarna ska gälla!
+
+### Verifiera konfigurationen
+
+För att kontrollera om Apps Script URL är korrekt konfigurerad:
+
+1. **Lokalt**: Öppna Developer Console i webbläsaren. Du bör se:
+   - ✅ `Apps Script URL configured successfully!` om URL är satt
+   - ❌ `Apps Script URL NOT configured in Vercel!` om URL saknas
+
+2. **I produktion (Vercel)**: Öppna Developer Console på din Vercel-deployade sida
+   - Kontrollera samma meddelanden som ovan
+
+3. **Testa Apps Script direkt**: Öppna denna URL i webbläsaren:
+   ```
+   https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec?sheet=DashBoard
+   ```
+   Du bör se JSON-data direkt. Om du ser en inloggningssida eller fel, kontrollera deployment-inställningarna.
