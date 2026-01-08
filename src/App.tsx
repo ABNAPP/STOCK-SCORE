@@ -9,6 +9,7 @@ import { getTableMetadata } from './config/tableMetadata';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from './contexts/AuthContext';
 import { RefreshProvider } from './contexts/RefreshContext';
+import { AutoRefreshProvider } from './contexts/AutoRefreshContext';
 import { LoadingProgressProvider } from './contexts/LoadingProgressContext';
 import { useToast } from './contexts/ToastContext';
 import ToastContainer from './components/ToastContainer';
@@ -133,19 +134,21 @@ function App() {
   return (
     <LoadingProgressProvider>
       <RefreshProvider>
-        <AppContent
-          activeView={activeView}
-          setActiveView={setActiveView}
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          conditionsModalOpen={conditionsModalOpen}
-          handleOpenConditionsModal={handleOpenConditionsModal}
-          handleCloseConditionsModal={handleCloseConditionsModal}
-          selectedViewForModal={selectedViewForModal}
-          renderView={renderView}
-          metadata={metadata}
-          pageName={pageName}
-        />
+        <AutoRefreshProvider>
+          <AppContent
+            activeView={activeView}
+            setActiveView={setActiveView}
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            conditionsModalOpen={conditionsModalOpen}
+            handleOpenConditionsModal={handleOpenConditionsModal}
+            handleCloseConditionsModal={handleCloseConditionsModal}
+            selectedViewForModal={selectedViewForModal}
+            renderView={renderView}
+            metadata={metadata}
+            pageName={pageName}
+          />
+        </AutoRefreshProvider>
       </RefreshProvider>
     </LoadingProgressProvider>
   );
