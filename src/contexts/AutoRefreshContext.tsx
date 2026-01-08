@@ -6,7 +6,7 @@ interface AutoRefreshContextType {
   enabled: boolean;
   interval: number;
   setEnabled: (enabled: boolean) => void;
-  setInterval: (interval: number) => void;
+  setIntervalValue: (interval: number) => void;
   lastRefreshTime: Date | null;
 }
 
@@ -76,7 +76,7 @@ export function AutoRefreshProvider({ children }: AutoRefreshProviderProps) {
   }, []);
 
   // Save interval to localStorage
-  const setInterval = useCallback((newInterval: number) => {
+  const setIntervalValue = useCallback((newInterval: number) => {
     setIntervalState(newInterval);
     localStorage.setItem(STORAGE_KEY_INTERVAL, String(newInterval));
   }, []);
@@ -151,7 +151,7 @@ export function AutoRefreshProvider({ children }: AutoRefreshProviderProps) {
     enabled,
     interval,
     setEnabled,
-    setInterval,
+    setIntervalValue,
     lastRefreshTime,
   };
 

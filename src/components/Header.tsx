@@ -18,7 +18,7 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate }: HeaderP
   const { i18n, t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const { refreshAll, isRefreshing } = useRefresh();
-  const { enabled, interval, setEnabled, setInterval } = useAutoRefresh();
+  const { enabled, interval, setEnabled, setIntervalValue } = useAutoRefresh();
   const { currentUser, logout } = useAuth();
   const { showToast } = useToast();
 
@@ -40,10 +40,10 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate }: HeaderP
     const intervalValue = parseInt(value, 10);
     if (intervalValue === AUTO_REFRESH_INTERVALS.OFF) {
       setEnabled(false);
-      setInterval(AUTO_REFRESH_INTERVALS.MIN_30); // Keep interval even when disabled
+      setIntervalValue(AUTO_REFRESH_INTERVALS.MIN_30); // Keep interval even when disabled
     } else {
       setEnabled(true);
-      setInterval(intervalValue);
+      setIntervalValue(intervalValue);
     }
   };
 
