@@ -85,6 +85,13 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
   const { getEntryExitValue, getFieldValue, setFieldValue, commitField, initializeFromData } = useEntryExitValues();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dirtyKeysRef = useRef<Set<string>>(new Set()); // Set of "ticker-companyName" that are being edited
+  const isInitialLoadRef = useRef(true); // Track initial load to prevent listener from processing during load
+  const dataRef = useRef(data); // Keep reference to latest data for use in listener
+
+  // Update data ref when data changes
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   const STORAGE_KEY = 'tachart-currency-map';
 
@@ -99,7 +106,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
           const savedMap = new Map(Object.entries(parsedMap));
           setCurrencyMap((prev) => {
             const newMap = new Map(savedMap);
-            data.forEach((item) => {
+            dataRef.current.forEach((item) => {
               const key = `${item.ticker}-${item.companyName}`;
               if (!newMap.has(key)) {
                 newMap.set(key, item.currency || 'USD');
@@ -112,11 +119,13 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
         console.error('Failed to load currency map from localStorage:', error);
       }
       setIsLoadingCurrency(false);
+      isInitialLoadRef.current = false;
       return;
     }
 
     const loadCurrencyData = async () => {
       setIsLoadingCurrency(true);
+      isInitialLoadRef.current = true;
       try {
         const loaded = await loadCurrencyValues(currentUser);
         let savedMap = new Map<string, string>();
@@ -138,7 +147,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
 
         setCurrencyMap((prev) => {
           const newMap = new Map(savedMap);
-          data.forEach((item) => {
+          dataRef.current.forEach((item) => {
             const key = `${item.ticker}-${item.companyName}`;
             if (!newMap.has(key)) {
               newMap.set(key, item.currency || 'USD');
@@ -158,7 +167,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
           }
           setCurrencyMap((prev) => {
             const newMap = new Map(savedMap);
-            data.forEach((item) => {
+            dataRef.current.forEach((item) => {
               const key = `${item.ticker}-${item.companyName}`;
               if (!newMap.has(key)) {
                 newMap.set(key, item.currency || 'USD');
@@ -171,6 +180,10 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
         }
       } finally {
         setIsLoadingCurrency(false);
+        // Mark initial load as complete after a short delay to ensure data is set
+        setTimeout(() => {
+          isInitialLoadRef.current = false;
+        }, 100);
       }
     };
 
@@ -182,7 +195,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
       docRef,
       (docSnapshot) => {
         // Skip during initial load
-        if (isLoadingCurrency) {
+        if (isInitialLoadRef.current) {
           return;
         }
         
@@ -222,9 +235,9 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
               } catch (error) {
                 console.error('Failed to save currency map to localStorage:', error);
               }
-              // Merge with data defaults (use current data prop)
+              // Merge with data defaults (use current data from ref)
               const mergedMap = new Map(newMap);
-              data.forEach((item) => {
+              dataRef.current.forEach((item) => {
                 const key = `${item.ticker}-${item.companyName}`;
                 if (!mergedMap.has(key)) {
                   mergedMap.set(key, item.currency || 'USD');
@@ -244,7 +257,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
     return () => {
       unsubscribe();
     };
-  }, [data, currentUser?.uid]);
+  }, [currentUser?.uid]); // Removed data from dependencies - listener should only recreate when user changes
 
   // Initialize entry/exit values from data
   useEffect(() => {

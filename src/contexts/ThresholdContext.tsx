@@ -67,6 +67,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dirtyKeysRef = useRef<Set<string>>(new Set()); // Set of "industry.field" that are being edited
+  const isInitialLoadRef = useRef(true); // Track initial load to prevent listener from processing during load
 
   // Load data from Firestore and set up real-time listener
   useEffect(() => {
@@ -77,11 +78,13 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
         setServerRows(localData);
       }
       setIsLoading(false);
+      isInitialLoadRef.current = false;
       return;
     }
 
     const loadData = async () => {
       setIsLoading(true);
+      isInitialLoadRef.current = true;
       try {
         const loaded = await loadThresholdValues(currentUser);
         if (loaded) {
@@ -102,6 +105,10 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
         }
       } finally {
         setIsLoading(false);
+        // Mark initial load as complete after a short delay to ensure data is set
+        setTimeout(() => {
+          isInitialLoadRef.current = false;
+        }, 100);
       }
     };
 
@@ -113,7 +120,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
       docRef,
       (docSnapshot) => {
         // Skip during initial load
-        if (isLoading) {
+        if (isInitialLoadRef.current) {
           return;
         }
         
@@ -184,7 +191,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
     return () => {
       unsubscribe();
     };
-  }, [currentUser?.uid, isLoading]);
+  }, [currentUser?.uid]); // Removed isLoading from dependencies - listener should only recreate when user changes
 
   // Auto-save draft values to Firestore (debounced)
   useEffect(() => {
