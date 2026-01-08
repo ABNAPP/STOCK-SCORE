@@ -189,8 +189,8 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
 
     loadCurrencyData();
 
-    // Set up real-time listener for changes from other devices
-    const docRef = doc(db, 'userData', currentUser.uid, 'currency', 'data');
+    // Set up real-time listener for changes from other users
+    const docRef = doc(db, 'sharedData', 'currency', 'data');
     const unsubscribe = onSnapshot(
       docRef,
       (docSnapshot) => {

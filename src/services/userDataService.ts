@@ -1,8 +1,9 @@
 /**
  * User Data Service
  * 
- * Provides functionality to save and load user-specific manual data to Firebase Firestore.
+ * Provides functionality to save and load shared manual data to Firebase Firestore.
  * This includes Entry/Exit values, Currency values, and Threshold values.
+ * All data is shared between all authenticated users.
  * Falls back to localStorage if user is not authenticated or Firestore is unavailable.
  */
 
@@ -19,7 +20,7 @@ import { User } from 'firebase/auth';
 
 // Firestore collection names
 const COLLECTIONS = {
-  USER_DATA: 'userData',
+  SHARED_DATA: 'sharedData',
   ENTRY_EXIT: 'entryExit',
   CURRENCY: 'currency',
   THRESHOLD: 'threshold',
@@ -33,10 +34,10 @@ const STORAGE_KEYS = {
 } as const;
 
 /**
- * Get user data document reference
+ * Get shared data document reference
  */
-function getUserDataDoc(userId: string, dataType: string) {
-  return doc(db, COLLECTIONS.USER_DATA, userId, dataType, 'data');
+function getSharedDataDoc(dataType: string) {
+  return doc(db, COLLECTIONS.SHARED_DATA, dataType, 'data');
 }
 
 /**
@@ -57,7 +58,7 @@ export async function saveEntryExitValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.USER_DATA, user.uid, COLLECTIONS.ENTRY_EXIT, 'data');
+    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.ENTRY_EXIT, 'data');
     await setDoc(docRef, {
       values,
       updatedAt: serverTimestamp(),
@@ -100,7 +101,7 @@ export async function loadEntryExitValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.USER_DATA, user.uid, COLLECTIONS.ENTRY_EXIT, 'data');
+    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.ENTRY_EXIT, 'data');
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
@@ -161,7 +162,7 @@ export async function saveCurrencyValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.USER_DATA, user.uid, COLLECTIONS.CURRENCY, 'data');
+    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.CURRENCY, 'data');
     await setDoc(docRef, {
       values,
       updatedAt: serverTimestamp(),
@@ -204,7 +205,7 @@ export async function loadCurrencyValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.USER_DATA, user.uid, COLLECTIONS.CURRENCY, 'data');
+    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.CURRENCY, 'data');
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
@@ -275,7 +276,7 @@ export async function saveThresholdValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.USER_DATA, user.uid, COLLECTIONS.THRESHOLD, 'data');
+    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.THRESHOLD, 'data');
     await setDoc(docRef, {
       values,
       updatedAt: serverTimestamp(),
@@ -328,7 +329,7 @@ export async function loadThresholdValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.USER_DATA, user.uid, COLLECTIONS.THRESHOLD, 'data');
+    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.THRESHOLD, 'data');
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
