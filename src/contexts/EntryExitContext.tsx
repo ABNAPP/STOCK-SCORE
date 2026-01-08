@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useState, useCallback, useEffect, useRef } from 'react';
+import { createContext, useContext, ReactNode, useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { EntryExitData } from '../types/stock';
 import { useAuth } from './AuthContext';
 import { saveEntryExitValues, loadEntryExitValues } from '../services/userDataService';
@@ -15,9 +15,11 @@ export interface EntryExitValues {
 
 interface EntryExitContextType {
   getEntryExitValue: (ticker: string, companyName: string) => EntryExitValues | undefined;
-  setEntryExitValue: (ticker: string, companyName: string, values: Partial<EntryExitValues>) => void;
+  getFieldValue: (ticker: string, companyName: string, field: keyof EntryExitValues) => number | string | null;
+  setFieldValue: (ticker: string, companyName: string, field: keyof EntryExitValues, value: number | string | null) => void;
+  commitField: (ticker: string, companyName: string, field: keyof EntryExitValues) => Promise<void>;
   initializeFromData: (data: EntryExitData[]) => void;
-  entryExitValues: Map<string, EntryExitValues>;
+  entryExitValues: Map<string, EntryExitValues>; // Computed for backward compatibility
 }
 
 export const EntryExitContext = createContext<EntryExitContextType | undefined>(undefined);
@@ -54,7 +56,10 @@ interface EntryExitProviderProps {
 
 export function EntryExitProvider({ children }: EntryExitProviderProps) {
   const { currentUser } = useAuth();
-  const [entryExitValues, setEntryExitValues] = useState<Map<string, EntryExitValues>>(() => loadFromStorage());
+  // serverRows: source of truth from Firestore
+  const [serverRows, setServerRows] = useState<Map<string, EntryExitValues>>(() => loadFromStorage());
+  // draft: only fields user is currently editing (e.g. "AAPL-Apple Inc..entry1": 123)
+  const [draft, setDraft] = useState<Record<string, number | string | null>>({});
   const [isLoading, setIsLoading] = useState(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dirtyKeysRef = useRef<Set<string>>(new Set()); // Set of "ticker-companyName.field" that are being edited
@@ -65,7 +70,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
       // If no user, just load from localStorage
       const localData = loadFromStorage();
       if (localData.size > 0) {
-        setEntryExitValues(localData);
+        setServerRows(localData);
       }
       setIsLoading(false);
       return;
@@ -76,12 +81,12 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
       try {
         const loaded = await loadEntryExitValues(currentUser);
         if (loaded) {
-          setEntryExitValues(new Map(Object.entries(loaded)));
+          setServerRows(new Map(Object.entries(loaded)));
         } else {
           // If no Firestore data, try localStorage
           const localData = loadFromStorage();
           if (localData.size > 0) {
-            setEntryExitValues(localData);
+            setServerRows(localData);
           }
         }
       } catch (error) {
@@ -89,7 +94,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
         // Fallback to localStorage
         const localData = loadFromStorage();
         if (localData.size > 0) {
-          setEntryExitValues(localData);
+          setServerRows(localData);
         }
       } finally {
         setIsLoading(false);
@@ -117,54 +122,37 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
           const data = docSnapshot.data();
           const remoteValues = data.values || {};
           
-          // MERGE remote changes instead of replacing everything
-          setEntryExitValues((prev) => {
-            const newMap = new Map(prev);
+          // MERGE remote changes - never replace everything
+          setServerRows((prev) => {
+            const next = new Map(prev);
             let hasChanges = false;
             
             // Process each remote value
             for (const [key, remoteValue] of Object.entries(remoteValues)) {
               const remoteEntry = remoteValue as EntryExitValues;
-              const currentEntry = newMap.get(key);
+              const prevRow = next.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
               
-              // If this key doesn't exist locally, add it
-              if (!currentEntry) {
-                newMap.set(key, remoteEntry);
-                hasChanges = true;
-                continue;
-              }
+              // Merge remote into existing
+              const merged: EntryExitValues = { ...prevRow, ...remoteEntry };
               
-              // Merge remote into current, but preserve dirty fields
-              const merged: EntryExitValues = { ...currentEntry };
-              let entryHasChanges = false;
-              
-              // Check each field in EntryExitValues
+              // Keep local edits while editing (dirty fields should not be overwritten)
               const fields: Array<keyof EntryExitValues> = ['entry1', 'entry2', 'exit1', 'exit2', 'dateOfUpdate'];
               for (const field of fields) {
-                const dirtyKey = `${key}.${field}`;
-                
-                // If this field is dirty (being edited), keep the local value
-                if (dirtyKeysRef.current.has(dirtyKey)) {
-                  continue; // Skip this field, keep local value
-                }
-                
-                // Otherwise, use remote value if it's different
-                if (remoteEntry[field] !== undefined && remoteEntry[field] !== currentEntry[field]) {
-                  merged[field] = remoteEntry[field];
-                  entryHasChanges = true;
+                const dk = `${key}.${field}`;
+                if (dirtyKeysRef.current.has(dk)) {
+                  // This field is being edited, keep the local value
+                  merged[field] = prevRow[field];
                 }
               }
               
-              if (entryHasChanges) {
-                newMap.set(key, merged);
-                hasChanges = true;
-              }
+              next.set(key, merged);
+              hasChanges = true;
             }
             
             if (hasChanges) {
               // Also update localStorage
-              saveToStorage(newMap);
-              return newMap;
+              saveToStorage(next);
+              return next;
             }
             return prev;
           });
@@ -178,31 +166,50 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     return () => {
       unsubscribe();
     };
-  }, [currentUser?.uid]); // Reload when user changes
+  }, [currentUser?.uid, isLoading]);
 
-  // Save to Firestore whenever entryExitValues changes (debounced)
+  // Auto-save draft values to Firestore (debounced)
   useEffect(() => {
-    if (isLoading || !currentUser) return; // Don't save during initial load
+    if (isLoading || !currentUser || Object.keys(draft).length === 0) return;
 
     // Clear existing timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
+    // Build current state from serverRows + draft for saving
+    const currentState = new Map(serverRows);
+    for (const [draftKey, draftValue] of Object.entries(draft)) {
+      const [key, field] = draftKey.split('.');
+      const entry = currentState.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+      const updated: EntryExitValues = { ...entry, [field]: draftValue };
+      
+      // Update dateOfUpdate if needed
+      const allEmpty = updated.entry1 === 0 && updated.entry2 === 0 && updated.exit1 === 0 && updated.exit2 === 0;
+      if (allEmpty) {
+        updated.dateOfUpdate = null;
+      } else if (!updated.dateOfUpdate) {
+        const currentDate = new Date().toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        updated.dateOfUpdate = currentDate;
+      }
+      
+      currentState.set(key, updated);
+    }
+
     // Save to localStorage immediately (fast fallback)
-    saveToStorage(entryExitValues);
+    saveToStorage(currentState);
 
     // Debounce Firestore save to avoid too many writes
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        const obj = Object.fromEntries(entryExitValues);
+        const obj = Object.fromEntries(currentState);
         await saveEntryExitValues(currentUser, obj);
-        // After successful save, clear dirty keys for all fields that were saved
-        // This allows future remote updates to come through
+        // After successful save, release dirty locks + remove draft
         dirtyKeysRef.current.clear();
+        setDraft({});
       } catch (error) {
         console.error('Error saving EntryExit values to Firestore:', error);
-        // On error, keep dirty keys so user's edits aren't lost
+        // On error, keep dirty keys and draft so user's edits aren't lost
       }
     }, 1000); // Wait 1 second after last change
 
@@ -211,49 +218,122 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [entryExitValues, currentUser, isLoading]);
+  }, [draft, serverRows, currentUser, isLoading]);
 
+  // Display value: draft if exists, otherwise server value
+  const getFieldValue = useCallback((ticker: string, companyName: string, field: keyof EntryExitValues): number | string | null => {
+    const key = `${ticker}-${companyName}`;
+    const dk = `${key}.${field}`;
+    
+    // If draft exists, return draft value
+    if (dk in draft) {
+      return draft[dk];
+    }
+    
+    // Otherwise return server value
+    const serverEntry = serverRows.get(key);
+    return serverEntry?.[field] ?? (field === 'dateOfUpdate' ? null : 0);
+  }, [serverRows, draft]);
+
+  // Backward compatibility: get full EntryExitValues object
   const getEntryExitValue = useCallback((ticker: string, companyName: string): EntryExitValues | undefined => {
     const key = `${ticker}-${companyName}`;
-    return entryExitValues.get(key);
-  }, [entryExitValues]);
+    const serverEntry = serverRows.get(key);
+    
+    if (!serverEntry) {
+      return undefined;
+    }
+    
+    // Build result from server entry, but replace with draft values if they exist
+    const result: EntryExitValues = { ...serverEntry };
+    const fields: Array<keyof EntryExitValues> = ['entry1', 'entry2', 'exit1', 'exit2', 'dateOfUpdate'];
+    
+    for (const field of fields) {
+      const dk = `${key}.${field}`;
+      if (dk in draft) {
+        result[field] = draft[dk] as any;
+      }
+    }
+    
+    return result;
+  }, [serverRows, draft]);
 
-  const setEntryExitValue = useCallback((ticker: string, companyName: string, values: Partial<EntryExitValues>) => {
+  // While typing: mark dirty + update draft (and optionally optimistic update serverRows)
+  const setFieldValue = useCallback((ticker: string, companyName: string, field: keyof EntryExitValues, value: number | string | null) => {
     const key = `${ticker}-${companyName}`;
+    const dk = `${key}.${field}`;
     
-    // Mark all changed fields as dirty BEFORE state update
-    Object.keys(values).forEach((field) => {
-      const dirtyKey = `${key}.${field}`;
-      dirtyKeysRef.current.add(dirtyKey);
-    });
+    // Mark as dirty and update draft
+    dirtyKeysRef.current.add(dk);
+    setDraft((d) => ({ ...d, [dk]: value }));
     
-    setEntryExitValues((prev) => {
-      const newMap = new Map(prev);
-      const current = newMap.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+    // Optional optimistic UI update (keeps tables consistent)
+    setServerRows((rows) => {
+      const newRows = new Map(rows);
+      const current = newRows.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+      const updated: EntryExitValues = { ...current, [field]: value };
       
-      const updated: EntryExitValues = {
-        ...current,
-        ...values,
-      };
-      
-      // Kontrollera om alla fält är 0/tomma
+      // Update dateOfUpdate if needed
       const allEmpty = updated.entry1 === 0 && updated.entry2 === 0 && updated.exit1 === 0 && updated.exit2 === 0;
-      
-      // Uppdatera dateOfUpdate baserat på om alla fält är tomma
       if (allEmpty) {
         updated.dateOfUpdate = null;
-      } else if (!updated.dateOfUpdate) {
+      } else if (!updated.dateOfUpdate && field !== 'dateOfUpdate') {
         const currentDate = new Date().toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit' });
         updated.dateOfUpdate = currentDate;
       }
       
-      newMap.set(key, updated);
-      return newMap;
+      newRows.set(key, updated);
+      return newRows;
     });
   }, []);
 
+  // Commit to Firestore on blur/enter, then release dirty lock
+  const commitField = useCallback(async (ticker: string, companyName: string, field: keyof EntryExitValues) => {
+    const key = `${ticker}-${companyName}`;
+    const dk = `${key}.${field}`;
+    const value = draft[dk];
+    
+    if (value === undefined) return;
+
+    // Build the full entry to save
+    const serverEntry = serverRows.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+    const updated: EntryExitValues = { ...serverEntry, [field]: value };
+    
+    // Update dateOfUpdate if needed
+    const allEmpty = updated.entry1 === 0 && updated.entry2 === 0 && updated.exit1 === 0 && updated.exit2 === 0;
+    if (allEmpty) {
+      updated.dateOfUpdate = null;
+    } else if (!updated.dateOfUpdate && field !== 'dateOfUpdate') {
+      const currentDate = new Date().toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      updated.dateOfUpdate = currentDate;
+    }
+
+    try {
+      // Save this specific field immediately
+      const allValues = Object.fromEntries(serverRows);
+      allValues[key] = updated;
+      await saveEntryExitValues(currentUser, allValues);
+      
+      // Release lock + remove draft
+      dirtyKeysRef.current.delete(dk);
+      setDraft((d) => {
+        const { [dk]: _, ...rest } = d;
+        return rest;
+      });
+      
+      // Update serverRows with committed value
+      setServerRows((rows) => {
+        const newRows = new Map(rows);
+        newRows.set(key, updated);
+        return newRows;
+      });
+    } catch (error) {
+      console.error('Error committing field to Firestore:', error);
+    }
+  }, [draft, serverRows, currentUser]);
+
   const initializeFromData = useCallback((data: EntryExitData[]) => {
-    setEntryExitValues((prev) => {
+    setServerRows((prev) => {
       const newMap = new Map(prev);
       data.forEach((item) => {
         const key = `${item.ticker}-${item.companyName}`;
@@ -272,9 +352,22 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     });
   }, []);
 
+  // Compute entryExitValues from serverRows + draft for backward compatibility
+  const entryExitValues = useMemo(() => {
+    const result = new Map(serverRows);
+    for (const [draftKey, draftValue] of Object.entries(draft)) {
+      const [key, field] = draftKey.split('.');
+      const entry = result.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+      result.set(key, { ...entry, [field]: draftValue });
+    }
+    return result;
+  }, [serverRows, draft]);
+
   const value: EntryExitContextType = {
     getEntryExitValue,
-    setEntryExitValue,
+    getFieldValue,
+    setFieldValue,
+    commitField,
     initializeFromData,
     entryExitValues,
   };
@@ -289,4 +382,3 @@ export function useEntryExitValues(): EntryExitContextType {
   }
   return context;
 }
-

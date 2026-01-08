@@ -29,7 +29,7 @@ const THRESHOLD_INDUSTRY_COLUMNS: ColumnDefinition<ThresholdIndustryData>[] = [
 
 export default function ThresholdIndustryTable({ data, loading, error }: ThresholdIndustryTableProps) {
   const { t } = useTranslation();
-  const { thresholdValues, getThresholdValue, setThresholdValue, initializeFromData } = useThresholdValues();
+  const { thresholdValues, getThresholdValue, getFieldValue, setFieldValue, commitField, initializeFromData } = useThresholdValues();
 
   // Get unique industries for filter dropdown
   const uniqueIndustries = useMemo(() => {
@@ -87,8 +87,8 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
   }, [data, initializeFromData]);
 
   const handleThresholdChange = useCallback((industry: string, field: keyof ThresholdValues, value: number) => {
-    setThresholdValue(industry, field, value);
-  }, [setThresholdValue]);
+    setFieldValue(industry, field, value);
+  }, [setFieldValue]);
 
   // Custom header renderer with ColumnTooltip
   const renderHeader = useCallback((props: HeaderRenderProps<ThresholdIndustryData>) => {
@@ -148,17 +148,17 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
 
   // Render cell content with editable inputs
   const renderCell = useCallback((item: ThresholdIndustryData, column: ColumnDefinition<ThresholdIndustryData>, index: number, globalIndex: number) => {
-    const values = getThresholdValue(item.industry) || {
-      irr: item.irr || 0,
-      leverageF2Min: item.leverageF2Min || 0,
-      leverageF2Max: item.leverageF2Max || 0,
-      ro40Min: item.ro40Min || 0,
-      ro40Max: item.ro40Max || 0,
-      cashSdebtMin: item.cashSdebtMin || 0,
-      cashSdebtMax: item.cashSdebtMax || 0,
-      currentRatioMin: item.currentRatioMin || 0,
-      currentRatioMax: item.currentRatioMax || 0,
-    };
+    // Use getFieldValue for individual fields (supports draft)
+    const irr = getFieldValue(item.industry, 'irr');
+    const leverageF2Min = getFieldValue(item.industry, 'leverageF2Min');
+    const leverageF2Max = getFieldValue(item.industry, 'leverageF2Max');
+    const ro40Min = getFieldValue(item.industry, 'ro40Min');
+    const ro40Max = getFieldValue(item.industry, 'ro40Max');
+    const cashSdebtMin = getFieldValue(item.industry, 'cashSdebtMin');
+    const cashSdebtMax = getFieldValue(item.industry, 'cashSdebtMax');
+    const currentRatioMin = getFieldValue(item.industry, 'currentRatioMin');
+    const currentRatioMax = getFieldValue(item.industry, 'currentRatioMax');
+    const values = { irr, leverageF2Min, leverageF2Max, ro40Min, ro40Max, cashSdebtMin, cashSdebtMax, currentRatioMin, currentRatioMax };
 
     switch (column.key) {
       case 'antal':
@@ -175,6 +175,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               const value = parseFloat(e.target.value) || 0;
               handleThresholdChange(item.industry, 'irr', value);
             }}
+            onBlur={() => commitField(item.industry, 'irr')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -189,6 +190,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               const value = parseFloat(e.target.value) || 0;
               handleThresholdChange(item.industry, 'leverageF2Min', value);
             }}
+            onBlur={() => commitField(item.industry, 'leverageF2Min')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -203,6 +205,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               const value = parseFloat(e.target.value) || 0;
               handleThresholdChange(item.industry, 'leverageF2Max', value);
             }}
+            onBlur={() => commitField(item.industry, 'leverageF2Max')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -217,6 +220,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               const value = parseFloat(e.target.value) || 0;
               handleThresholdChange(item.industry, 'ro40Min', value);
             }}
+            onBlur={() => commitField(item.industry, 'ro40Min')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -231,6 +235,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               const value = parseFloat(e.target.value) || 0;
               handleThresholdChange(item.industry, 'ro40Max', value);
             }}
+            onBlur={() => commitField(item.industry, 'ro40Max')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -245,6 +250,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               const value = parseFloat(e.target.value) || 0;
               handleThresholdChange(item.industry, 'cashSdebtMin', value);
             }}
+            onBlur={() => commitField(item.industry, 'cashSdebtMin')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -259,6 +265,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               const value = parseFloat(e.target.value) || 0;
               handleThresholdChange(item.industry, 'cashSdebtMax', value);
             }}
+            onBlur={() => commitField(item.industry, 'cashSdebtMax')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -273,6 +280,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               const value = parseFloat(e.target.value) || 0;
               handleThresholdChange(item.industry, 'currentRatioMin', value);
             }}
+            onBlur={() => commitField(item.industry, 'currentRatioMin')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -287,6 +295,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               const value = parseFloat(e.target.value) || 0;
               handleThresholdChange(item.industry, 'currentRatioMax', value);
             }}
+            onBlur={() => commitField(item.industry, 'currentRatioMax')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -294,7 +303,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
       default:
         return null;
     }
-  }, [getThresholdValue, handleThresholdChange]);
+  }, [getFieldValue, handleThresholdChange, commitField]);
 
   // Render mobile card
   const renderMobileCard = useCallback((item: ThresholdIndustryData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
@@ -303,16 +312,17 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
       ? 'bg-white dark:bg-gray-800' 
       : 'bg-gray-50 dark:bg-gray-800/50';
     
-    const values = getThresholdValue(item.industry) || {
-      irr: item.irr || 0,
-      leverageF2Min: item.leverageF2Min || 0,
-      leverageF2Max: item.leverageF2Max || 0,
-      ro40Min: item.ro40Min || 0,
-      ro40Max: item.ro40Max || 0,
-      cashSdebtMin: item.cashSdebtMin || 0,
-      cashSdebtMax: item.cashSdebtMax || 0,
-      currentRatioMin: item.currentRatioMin || 0,
-      currentRatioMax: item.currentRatioMax || 0,
+    // Use getFieldValue for individual fields (supports draft)
+    const values = {
+      irr: getFieldValue(item.industry, 'irr'),
+      leverageF2Min: getFieldValue(item.industry, 'leverageF2Min'),
+      leverageF2Max: getFieldValue(item.industry, 'leverageF2Max'),
+      ro40Min: getFieldValue(item.industry, 'ro40Min'),
+      ro40Max: getFieldValue(item.industry, 'ro40Max'),
+      cashSdebtMin: getFieldValue(item.industry, 'cashSdebtMin'),
+      cashSdebtMax: getFieldValue(item.industry, 'cashSdebtMax'),
+      currentRatioMin: getFieldValue(item.industry, 'currentRatioMin'),
+      currentRatioMax: getFieldValue(item.industry, 'currentRatioMax'),
     };
 
     return (
@@ -379,6 +389,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
                     const value = parseFloat(e.target.value) || 0;
                     handleThresholdChange(item.industry, key as keyof ThresholdValues, value);
                   }}
+                  onBlur={() => commitField(item.industry, key as keyof ThresholdValues)}
                   className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
                   onClick={(e) => e.stopPropagation()}
                 />
@@ -388,19 +399,19 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
         )}
       </div>
     );
-  }, [getThresholdValue, handleThresholdChange]);
+  }, [getFieldValue, handleThresholdChange, commitField]);
 
   return (
-    <BaseTable<ThresholdIndustryData>
-      data={data}
+    <BaseTable
+      data={data as any}
       loading={loading}
       error={error}
-      columns={THRESHOLD_INDUSTRY_COLUMNS}
+      columns={THRESHOLD_INDUSTRY_COLUMNS as any}
       filters={thresholdFilters}
       tableId="threshold-industry"
-      renderCell={renderCell}
-      renderHeader={renderHeader}
-      renderMobileCard={renderMobileCard}
+      renderCell={renderCell as any}
+      renderHeader={renderHeader as any}
+      renderMobileCard={renderMobileCard as any}
       enableVirtualScroll={true}
       virtualScrollRowHeight={60}
       virtualScrollOverscan={10}

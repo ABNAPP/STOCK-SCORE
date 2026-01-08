@@ -38,7 +38,7 @@ export interface ScoreBoardData {
   price?: number | null; // Added: Price from ENTRY/EXIT table for SMA color comparison
 }
 
-export interface ThresholdIndustryData {
+export interface ThresholdIndustryData extends Record<string, unknown> {
   industry: string;
   irr: number;
   leverageF2Min: number;

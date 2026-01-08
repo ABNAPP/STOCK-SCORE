@@ -82,7 +82,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
   const { currentUser } = useAuth();
   const [currencyMap, setCurrencyMap] = useState<Map<string, string>>(new Map());
   const [isLoadingCurrency, setIsLoadingCurrency] = useState(true);
-  const { getEntryExitValue, setEntryExitValue, initializeFromData } = useEntryExitValues();
+  const { getEntryExitValue, getFieldValue, setFieldValue, commitField, initializeFromData } = useEntryExitValues();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dirtyKeysRef = useRef<Set<string>>(new Set()); // Set of "ticker-companyName" that are being edited
 
@@ -339,8 +339,8 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
   }, [isDateOld]);
 
   const handleEntryExitChange = useCallback((ticker: string, companyName: string, field: 'entry1' | 'entry2' | 'exit1' | 'exit2', value: number) => {
-    setEntryExitValue(ticker, companyName, { [field]: value });
-  }, [setEntryExitValue]);
+    setFieldValue(ticker, companyName, field, value);
+  }, [setFieldValue]);
 
   // Create data with current currency and entry/exit values
   const dataWithValues: EntryExitData[] = useMemo(() => {
@@ -417,7 +417,13 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
   const renderCell = useCallback((item: EntryExitData, column: ColumnDefinition, index: number, globalIndex: number) => {
     const key = `${item.ticker}-${item.companyName}`;
     const currentCurrency = currencyMap.get(key) || item.currency || 'USD';
-    const values = getEntryExitValue(item.ticker, item.companyName) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+    // Use getFieldValue for individual fields (supports draft)
+    const entry1 = getFieldValue(item.ticker, item.companyName, 'entry1') as number;
+    const entry2 = getFieldValue(item.ticker, item.companyName, 'entry2') as number;
+    const exit1 = getFieldValue(item.ticker, item.companyName, 'exit1') as number;
+    const exit2 = getFieldValue(item.ticker, item.companyName, 'exit2') as number;
+    const dateOfUpdate = getFieldValue(item.ticker, item.companyName, 'dateOfUpdate') as string | null;
+    const values = { entry1, entry2, exit1, exit2, dateOfUpdate };
 
     switch (column.key) {
       case 'antal':
@@ -450,6 +456,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
               const value = parseFloat(e.target.value) || 0;
               handleEntryExitChange(item.ticker, item.companyName, 'entry1', value);
             }}
+            onBlur={() => commitField(item.ticker, item.companyName, 'entry1')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -463,6 +470,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
               const value = parseFloat(e.target.value) || 0;
               handleEntryExitChange(item.ticker, item.companyName, 'entry2', value);
             }}
+            onBlur={() => commitField(item.ticker, item.companyName, 'entry2')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -476,6 +484,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
               const value = parseFloat(e.target.value) || 0;
               handleEntryExitChange(item.ticker, item.companyName, 'exit1', value);
             }}
+            onBlur={() => commitField(item.ticker, item.companyName, 'exit1')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -489,6 +498,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
               const value = parseFloat(e.target.value) || 0;
               handleEntryExitChange(item.ticker, item.companyName, 'exit2', value);
             }}
+            onBlur={() => commitField(item.ticker, item.companyName, 'exit2')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
@@ -512,7 +522,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
       default:
         return null;
     }
-  }, [currencyMap, getEntryExitValue, handleCurrencyChange, handleEntryExitChange, isDateOld, isDateNearOld]);
+  }, [currencyMap, getFieldValue, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld]);
 
   // Render mobile card with expandable view
   const renderMobileCard = useCallback((item: EntryExitData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
@@ -582,6 +592,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
                   const value = parseFloat(e.target.value) || 0;
                   handleEntryExitChange(item.ticker, item.companyName, 'entry1', value);
                 }}
+                onBlur={() => commitField(item.ticker, item.companyName, 'entry1')}
                 className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
                 onClick={(e) => e.stopPropagation()}
               />
@@ -595,6 +606,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
                   const value = parseFloat(e.target.value) || 0;
                   handleEntryExitChange(item.ticker, item.companyName, 'entry2', value);
                 }}
+                onBlur={() => commitField(item.ticker, item.companyName, 'entry2')}
                 className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
                 onClick={(e) => e.stopPropagation()}
               />
@@ -608,6 +620,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
                   const value = parseFloat(e.target.value) || 0;
                   handleEntryExitChange(item.ticker, item.companyName, 'exit1', value);
                 }}
+                onBlur={() => commitField(item.ticker, item.companyName, 'exit1')}
                 className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
                 onClick={(e) => e.stopPropagation()}
               />
@@ -621,6 +634,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
                   const value = parseFloat(e.target.value) || 0;
                   handleEntryExitChange(item.ticker, item.companyName, 'exit2', value);
                 }}
+                onBlur={() => commitField(item.ticker, item.companyName, 'exit2')}
                 className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
                 onClick={(e) => e.stopPropagation()}
               />
@@ -645,7 +659,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
         )}
       </div>
     );
-  }, [currencyMap, getEntryExitValue, handleCurrencyChange, handleEntryExitChange, isDateOld, isDateNearOld]);
+  }, [currencyMap, getFieldValue, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld]);
 
   return (
     <BaseTable<EntryExitData>
