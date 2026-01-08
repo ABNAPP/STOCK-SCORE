@@ -84,7 +84,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
   const [isLoadingCurrency, setIsLoadingCurrency] = useState(true);
   const { getEntryExitValue, setEntryExitValue, initializeFromData } = useEntryExitValues();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastLocalChangeRef = useRef<number | null>(null); // Timestamp of last local change
+  const dirtyKeysRef = useRef<Set<string>>(new Set()); // Set of "ticker-companyName" that are being edited
 
   const STORAGE_KEY = 'tachart-currency-map';
 
@@ -186,42 +186,36 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
           return;
         }
         
+        // Ignore our own pending writes
+        if (docSnapshot.metadata.hasPendingWrites) {
+          return;
+        }
+        
         if (docSnapshot.exists()) {
-          // Ignore our own pending writes
-          if (docSnapshot.metadata.hasPendingWrites) {
-            return;
-          }
-          
           const snapshotData = docSnapshot.data();
-          const values = snapshotData.values || {};
+          const remoteValues = snapshotData.values || {};
           
-          // Get the document update timestamp
-          // Firestore Timestamp has toMillis() method, or it might be a number
-          let updateTime: number | null = null;
-          if (snapshotData.updatedAt) {
-            if (typeof snapshotData.updatedAt.toMillis === 'function') {
-              updateTime = snapshotData.updatedAt.toMillis();
-            } else if (typeof snapshotData.updatedAt === 'number') {
-              updateTime = snapshotData.updatedAt;
-            }
-          }
-          
-          // Only apply remote changes if they're newer than our last local change
-          // If we have a pending local change, ignore this update
-          if (lastLocalChangeRef.current !== null && updateTime !== null) {
-            if (updateTime <= lastLocalChangeRef.current) {
-              // Remote change is older than our local change, ignore it
-              return;
-            }
-          }
-          
-          const newMap = new Map(Object.entries(values));
-          
-          // Only update if data actually changed
+          // MERGE remote changes instead of replacing everything
           setCurrencyMap((prev) => {
-            const prevStr = JSON.stringify(Object.fromEntries(prev));
-            const newStr = JSON.stringify(Object.fromEntries(newMap));
-            if (prevStr !== newStr) {
+            const newMap = new Map(prev);
+            let hasChanges = false;
+            
+            // Process each remote value
+            for (const [key, remoteCurrency] of Object.entries(remoteValues)) {
+              // If this key is dirty (being edited), keep the local value
+              if (dirtyKeysRef.current.has(key)) {
+                continue; // Skip this key, keep local value
+              }
+              
+              // Otherwise, use remote value if it's different
+              const currentCurrency = newMap.get(key);
+              if (remoteCurrency !== currentCurrency) {
+                newMap.set(key, remoteCurrency as string);
+                hasChanges = true;
+              }
+            }
+            
+            if (hasChanges) {
               // Also update localStorage
               try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(newMap)));
@@ -277,17 +271,14 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
     // Debounce Firestore save to avoid too many writes
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        // Timestamp is already set in handleCurrencyChange, keep it during save
         const mapObject = Object.fromEntries(currencyMap);
         await saveCurrencyValues(currentUser, mapObject);
-        // Reset timestamp after save is complete (with small delay to ensure Firestore has processed)
-        setTimeout(() => {
-          lastLocalChangeRef.current = null;
-        }, 500);
+        // After successful save, clear dirty keys for all keys that were saved
+        // This allows future remote updates to come through
+        dirtyKeysRef.current.clear();
       } catch (error) {
         console.error('Error saving currency values to Firestore:', error);
-        // Reset timestamp even on error
-        lastLocalChangeRef.current = null;
+        // On error, keep dirty keys so user's edits aren't lost
       }
     }, 1000); // Wait 1 second after last change
 
@@ -300,8 +291,8 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
 
   const handleCurrencyChange = useCallback((ticker: string, companyName: string, currency: string) => {
     const key = `${ticker}-${companyName}`;
-    // Set timestamp BEFORE state update to prevent listener from overwriting
-    lastLocalChangeRef.current = Date.now();
+    // Mark this key as dirty BEFORE state update
+    dirtyKeysRef.current.add(key);
     setCurrencyMap((prev) => {
       const newMap = new Map(prev);
       newMap.set(key, currency);

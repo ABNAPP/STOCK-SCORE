@@ -62,7 +62,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
   const [thresholdValues, setThresholdValuesState] = useState<Map<string, ThresholdValues>>(() => loadFromStorage());
   const [isLoading, setIsLoading] = useState(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastLocalChangeRef = useRef<number | null>(null); // Timestamp of last local change
+  const dirtyKeysRef = useRef<Set<string>>(new Set()); // Set of "industry.field" that are being edited
 
   // Load data from Firestore and set up real-time listener
   useEffect(() => {
@@ -113,42 +113,64 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
           return;
         }
         
+        // Ignore our own pending writes
+        if (docSnapshot.metadata.hasPendingWrites) {
+          return;
+        }
+        
         if (docSnapshot.exists()) {
-          // Ignore our own pending writes
-          if (docSnapshot.metadata.hasPendingWrites) {
-            return;
-          }
-          
           const data = docSnapshot.data();
-          const values = data.values || {};
+          const remoteValues = data.values || {};
           
-          // Get the document update timestamp
-          // Firestore Timestamp has toMillis() method, or it might be a number
-          let updateTime: number | null = null;
-          if (data.updatedAt) {
-            if (typeof data.updatedAt.toMillis === 'function') {
-              updateTime = data.updatedAt.toMillis();
-            } else if (typeof data.updatedAt === 'number') {
-              updateTime = data.updatedAt;
-            }
-          }
-          
-          // Only apply remote changes if they're newer than our last local change
-          // If we have a pending local change, ignore this update
-          if (lastLocalChangeRef.current !== null && updateTime !== null) {
-            if (updateTime <= lastLocalChangeRef.current) {
-              // Remote change is older than our local change, ignore it
-              return;
-            }
-          }
-          
-          const newMap = new Map(Object.entries(values));
-          
-          // Only update if data actually changed
+          // MERGE remote changes instead of replacing everything
           setThresholdValuesState((prev) => {
-            const prevStr = JSON.stringify(Object.fromEntries(prev));
-            const newStr = JSON.stringify(Object.fromEntries(newMap));
-            if (prevStr !== newStr) {
+            const newMap = new Map(prev);
+            let hasChanges = false;
+            
+            // Process each remote value
+            for (const [industry, remoteValue] of Object.entries(remoteValues)) {
+              const remoteThreshold = remoteValue as ThresholdValues;
+              const currentThreshold = newMap.get(industry);
+              
+              // If this industry doesn't exist locally, add it
+              if (!currentThreshold) {
+                newMap.set(industry, remoteThreshold);
+                hasChanges = true;
+                continue;
+              }
+              
+              // Merge remote into current, but preserve dirty fields
+              const merged: ThresholdValues = { ...currentThreshold };
+              let industryHasChanges = false;
+              
+              // Check each field in ThresholdValues
+              const fields: Array<keyof ThresholdValues> = [
+                'irr', 'leverageF2Min', 'leverageF2Max', 'ro40Min', 'ro40Max',
+                'cashSdebtMin', 'cashSdebtMax', 'currentRatioMin', 'currentRatioMax'
+              ];
+              
+              for (const field of fields) {
+                const dirtyKey = `${industry}.${field}`;
+                
+                // If this field is dirty (being edited), keep the local value
+                if (dirtyKeysRef.current.has(dirtyKey)) {
+                  continue; // Skip this field, keep local value
+                }
+                
+                // Otherwise, use remote value if it's different
+                if (remoteThreshold[field] !== undefined && remoteThreshold[field] !== currentThreshold[field]) {
+                  merged[field] = remoteThreshold[field];
+                  industryHasChanges = true;
+                }
+              }
+              
+              if (industryHasChanges) {
+                newMap.set(industry, merged);
+                hasChanges = true;
+              }
+            }
+            
+            if (hasChanges) {
               // Also update localStorage
               saveToStorage(newMap);
               return newMap;
@@ -182,17 +204,14 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
     // Debounce Firestore save to avoid too many writes
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        // Timestamp is already set in setThresholdValue/setThresholdValues, keep it during save
         const obj = Object.fromEntries(thresholdValues);
         await saveThresholdValues(currentUser, obj);
-        // Reset timestamp after save is complete (with small delay to ensure Firestore has processed)
-        setTimeout(() => {
-          lastLocalChangeRef.current = null;
-        }, 500);
+        // After successful save, clear dirty keys for all fields that were saved
+        // This allows future remote updates to come through
+        dirtyKeysRef.current.clear();
       } catch (error) {
         console.error('Error saving Threshold values to Firestore:', error);
-        // Reset timestamp even on error
-        lastLocalChangeRef.current = null;
+        // On error, keep dirty keys so user's edits aren't lost
       }
     }, 1000); // Wait 1 second after last change
 
@@ -208,8 +227,10 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
   }, [thresholdValues]);
 
   const setThresholdValue = useCallback((industry: string, field: keyof ThresholdValues, value: number) => {
-    // Set timestamp BEFORE state update to prevent listener from overwriting
-    lastLocalChangeRef.current = Date.now();
+    // Mark this field as dirty BEFORE state update
+    const dirtyKey = `${industry}.${field}`;
+    dirtyKeysRef.current.add(dirtyKey);
+    
     setThresholdValuesState((prev) => {
       const newMap = new Map(prev);
       const current = newMap.get(industry) || {
@@ -233,8 +254,12 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
   }, []);
 
   const setThresholdValues = useCallback((industry: string, values: Partial<ThresholdValues>) => {
-    // Set timestamp BEFORE state update to prevent listener from overwriting
-    lastLocalChangeRef.current = Date.now();
+    // Mark all changed fields as dirty BEFORE state update
+    Object.keys(values).forEach((field) => {
+      const dirtyKey = `${industry}.${field}`;
+      dirtyKeysRef.current.add(dirtyKey);
+    });
+    
     setThresholdValuesState((prev) => {
       const newMap = new Map(prev);
       const current = newMap.get(industry) || {

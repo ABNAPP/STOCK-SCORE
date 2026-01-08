@@ -57,7 +57,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
   const [entryExitValues, setEntryExitValues] = useState<Map<string, EntryExitValues>>(() => loadFromStorage());
   const [isLoading, setIsLoading] = useState(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastLocalChangeRef = useRef<number | null>(null); // Timestamp of last local change
+  const dirtyKeysRef = useRef<Set<string>>(new Set()); // Set of "ticker-companyName.field" that are being edited
 
   // Load data from Firestore and set up real-time listener
   useEffect(() => {
@@ -108,42 +108,60 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
           return;
         }
         
+        // Ignore our own pending writes
+        if (docSnapshot.metadata.hasPendingWrites) {
+          return;
+        }
+        
         if (docSnapshot.exists()) {
-          // Ignore our own pending writes
-          if (docSnapshot.metadata.hasPendingWrites) {
-            return;
-          }
-          
           const data = docSnapshot.data();
-          const values = data.values || {};
+          const remoteValues = data.values || {};
           
-          // Get the document update timestamp
-          // Firestore Timestamp has toMillis() method, or it might be a number
-          let updateTime: number | null = null;
-          if (data.updatedAt) {
-            if (typeof data.updatedAt.toMillis === 'function') {
-              updateTime = data.updatedAt.toMillis();
-            } else if (typeof data.updatedAt === 'number') {
-              updateTime = data.updatedAt;
-            }
-          }
-          
-          // Only apply remote changes if they're newer than our last local change
-          // If we have a pending local change, ignore this update
-          if (lastLocalChangeRef.current !== null && updateTime !== null) {
-            if (updateTime <= lastLocalChangeRef.current) {
-              // Remote change is older than our local change, ignore it
-              return;
-            }
-          }
-          
-          const newMap = new Map(Object.entries(values));
-          
-          // Only update if data actually changed
+          // MERGE remote changes instead of replacing everything
           setEntryExitValues((prev) => {
-            const prevStr = JSON.stringify(Object.fromEntries(prev));
-            const newStr = JSON.stringify(Object.fromEntries(newMap));
-            if (prevStr !== newStr) {
+            const newMap = new Map(prev);
+            let hasChanges = false;
+            
+            // Process each remote value
+            for (const [key, remoteValue] of Object.entries(remoteValues)) {
+              const remoteEntry = remoteValue as EntryExitValues;
+              const currentEntry = newMap.get(key);
+              
+              // If this key doesn't exist locally, add it
+              if (!currentEntry) {
+                newMap.set(key, remoteEntry);
+                hasChanges = true;
+                continue;
+              }
+              
+              // Merge remote into current, but preserve dirty fields
+              const merged: EntryExitValues = { ...currentEntry };
+              let entryHasChanges = false;
+              
+              // Check each field in EntryExitValues
+              const fields: Array<keyof EntryExitValues> = ['entry1', 'entry2', 'exit1', 'exit2', 'dateOfUpdate'];
+              for (const field of fields) {
+                const dirtyKey = `${key}.${field}`;
+                
+                // If this field is dirty (being edited), keep the local value
+                if (dirtyKeysRef.current.has(dirtyKey)) {
+                  continue; // Skip this field, keep local value
+                }
+                
+                // Otherwise, use remote value if it's different
+                if (remoteEntry[field] !== undefined && remoteEntry[field] !== currentEntry[field]) {
+                  merged[field] = remoteEntry[field];
+                  entryHasChanges = true;
+                }
+              }
+              
+              if (entryHasChanges) {
+                newMap.set(key, merged);
+                hasChanges = true;
+              }
+            }
+            
+            if (hasChanges) {
               // Also update localStorage
               saveToStorage(newMap);
               return newMap;
@@ -177,17 +195,14 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     // Debounce Firestore save to avoid too many writes
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        // Timestamp is already set in setEntryExitValue, keep it during save
         const obj = Object.fromEntries(entryExitValues);
         await saveEntryExitValues(currentUser, obj);
-        // Reset timestamp after save is complete (with small delay to ensure Firestore has processed)
-        setTimeout(() => {
-          lastLocalChangeRef.current = null;
-        }, 500);
+        // After successful save, clear dirty keys for all fields that were saved
+        // This allows future remote updates to come through
+        dirtyKeysRef.current.clear();
       } catch (error) {
         console.error('Error saving EntryExit values to Firestore:', error);
-        // Reset timestamp even on error
-        lastLocalChangeRef.current = null;
+        // On error, keep dirty keys so user's edits aren't lost
       }
     }, 1000); // Wait 1 second after last change
 
@@ -205,8 +220,13 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
 
   const setEntryExitValue = useCallback((ticker: string, companyName: string, values: Partial<EntryExitValues>) => {
     const key = `${ticker}-${companyName}`;
-    // Set timestamp BEFORE state update to prevent listener from overwriting
-    lastLocalChangeRef.current = Date.now();
+    
+    // Mark all changed fields as dirty BEFORE state update
+    Object.keys(values).forEach((field) => {
+      const dirtyKey = `${key}.${field}`;
+      dirtyKeysRef.current.add(dirtyKey);
+    });
+    
     setEntryExitValues((prev) => {
       const newMap = new Map(prev);
       const current = newMap.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
