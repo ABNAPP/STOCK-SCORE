@@ -115,7 +115,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
     loadData();
 
     // Set up real-time listener for changes from other users
-    const docRef = doc(db, 'sharedData', 'threshold', 'data');
+    const docRef = doc(db, 'sharedData', 'threshold');
     const unsubscribe = onSnapshot(
       docRef,
       (docSnapshot) => {

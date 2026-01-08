@@ -37,7 +37,7 @@ const STORAGE_KEYS = {
  * Get shared data document reference
  */
 function getSharedDataDoc(dataType: string) {
-  return doc(db, COLLECTIONS.SHARED_DATA, dataType, 'data');
+  return doc(db, COLLECTIONS.SHARED_DATA, dataType);
 }
 
 /**
@@ -58,7 +58,7 @@ export async function saveEntryExitValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.ENTRY_EXIT, 'data');
+    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.ENTRY_EXIT);
     await setDoc(docRef, {
       values,
       updatedAt: serverTimestamp(),
@@ -101,7 +101,7 @@ export async function loadEntryExitValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.ENTRY_EXIT, 'data');
+    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.ENTRY_EXIT);
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
@@ -162,7 +162,7 @@ export async function saveCurrencyValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.CURRENCY, 'data');
+    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.CURRENCY);
     await setDoc(docRef, {
       values,
       updatedAt: serverTimestamp(),
@@ -205,7 +205,7 @@ export async function loadCurrencyValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.CURRENCY, 'data');
+    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.CURRENCY);
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
@@ -276,7 +276,7 @@ export async function saveThresholdValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.THRESHOLD, 'data');
+    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.THRESHOLD);
     await setDoc(docRef, {
       values,
       updatedAt: serverTimestamp(),
@@ -329,7 +329,7 @@ export async function loadThresholdValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.THRESHOLD, 'data');
+    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.THRESHOLD);
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {

@@ -190,7 +190,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
     loadCurrencyData();
 
     // Set up real-time listener for changes from other users
-    const docRef = doc(db, 'sharedData', 'currency', 'data');
+    const docRef = doc(db, 'sharedData', 'currency');
     const unsubscribe = onSnapshot(
       docRef,
       (docSnapshot) => {

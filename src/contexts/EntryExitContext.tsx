@@ -111,7 +111,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     loadData();
 
     // Set up real-time listener for changes from other users
-    const docRef = doc(db, 'sharedData', 'entryExit', 'data');
+    const docRef = doc(db, 'sharedData', 'entryExit');
     const unsubscribe = onSnapshot(
       docRef,
       (docSnapshot) => {
