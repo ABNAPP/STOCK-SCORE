@@ -103,7 +103,12 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     const unsubscribe = onSnapshot(
       docRef,
       (docSnapshot) => {
-        if (docSnapshot.exists() && !isLocalChangeRef.current) {
+        // Skip if this is a local change or during initial load
+        if (isLocalChangeRef.current || isLoading) {
+          return;
+        }
+        
+        if (docSnapshot.exists()) {
           const data = docSnapshot.data();
           const values = data.values || {};
           const newMap = new Map(Object.entries(values));
@@ -120,8 +125,6 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
             return prev;
           });
         }
-        // Reset flag after processing
-        isLocalChangeRef.current = false;
       },
       (error) => {
         console.error('Error listening to EntryExit values:', error);
@@ -148,11 +151,17 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     // Debounce Firestore save to avoid too many writes
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        isLocalChangeRef.current = true; // Set flag before saving to prevent listener from updating
+        // Flag is already set in setEntryExitValue, keep it set during save
         const obj = Object.fromEntries(entryExitValues);
         await saveEntryExitValues(currentUser, obj);
+        // Reset flag after save is complete (with small delay to ensure Firestore has processed)
+        setTimeout(() => {
+          isLocalChangeRef.current = false;
+        }, 500);
       } catch (error) {
         console.error('Error saving EntryExit values to Firestore:', error);
+        // Reset flag even on error
+        isLocalChangeRef.current = false;
       }
     }, 1000); // Wait 1 second after last change
 
@@ -170,6 +179,8 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
 
   const setEntryExitValue = useCallback((ticker: string, companyName: string, values: Partial<EntryExitValues>) => {
     const key = `${ticker}-${companyName}`;
+    // Set flag BEFORE state update to prevent listener from overwriting
+    isLocalChangeRef.current = true;
     setEntryExitValues((prev) => {
       const newMap = new Map(prev);
       const current = newMap.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };

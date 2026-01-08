@@ -181,7 +181,12 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
     const unsubscribe = onSnapshot(
       docRef,
       (docSnapshot) => {
-        if (docSnapshot.exists() && !isLocalChangeRef.current) {
+        // Skip if this is a local change or during initial load
+        if (isLocalChangeRef.current || isLoadingCurrency) {
+          return;
+        }
+        
+        if (docSnapshot.exists()) {
           const snapshotData = docSnapshot.data();
           const values = snapshotData.values || {};
           const newMap = new Map(Object.entries(values));
@@ -210,8 +215,6 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
             return prev;
           });
         }
-        // Reset flag after processing
-        isLocalChangeRef.current = false;
       },
       (error) => {
         console.error('Error listening to Currency values:', error);
@@ -248,11 +251,17 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
     // Debounce Firestore save to avoid too many writes
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        isLocalChangeRef.current = true; // Set flag before saving to prevent listener from updating
+        // Flag is already set in handleCurrencyChange, keep it set during save
         const mapObject = Object.fromEntries(currencyMap);
         await saveCurrencyValues(currentUser, mapObject);
+        // Reset flag after save is complete (with small delay to ensure Firestore has processed)
+        setTimeout(() => {
+          isLocalChangeRef.current = false;
+        }, 500);
       } catch (error) {
         console.error('Error saving currency values to Firestore:', error);
+        // Reset flag even on error
+        isLocalChangeRef.current = false;
       }
     }, 1000); // Wait 1 second after last change
 
@@ -265,6 +274,8 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
 
   const handleCurrencyChange = useCallback((ticker: string, companyName: string, currency: string) => {
     const key = `${ticker}-${companyName}`;
+    // Set flag BEFORE state update to prevent listener from overwriting
+    isLocalChangeRef.current = true;
     setCurrencyMap((prev) => {
       const newMap = new Map(prev);
       newMap.set(key, currency);
