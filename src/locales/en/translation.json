@@ -50,7 +50,13 @@
   "refresh": {
     "refreshAll": "Refresh All",
     "refreshing": "Refreshing...",
-    "refreshAllTooltip": "Refresh all data from all sources"
+    "refreshAllTooltip": "Refresh all data from all sources",
+    "autoRefresh": "Auto Refresh",
+    "autoRefreshOff": "Off",
+    "autoRefresh15Min": "Every 15 minutes",
+    "autoRefresh30Min": "Every 30 minutes",
+    "autoRefresh60Min": "Every 60 minutes",
+    "autoRefreshActive": "Auto refresh active"
   },
   "globalSearch": {
     "placeholder": "Search all tables...",

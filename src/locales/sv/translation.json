@@ -50,7 +50,13 @@
   "refresh": {
     "refreshAll": "Uppdatera allt",
     "refreshing": "Uppdaterar...",
-    "refreshAllTooltip": "Uppdatera all data från alla källor"
+    "refreshAllTooltip": "Uppdatera all data från alla källor",
+    "autoRefresh": "Automatisk uppdatering",
+    "autoRefreshOff": "Av",
+    "autoRefresh15Min": "Var 15:e minut",
+    "autoRefresh30Min": "Var 30:e minut",
+    "autoRefresh60Min": "Var 60:e minut",
+    "autoRefreshActive": "Automatisk uppdatering aktiv"
   },
   "globalSearch": {
     "placeholder": "Sök i alla tabeller...",

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 import { useRefresh } from '../contexts/RefreshContext';
+import { useAutoRefresh, AUTO_REFRESH_INTERVALS } from '../contexts/AutoRefreshContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import HamburgerMenu from './HamburgerMenu';
@@ -17,6 +18,7 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate }: HeaderP
   const { i18n, t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const { refreshAll, isRefreshing } = useRefresh();
+  const { enabled, interval, setEnabled, setInterval } = useAutoRefresh();
   const { currentUser, logout } = useAuth();
   const { showToast } = useToast();
 
@@ -32,6 +34,24 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate }: HeaderP
   const changeLanguage = (language: string) => {
     i18n.changeLanguage(language);
     localStorage.setItem('stockScoreLanguage', language);
+  };
+
+  const handleAutoRefreshChange = (value: string) => {
+    const intervalValue = parseInt(value, 10);
+    if (intervalValue === AUTO_REFRESH_INTERVALS.OFF) {
+      setEnabled(false);
+      setInterval(AUTO_REFRESH_INTERVALS.MIN_30); // Keep interval even when disabled
+    } else {
+      setEnabled(true);
+      setInterval(intervalValue);
+    }
+  };
+
+  const getAutoRefreshValue = () => {
+    if (!enabled) {
+      return AUTO_REFRESH_INTERVALS.OFF.toString();
+    }
+    return interval.toString();
   };
 
   return (
@@ -53,6 +73,27 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate }: HeaderP
             {currentUser.email}
           </div>
         )}
+        {/* Auto-refresh dropdown */}
+        <div className="relative flex items-center">
+          <select
+            value={getAutoRefreshValue()}
+            onChange={(e) => handleAutoRefreshChange(e.target.value)}
+            className="px-3 sm:px-3 py-2.5 sm:py-1.5 text-sm border border-gray-300 dark:border-gray-400 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95 cursor-pointer min-h-[44px] touch-manipulation pr-8"
+            title={t('refresh.autoRefresh')}
+          >
+            <option value={AUTO_REFRESH_INTERVALS.OFF}>{t('refresh.autoRefreshOff')}</option>
+            <option value={AUTO_REFRESH_INTERVALS.MIN_15}>{t('refresh.autoRefresh15Min')}</option>
+            <option value={AUTO_REFRESH_INTERVALS.MIN_30}>{t('refresh.autoRefresh30Min')}</option>
+            <option value={AUTO_REFRESH_INTERVALS.MIN_60}>{t('refresh.autoRefresh60Min')}</option>
+          </select>
+          {/* Active indicator */}
+          {enabled && interval > 0 && (
+            <div
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-2 h-2 bg-green-500 rounded-full animate-pulse"
+              title={t('refresh.autoRefreshActive')}
+            />
+          )}
+        </div>
         <button
           onClick={refreshAll}
           disabled={isRefreshing}
