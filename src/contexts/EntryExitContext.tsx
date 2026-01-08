@@ -2,6 +2,8 @@ import { createContext, useContext, ReactNode, useState, useCallback, useEffect,
 import { EntryExitData } from '../types/stock';
 import { useAuth } from './AuthContext';
 import { saveEntryExitValues, loadEntryExitValues } from '../services/userDataService';
+import { onSnapshot, doc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 export interface EntryExitValues {
   entry1: number;
@@ -55,9 +57,20 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
   const [entryExitValues, setEntryExitValues] = useState<Map<string, EntryExitValues>>(() => loadFromStorage());
   const [isLoading, setIsLoading] = useState(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLocalChangeRef = useRef(false); // Flag to prevent infinite loops
 
-  // Load data from Firestore when user logs in or component mounts
+  // Load data from Firestore and set up real-time listener
   useEffect(() => {
+    if (!currentUser) {
+      // If no user, just load from localStorage
+      const localData = loadFromStorage();
+      if (localData.size > 0) {
+        setEntryExitValues(localData);
+      }
+      setIsLoading(false);
+      return;
+    }
+
     const loadData = async () => {
       setIsLoading(true);
       try {
@@ -84,11 +97,45 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     };
 
     loadData();
+
+    // Set up real-time listener for changes from other devices
+    const docRef = doc(db, 'userData', currentUser.uid, 'entryExit', 'data');
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnapshot) => {
+        if (docSnapshot.exists() && !isLocalChangeRef.current) {
+          const data = docSnapshot.data();
+          const values = data.values || {};
+          const newMap = new Map(Object.entries(values));
+          
+          // Only update if data actually changed
+          setEntryExitValues((prev) => {
+            const prevStr = JSON.stringify(Object.fromEntries(prev));
+            const newStr = JSON.stringify(Object.fromEntries(newMap));
+            if (prevStr !== newStr) {
+              // Also update localStorage
+              saveToStorage(newMap);
+              return newMap;
+            }
+            return prev;
+          });
+        }
+        // Reset flag after processing
+        isLocalChangeRef.current = false;
+      },
+      (error) => {
+        console.error('Error listening to EntryExit values:', error);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
   }, [currentUser?.uid]); // Reload when user changes
 
   // Save to Firestore whenever entryExitValues changes (debounced)
   useEffect(() => {
-    if (isLoading) return; // Don't save during initial load
+    if (isLoading || !currentUser) return; // Don't save during initial load
 
     // Clear existing timeout
     if (saveTimeoutRef.current) {
@@ -101,6 +148,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     // Debounce Firestore save to avoid too many writes
     saveTimeoutRef.current = setTimeout(async () => {
       try {
+        isLocalChangeRef.current = true; // Set flag before saving to prevent listener from updating
         const obj = Object.fromEntries(entryExitValues);
         await saveEntryExitValues(currentUser, obj);
       } catch (error) {

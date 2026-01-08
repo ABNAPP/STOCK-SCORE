@@ -8,6 +8,8 @@ import { useEntryExitValues } from '../contexts/EntryExitContext';
 import { useAuth } from '../contexts/AuthContext';
 import { saveCurrencyValues, loadCurrencyValues } from '../services/userDataService';
 import { DATE_NEAR_OLD_THRESHOLD_DAYS } from '../config/constants';
+import { onSnapshot, doc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 interface EntryExitTableProps {
   data: EntryExitData[];
@@ -82,11 +84,37 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
   const [isLoadingCurrency, setIsLoadingCurrency] = useState(true);
   const { getEntryExitValue, setEntryExitValue, initializeFromData } = useEntryExitValues();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLocalChangeRef = useRef(false); // Flag to prevent infinite loops
 
   const STORAGE_KEY = 'tachart-currency-map';
 
-  // Load currency values from Firestore when component mounts or user changes
+  // Load currency values from Firestore and set up real-time listener
   useEffect(() => {
+    if (!currentUser) {
+      // If no user, just load from localStorage
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsedMap = JSON.parse(stored);
+          const savedMap = new Map(Object.entries(parsedMap));
+          setCurrencyMap((prev) => {
+            const newMap = new Map(savedMap);
+            data.forEach((item) => {
+              const key = `${item.ticker}-${item.companyName}`;
+              if (!newMap.has(key)) {
+                newMap.set(key, item.currency || 'USD');
+              }
+            });
+            return newMap;
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load currency map from localStorage:', error);
+      }
+      setIsLoadingCurrency(false);
+      return;
+    }
+
     const loadCurrencyData = async () => {
       setIsLoadingCurrency(true);
       try {
@@ -147,6 +175,52 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
     };
 
     loadCurrencyData();
+
+    // Set up real-time listener for changes from other devices
+    const docRef = doc(db, 'userData', currentUser.uid, 'currency', 'data');
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnapshot) => {
+        if (docSnapshot.exists() && !isLocalChangeRef.current) {
+          const snapshotData = docSnapshot.data();
+          const values = snapshotData.values || {};
+          const newMap = new Map(Object.entries(values));
+          
+          // Only update if data actually changed
+          setCurrencyMap((prev) => {
+            const prevStr = JSON.stringify(Object.fromEntries(prev));
+            const newStr = JSON.stringify(Object.fromEntries(newMap));
+            if (prevStr !== newStr) {
+              // Also update localStorage
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(newMap)));
+              } catch (error) {
+                console.error('Failed to save currency map to localStorage:', error);
+              }
+              // Merge with data defaults (use current data prop)
+              const mergedMap = new Map(newMap);
+              data.forEach((item) => {
+                const key = `${item.ticker}-${item.companyName}`;
+                if (!mergedMap.has(key)) {
+                  mergedMap.set(key, item.currency || 'USD');
+                }
+              });
+              return mergedMap;
+            }
+            return prev;
+          });
+        }
+        // Reset flag after processing
+        isLocalChangeRef.current = false;
+      },
+      (error) => {
+        console.error('Error listening to Currency values:', error);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
   }, [data, currentUser?.uid]);
 
   // Initialize entry/exit values from data
@@ -156,7 +230,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
 
   // Save currency values to Firestore when they change (debounced)
   useEffect(() => {
-    if (isLoadingCurrency) return; // Don't save during initial load
+    if (isLoadingCurrency || !currentUser) return; // Don't save during initial load
 
     // Clear existing timeout
     if (saveTimeoutRef.current) {
@@ -174,6 +248,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
     // Debounce Firestore save to avoid too many writes
     saveTimeoutRef.current = setTimeout(async () => {
       try {
+        isLocalChangeRef.current = true; // Set flag before saving to prevent listener from updating
         const mapObject = Object.fromEntries(currencyMap);
         await saveCurrencyValues(currentUser, mapObject);
       } catch (error) {
