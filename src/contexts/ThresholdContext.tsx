@@ -62,7 +62,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
   const [thresholdValues, setThresholdValuesState] = useState<Map<string, ThresholdValues>>(() => loadFromStorage());
   const [isLoading, setIsLoading] = useState(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isLocalChangeRef = useRef(false); // Flag to prevent infinite loops
+  const lastLocalChangeRef = useRef<number | null>(null); // Timestamp of last local change
 
   // Load data from Firestore and set up real-time listener
   useEffect(() => {
@@ -108,14 +108,40 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
     const unsubscribe = onSnapshot(
       docRef,
       (docSnapshot) => {
-        // Skip if this is a local change or during initial load
-        if (isLocalChangeRef.current || isLoading) {
+        // Skip during initial load
+        if (isLoading) {
           return;
         }
         
         if (docSnapshot.exists()) {
+          // Ignore our own pending writes
+          if (docSnapshot.metadata.hasPendingWrites) {
+            return;
+          }
+          
           const data = docSnapshot.data();
           const values = data.values || {};
+          
+          // Get the document update timestamp
+          // Firestore Timestamp has toMillis() method, or it might be a number
+          let updateTime: number | null = null;
+          if (data.updatedAt) {
+            if (typeof data.updatedAt.toMillis === 'function') {
+              updateTime = data.updatedAt.toMillis();
+            } else if (typeof data.updatedAt === 'number') {
+              updateTime = data.updatedAt;
+            }
+          }
+          
+          // Only apply remote changes if they're newer than our last local change
+          // If we have a pending local change, ignore this update
+          if (lastLocalChangeRef.current !== null && updateTime !== null) {
+            if (updateTime <= lastLocalChangeRef.current) {
+              // Remote change is older than our local change, ignore it
+              return;
+            }
+          }
+          
           const newMap = new Map(Object.entries(values));
           
           // Only update if data actually changed
@@ -156,17 +182,17 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
     // Debounce Firestore save to avoid too many writes
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        // Flag is already set in setThresholdValue/setThresholdValues, keep it set during save
+        // Timestamp is already set in setThresholdValue/setThresholdValues, keep it during save
         const obj = Object.fromEntries(thresholdValues);
         await saveThresholdValues(currentUser, obj);
-        // Reset flag after save is complete (with small delay to ensure Firestore has processed)
+        // Reset timestamp after save is complete (with small delay to ensure Firestore has processed)
         setTimeout(() => {
-          isLocalChangeRef.current = false;
+          lastLocalChangeRef.current = null;
         }, 500);
       } catch (error) {
         console.error('Error saving Threshold values to Firestore:', error);
-        // Reset flag even on error
-        isLocalChangeRef.current = false;
+        // Reset timestamp even on error
+        lastLocalChangeRef.current = null;
       }
     }, 1000); // Wait 1 second after last change
 
@@ -182,8 +208,8 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
   }, [thresholdValues]);
 
   const setThresholdValue = useCallback((industry: string, field: keyof ThresholdValues, value: number) => {
-    // Set flag BEFORE state update to prevent listener from overwriting
-    isLocalChangeRef.current = true;
+    // Set timestamp BEFORE state update to prevent listener from overwriting
+    lastLocalChangeRef.current = Date.now();
     setThresholdValuesState((prev) => {
       const newMap = new Map(prev);
       const current = newMap.get(industry) || {
@@ -207,8 +233,8 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
   }, []);
 
   const setThresholdValues = useCallback((industry: string, values: Partial<ThresholdValues>) => {
-    // Set flag BEFORE state update to prevent listener from overwriting
-    isLocalChangeRef.current = true;
+    // Set timestamp BEFORE state update to prevent listener from overwriting
+    lastLocalChangeRef.current = Date.now();
     setThresholdValuesState((prev) => {
       const newMap = new Map(prev);
       const current = newMap.get(industry) || {

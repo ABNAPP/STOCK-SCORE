@@ -84,7 +84,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
   const [isLoadingCurrency, setIsLoadingCurrency] = useState(true);
   const { getEntryExitValue, setEntryExitValue, initializeFromData } = useEntryExitValues();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isLocalChangeRef = useRef(false); // Flag to prevent infinite loops
+  const lastLocalChangeRef = useRef<number | null>(null); // Timestamp of last local change
 
   const STORAGE_KEY = 'tachart-currency-map';
 
@@ -181,14 +181,40 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
     const unsubscribe = onSnapshot(
       docRef,
       (docSnapshot) => {
-        // Skip if this is a local change or during initial load
-        if (isLocalChangeRef.current || isLoadingCurrency) {
+        // Skip during initial load
+        if (isLoadingCurrency) {
           return;
         }
         
         if (docSnapshot.exists()) {
+          // Ignore our own pending writes
+          if (docSnapshot.metadata.hasPendingWrites) {
+            return;
+          }
+          
           const snapshotData = docSnapshot.data();
           const values = snapshotData.values || {};
+          
+          // Get the document update timestamp
+          // Firestore Timestamp has toMillis() method, or it might be a number
+          let updateTime: number | null = null;
+          if (snapshotData.updatedAt) {
+            if (typeof snapshotData.updatedAt.toMillis === 'function') {
+              updateTime = snapshotData.updatedAt.toMillis();
+            } else if (typeof snapshotData.updatedAt === 'number') {
+              updateTime = snapshotData.updatedAt;
+            }
+          }
+          
+          // Only apply remote changes if they're newer than our last local change
+          // If we have a pending local change, ignore this update
+          if (lastLocalChangeRef.current !== null && updateTime !== null) {
+            if (updateTime <= lastLocalChangeRef.current) {
+              // Remote change is older than our local change, ignore it
+              return;
+            }
+          }
+          
           const newMap = new Map(Object.entries(values));
           
           // Only update if data actually changed
@@ -251,17 +277,17 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
     // Debounce Firestore save to avoid too many writes
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        // Flag is already set in handleCurrencyChange, keep it set during save
+        // Timestamp is already set in handleCurrencyChange, keep it during save
         const mapObject = Object.fromEntries(currencyMap);
         await saveCurrencyValues(currentUser, mapObject);
-        // Reset flag after save is complete (with small delay to ensure Firestore has processed)
+        // Reset timestamp after save is complete (with small delay to ensure Firestore has processed)
         setTimeout(() => {
-          isLocalChangeRef.current = false;
+          lastLocalChangeRef.current = null;
         }, 500);
       } catch (error) {
         console.error('Error saving currency values to Firestore:', error);
-        // Reset flag even on error
-        isLocalChangeRef.current = false;
+        // Reset timestamp even on error
+        lastLocalChangeRef.current = null;
       }
     }, 1000); // Wait 1 second after last change
 
@@ -274,8 +300,8 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
 
   const handleCurrencyChange = useCallback((ticker: string, companyName: string, currency: string) => {
     const key = `${ticker}-${companyName}`;
-    // Set flag BEFORE state update to prevent listener from overwriting
-    isLocalChangeRef.current = true;
+    // Set timestamp BEFORE state update to prevent listener from overwriting
+    lastLocalChangeRef.current = Date.now();
     setCurrencyMap((prev) => {
       const newMap = new Map(prev);
       newMap.set(key, currency);
