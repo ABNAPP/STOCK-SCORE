@@ -81,6 +81,33 @@ export class ErrorBoundary extends Component<Props, State> {
               </div>
             )}
 
+            {errorMessage.includes('useRefresh must be used within a RefreshProvider') && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4 mb-4">
+                <h3 className="text-blue-900 dark:text-blue-200 font-semibold mb-2">
+                  Provider Context Error - How to fix:
+                </h3>
+                <p className="text-blue-800 dark:text-blue-200 text-sm mb-2">
+                  This error indicates that <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">RefreshProvider</code> is not properly wrapping <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">AutoRefreshProvider</code>.
+                </p>
+                <ol className="list-decimal list-inside text-blue-800 dark:text-blue-200 space-y-2 text-sm">
+                  <li>Check <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">src/App.tsx</code></li>
+                  <li>Verify the provider order is:
+                    <pre className="bg-blue-100 dark:bg-blue-900 p-2 rounded mt-2 text-xs overflow-x-auto">
+{`<LoadingProgressProvider>
+  <RefreshProvider>
+    <AutoRefreshProvider>
+      ...
+    </AutoRefreshProvider>
+  </RefreshProvider>
+</LoadingProgressProvider>`}
+                    </pre>
+                  </li>
+                  <li>Ensure <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">RefreshProvider</code> is a direct parent of <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">AutoRefreshProvider</code></li>
+                  <li>Check that <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">RefreshProvider</code> is not conditionally rendered</li>
+                </ol>
+              </div>
+            )}
+
             <div className="flex justify-end space-x-3 mt-6">
               <button
                 onClick={() => window.location.reload()}

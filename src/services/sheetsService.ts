@@ -1575,21 +1575,43 @@ export async function fetchThresholdIndustryData(
           };
         });
       
-      // Log industries that were not found in the mappings
-      if (notFoundIRRIndustries.length > 0) {
-        console.warn('Threshold Industry: Industries not found in IRR mapping:', notFoundIRRIndustries);
-      }
-      if (notFoundLeverageF2Industries.length > 0) {
-        console.warn('Threshold Industry: Industries not found in Leverage F2 mapping:', notFoundLeverageF2Industries);
-      }
-      if (notFoundRO40Industries.length > 0) {
-        console.warn('Threshold Industry: Industries not found in RO40 mapping:', notFoundRO40Industries);
-      }
-      if (notFoundCashSdebtIndustries.length > 0) {
-        console.warn('Threshold Industry: Industries not found in Cash/SDebt mapping:', notFoundCashSdebtIndustries);
-      }
-      if (notFoundCurrentRatioIndustries.length > 0) {
-        console.warn('Threshold Industry: Industries not found in Current Ratio mapping:', notFoundCurrentRatioIndustries);
+      // Log industries that were not found in the mappings (only in dev mode to reduce noise)
+      if (import.meta.env.DEV) {
+        if (notFoundIRRIndustries.length > 0) {
+          console.warn(
+            `⚠️ Threshold Industry: ${notFoundIRRIndustries.length} industry/industries not found in IRR mapping:\n`,
+            notFoundIRRIndustries.join(', '),
+            '\nTo fix: Add these industries to INDUSTRY_IRR_MAP in src/config/industryThresholds.ts'
+          );
+        }
+        if (notFoundLeverageF2Industries.length > 0) {
+          console.warn(
+            `⚠️ Threshold Industry: ${notFoundLeverageF2Industries.length} industry/industries not found in Leverage F2 mapping:\n`,
+            notFoundLeverageF2Industries.join(', '),
+            '\nTo fix: Add these industries to INDUSTRY_LEVERAGE_F2_MAP in src/config/industryThresholds.ts'
+          );
+        }
+        if (notFoundRO40Industries.length > 0) {
+          console.warn(
+            `⚠️ Threshold Industry: ${notFoundRO40Industries.length} industry/industries not found in RO40 mapping:\n`,
+            notFoundRO40Industries.join(', '),
+            '\nTo fix: Add these industries to INDUSTRY_RO40_MAP in src/config/industryThresholds.ts'
+          );
+        }
+        if (notFoundCashSdebtIndustries.length > 0) {
+          console.warn(
+            `⚠️ Threshold Industry: ${notFoundCashSdebtIndustries.length} industry/industries not found in Cash/SDebt mapping:\n`,
+            notFoundCashSdebtIndustries.join(', '),
+            '\nTo fix: Add these industries to INDUSTRY_CASH_SDEBT_MAP in src/config/industryThresholds.ts'
+          );
+        }
+        if (notFoundCurrentRatioIndustries.length > 0) {
+          console.warn(
+            `⚠️ Threshold Industry: ${notFoundCurrentRatioIndustries.length} industry/industries not found in Current Ratio mapping:\n`,
+            notFoundCurrentRatioIndustries.join(', '),
+            '\nTo fix: Add these industries to INDUSTRY_CURRENT_RATIO_MAP in src/config/industryThresholds.ts'
+          );
+        }
       }
       
       return thresholdIndustryData;
@@ -1663,21 +1685,43 @@ export async function fetchThresholdIndustryData(
             };
           });
         
-        // Log industries that were not found in the mappings
-        if (notFoundIRRIndustries.length > 0) {
-          console.warn('Threshold Industry: Industries not found in IRR mapping:', notFoundIRRIndustries);
-        }
-        if (notFoundLeverageF2Industries.length > 0) {
-          console.warn('Threshold Industry: Industries not found in Leverage F2 mapping:', notFoundLeverageF2Industries);
-        }
-        if (notFoundRO40Industries.length > 0) {
-          console.warn('Threshold Industry: Industries not found in RO40 mapping:', notFoundRO40Industries);
-        }
-        if (notFoundCashSdebtIndustries.length > 0) {
-          console.warn('Threshold Industry: Industries not found in Cash/SDebt mapping:', notFoundCashSdebtIndustries);
-        }
-        if (notFoundCurrentRatioIndustries.length > 0) {
-          console.warn('Threshold Industry: Industries not found in Current Ratio mapping:', notFoundCurrentRatioIndustries);
+        // Log industries that were not found in the mappings (only in dev mode to reduce noise)
+        if (import.meta.env.DEV) {
+          if (notFoundIRRIndustries.length > 0) {
+            console.warn(
+              `⚠️ Threshold Industry: ${notFoundIRRIndustries.length} industry/industries not found in IRR mapping:\n`,
+              notFoundIRRIndustries.join(', '),
+              '\nTo fix: Add these industries to INDUSTRY_IRR_MAP in src/config/industryThresholds.ts'
+            );
+          }
+          if (notFoundLeverageF2Industries.length > 0) {
+            console.warn(
+              `⚠️ Threshold Industry: ${notFoundLeverageF2Industries.length} industry/industries not found in Leverage F2 mapping:\n`,
+              notFoundLeverageF2Industries.join(', '),
+              '\nTo fix: Add these industries to INDUSTRY_LEVERAGE_F2_MAP in src/config/industryThresholds.ts'
+            );
+          }
+          if (notFoundRO40Industries.length > 0) {
+            console.warn(
+              `⚠️ Threshold Industry: ${notFoundRO40Industries.length} industry/industries not found in RO40 mapping:\n`,
+              notFoundRO40Industries.join(', '),
+              '\nTo fix: Add these industries to INDUSTRY_RO40_MAP in src/config/industryThresholds.ts'
+            );
+          }
+          if (notFoundCashSdebtIndustries.length > 0) {
+            console.warn(
+              `⚠️ Threshold Industry: ${notFoundCashSdebtIndustries.length} industry/industries not found in Cash/SDebt mapping:\n`,
+              notFoundCashSdebtIndustries.join(', '),
+              '\nTo fix: Add these industries to INDUSTRY_CASH_SDEBT_MAP in src/config/industryThresholds.ts'
+            );
+          }
+          if (notFoundCurrentRatioIndustries.length > 0) {
+            console.warn(
+              `⚠️ Threshold Industry: ${notFoundCurrentRatioIndustries.length} industry/industries not found in Current Ratio mapping:\n`,
+              notFoundCurrentRatioIndustries.join(', '),
+              '\nTo fix: Add these industries to INDUSTRY_CURRENT_RATIO_MAP in src/config/industryThresholds.ts'
+            );
+          }
         }
         
         return thresholdIndustryData;

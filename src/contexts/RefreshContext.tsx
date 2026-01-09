@@ -27,11 +27,16 @@ interface RefreshProviderProps {
 }
 
 export function RefreshProvider({ children }: RefreshProviderProps) {
+  // These hooks must be available:
+  // - useTranslation: Available from i18next (no provider needed)
+  // - useToast: Requires ToastProvider (set in main.tsx)
+  // - useLoadingProgress: Requires LoadingProgressProvider (parent in App.tsx)
   const { t } = useTranslation();
   const { showSuccess, showError } = useToast();
   const { reset: resetProgress } = useLoadingProgress();
   
-  // Use all hooks (Stock Score is calculated from ScoreBoard data, so no separate hook needed)
+  // Use all data hooks (Stock Score is calculated from ScoreBoard data, so no separate hook needed)
+  // These hooks use useLoadingProgress which requires LoadingProgressProvider as parent
   const benjaminGraham = useBenjaminGrahamData();
   const sma = useSMAData();
   const scoreBoard = useScoreBoardData();
@@ -95,13 +100,39 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
     refreshThresholdIndustry: () => threshold.refetch(true),
   };
 
+  // CRITICAL: The Provider MUST wrap children for context to be available
+  // AutoRefreshProvider (a child) will use useRefresh() which requires this context
+  // The context value is set here and will be available to all children components
+  
+  // Debug logging in development mode only
+  if (import.meta.env.DEV) {
+    console.log('✅ RefreshProvider: Rendering RefreshContext.Provider with value', {
+      hasRefreshAll: typeof value.refreshAll === 'function',
+      isRefreshing: value.isRefreshing,
+      valueKeys: Object.keys(value),
+    });
+  }
+  
+  // CRITICAL: This Provider MUST wrap children for context to be available
+  // The value prop ensures RefreshContext is available to all children (including AutoRefreshProvider)
   return <RefreshContext.Provider value={value}>{children}</RefreshContext.Provider>;
 }
 
 export function useRefresh(): RefreshContextType {
   const context = useContext(RefreshContext);
   if (context === undefined) {
-    throw new Error('useRefresh must be used within a RefreshProvider');
+    throw new Error(
+      'useRefresh must be used within a RefreshProvider.\n\n' +
+      'SOLUTION:\n' +
+      '1. Check App.tsx - RefreshProvider must wrap AutoRefreshProvider:\n' +
+      '   <LoadingProgressProvider>\n' +
+      '     <RefreshProvider>\n' +
+      '       <AutoRefreshProvider>...</AutoRefreshProvider>\n' +
+      '     </RefreshProvider>\n' +
+      '   </LoadingProgressProvider>\n' +
+      '2. Ensure RefreshProvider is rendered before AutoRefreshProvider in the component tree.\n' +
+      '3. Check that RefreshProvider is not conditionally rendered or skipped.'
+    );
   }
   return context;
 }

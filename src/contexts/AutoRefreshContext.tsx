@@ -33,8 +33,37 @@ interface AutoRefreshProviderProps {
 }
 
 export function AutoRefreshProvider({ children }: AutoRefreshProviderProps) {
-  const { refreshAll, isRefreshing } = useRefresh();
   const { t } = useTranslation();
+  
+  // CRITICAL: RefreshProvider MUST be a parent component for useRefresh() to work
+  // Provider order in App.tsx MUST be: LoadingProgressProvider → RefreshProvider → AutoRefreshProvider
+  // 
+  // If this throws an error "useRefresh must be used within a RefreshProvider", it means:
+  // 1. RefreshProvider is not wrapping AutoRefreshProvider in App.tsx
+  // 2. Or RefreshProvider failed to render its context provider correctly
+  // 
+  // Hooks cannot be wrapped in try-catch, so provider order MUST be correct.
+  // Check App.tsx (around line 140) to ensure correct nesting:
+  //   <LoadingProgressProvider>
+  //     <RefreshProvider>
+  //       <AutoRefreshProvider>...</AutoRefreshProvider>
+  //     </RefreshProvider>
+  //   </LoadingProgressProvider>
+  
+  // Debug: Log before calling useRefresh to verify provider is available
+  if (import.meta.env.DEV) {
+    console.log('🔍 AutoRefreshProvider: About to call useRefresh()...');
+  }
+  
+  const { refreshAll, isRefreshing } = useRefresh();
+  
+  // Debug: Log after successfully getting context
+  if (import.meta.env.DEV) {
+    console.log('✅ AutoRefreshProvider: Successfully got RefreshContext', {
+      hasRefreshAll: !!refreshAll,
+      isRefreshing,
+    });
+  }
   
   // Load settings from localStorage
   const [enabled, setEnabledState] = useState<boolean>(() => {
@@ -83,8 +112,9 @@ export function AutoRefreshProvider({ children }: AutoRefreshProviderProps) {
 
   // Handle auto refresh
   const handleAutoRefresh = useCallback(async () => {
-    // Skip if page is not visible or manual refresh is in progress
-    if (!isPageVisibleRef.current || isRefreshing) {
+    // Skip if page is not visible, manual refresh is in progress, or refreshAll is not available
+    // refreshAll may be null if RefreshProvider is not properly configured
+    if (!isPageVisibleRef.current || isRefreshing || !refreshAll) {
       return;
     }
 

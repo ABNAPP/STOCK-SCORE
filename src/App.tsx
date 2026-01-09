@@ -131,6 +131,10 @@ function App() {
   const metadata = tableId ? getTableMetadata(tableId) : null;
   const pageName = selectedViewForModal ? getPageName(selectedViewForModal) : '';
 
+  // CRITICAL: Provider order is essential for context availability
+  // Order MUST be: LoadingProgressProvider (outermost) → RefreshProvider → AutoRefreshProvider (innermost)
+  // AutoRefreshProvider requires RefreshProvider to be its direct parent
+  // DO NOT change this order without understanding the context dependencies!
   return (
     <LoadingProgressProvider>
       <RefreshProvider>
