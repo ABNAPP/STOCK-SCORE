@@ -79,6 +79,7 @@ export function createMockEntryExitValues(overrides: Partial<EntryExitValues> = 
     entry2: 0,
     exit1: 0,
     exit2: 0,
+    currency: 'USD',
     dateOfUpdate: null,
     ...overrides,
   };

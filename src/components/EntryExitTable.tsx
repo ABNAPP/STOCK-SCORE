@@ -1,15 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useEffect, useMemo, useCallback } from 'react';
 import { EntryExitData } from '../types/stock';
 import BaseTable, { ColumnDefinition, HeaderRenderProps } from './BaseTable';
 import ColumnTooltip from './ColumnTooltip';
 import { getColumnMetadata } from '../config/tableMetadata';
 import { FilterConfig } from './AdvancedFilters';
 import { useEntryExitValues } from '../contexts/EntryExitContext';
-import { useAuth } from '../contexts/AuthContext';
-import { saveCurrencyValues, loadCurrencyValues } from '../services/userDataService';
 import { DATE_NEAR_OLD_THRESHOLD_DAYS } from '../config/constants';
-import { onSnapshot, doc } from 'firebase/firestore';
-import { db } from '../config/firebase';
 
 interface EntryExitTableProps {
   data: EntryExitData[];
@@ -79,239 +75,16 @@ const ENTRY_EXIT_FILTERS: FilterConfig[] = [
 ];
 
 export default function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
-  const { currentUser } = useAuth();
-  const [currencyMap, setCurrencyMap] = useState<Map<string, string>>(new Map());
-  const [isLoadingCurrency, setIsLoadingCurrency] = useState(true);
   const { getEntryExitValue, getFieldValue, setFieldValue, commitField, initializeFromData } = useEntryExitValues();
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const dirtyKeysRef = useRef<Set<string>>(new Set()); // Set of "ticker-companyName" that are being edited
-  const isInitialLoadRef = useRef(true); // Track initial load to prevent listener from processing during load
-  const dataRef = useRef(data); // Keep reference to latest data for use in listener
-
-  // Update data ref when data changes
-  useEffect(() => {
-    dataRef.current = data;
-  }, [data]);
-
-  const STORAGE_KEY = 'tachart-currency-map';
-
-  // Load currency values from Firestore and set up real-time listener
-  useEffect(() => {
-    if (!currentUser) {
-      // If no user, just load from localStorage
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsedMap = JSON.parse(stored);
-          const savedMap = new Map(Object.entries(parsedMap));
-          setCurrencyMap((prev) => {
-            const newMap = new Map(savedMap);
-            dataRef.current.forEach((item) => {
-              const key = `${item.ticker}-${item.companyName}`;
-              if (!newMap.has(key)) {
-                newMap.set(key, item.currency || 'USD');
-              }
-            });
-            return newMap;
-          });
-        }
-      } catch (error) {
-        console.error('Failed to load currency map from localStorage:', error);
-      }
-      setIsLoadingCurrency(false);
-      isInitialLoadRef.current = false;
-      return;
-    }
-
-    const loadCurrencyData = async () => {
-      setIsLoadingCurrency(true);
-      isInitialLoadRef.current = true;
-      try {
-        const loaded = await loadCurrencyValues(currentUser);
-        let savedMap = new Map<string, string>();
-        
-        if (loaded) {
-          savedMap = new Map(Object.entries(loaded));
-        } else {
-          // Fallback to localStorage
-          try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-              const parsedMap = JSON.parse(stored);
-              savedMap = new Map(Object.entries(parsedMap));
-            }
-          } catch (error) {
-            console.error('Failed to parse currency map from localStorage:', error);
-          }
-        }
-
-        setCurrencyMap((prev) => {
-          const newMap = new Map(savedMap);
-          dataRef.current.forEach((item) => {
-            const key = `${item.ticker}-${item.companyName}`;
-            if (!newMap.has(key)) {
-              newMap.set(key, item.currency || 'USD');
-            }
-          });
-          return newMap;
-        });
-      } catch (error) {
-        console.error('Failed to load currency map:', error);
-        // Fallback to localStorage
-        try {
-          const stored = localStorage.getItem(STORAGE_KEY);
-          let savedMap = new Map<string, string>();
-          if (stored) {
-            const parsedMap = JSON.parse(stored);
-            savedMap = new Map(Object.entries(parsedMap));
-          }
-          setCurrencyMap((prev) => {
-            const newMap = new Map(savedMap);
-            dataRef.current.forEach((item) => {
-              const key = `${item.ticker}-${item.companyName}`;
-              if (!newMap.has(key)) {
-                newMap.set(key, item.currency || 'USD');
-              }
-            });
-            return newMap;
-          });
-        } catch (localError) {
-          console.error('Failed to initialize currency map from localStorage:', localError);
-        }
-      } finally {
-        setIsLoadingCurrency(false);
-        // Mark initial load as complete after a short delay to ensure data is set
-        setTimeout(() => {
-          isInitialLoadRef.current = false;
-        }, 100);
-      }
-    };
-
-    loadCurrencyData();
-
-    // Set up real-time listener for changes from other users
-    const docRef = doc(db, 'sharedData', 'currency');
-    const unsubscribe = onSnapshot(
-      docRef,
-      (docSnapshot) => {
-        // Skip during initial load
-        if (isInitialLoadRef.current) {
-          return;
-        }
-        
-        // Ignore our own pending writes
-        if (docSnapshot.metadata.hasPendingWrites) {
-          return;
-        }
-        
-        if (docSnapshot.exists()) {
-          const snapshotData = docSnapshot.data();
-          const remoteValues = snapshotData.values || {};
-          
-          // MERGE remote changes instead of replacing everything
-          setCurrencyMap((prev) => {
-            const newMap = new Map(prev);
-            let hasChanges = false;
-            
-            // Process each remote value
-            for (const [key, remoteCurrency] of Object.entries(remoteValues)) {
-              // If this key is dirty (being edited), keep the local value
-              if (dirtyKeysRef.current.has(key)) {
-                continue; // Skip this key, keep local value
-              }
-              
-              // Otherwise, use remote value if it's different
-              const currentCurrency = newMap.get(key);
-              if (remoteCurrency !== currentCurrency) {
-                newMap.set(key, remoteCurrency as string);
-                hasChanges = true;
-              }
-            }
-            
-            if (hasChanges) {
-              // Also update localStorage
-              try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(newMap)));
-              } catch (error) {
-                console.error('Failed to save currency map to localStorage:', error);
-              }
-              // Merge with data defaults (use current data from ref)
-              const mergedMap = new Map(newMap);
-              dataRef.current.forEach((item) => {
-                const key = `${item.ticker}-${item.companyName}`;
-                if (!mergedMap.has(key)) {
-                  mergedMap.set(key, item.currency || 'USD');
-                }
-              });
-              return mergedMap;
-            }
-            return prev;
-          });
-        }
-      },
-      (error) => {
-        console.error('Error listening to Currency values:', error);
-      }
-    );
-
-    return () => {
-      unsubscribe();
-    };
-  }, [currentUser?.uid]); // Removed data from dependencies - listener should only recreate when user changes
 
   // Initialize entry/exit values from data
   useEffect(() => {
     initializeFromData(data);
   }, [data, initializeFromData]);
 
-  // Save currency values to Firestore when they change (debounced)
-  useEffect(() => {
-    if (isLoadingCurrency || !currentUser) return; // Don't save during initial load
-
-    // Clear existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Save to localStorage immediately (fast fallback)
-    try {
-      const mapObject = Object.fromEntries(currencyMap);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(mapObject));
-    } catch (error) {
-      console.error('Failed to save currency map to localStorage:', error);
-    }
-
-    // Debounce Firestore save to avoid too many writes
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        const mapObject = Object.fromEntries(currencyMap);
-        await saveCurrencyValues(currentUser, mapObject);
-        // After successful save, clear dirty keys for all keys that were saved
-        // This allows future remote updates to come through
-        dirtyKeysRef.current.clear();
-      } catch (error) {
-        console.error('Error saving currency values to Firestore:', error);
-        // On error, keep dirty keys so user's edits aren't lost
-      }
-    }, 1000); // Wait 1 second after last change
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [currencyMap, currentUser, isLoadingCurrency]);
-
   const handleCurrencyChange = useCallback((ticker: string, companyName: string, currency: string) => {
-    const key = `${ticker}-${companyName}`;
-    // Mark this key as dirty BEFORE state update
-    dirtyKeysRef.current.add(key);
-    setCurrencyMap((prev) => {
-      const newMap = new Map(prev);
-      newMap.set(key, currency);
-      return newMap;
-    });
-  }, []);
+    setFieldValue(ticker, companyName, 'currency', currency);
+  }, [setFieldValue]);
 
   // Helper functions for date checking
   const isDateOld = useCallback((dateString: string | null): boolean => {
@@ -358,11 +131,10 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
   // Create data with current currency and entry/exit values
   const dataWithValues: EntryExitData[] = useMemo(() => {
     return data.map((item) => {
-      const key = `${item.ticker}-${item.companyName}`;
-      const values = getEntryExitValue(item.ticker, item.companyName) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+      const values = getEntryExitValue(item.ticker, item.companyName) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
       return {
         ...item,
-        currency: currencyMap.get(key) || item.currency || 'USD',
+        currency: values.currency,
         entry1: values.entry1,
         entry2: values.entry2,
         exit1: values.exit1,
@@ -370,7 +142,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
         dateOfUpdate: values.dateOfUpdate,
       };
     });
-  }, [data, currencyMap, getEntryExitValue]);
+  }, [data, getEntryExitValue]);
 
   // Custom header renderer with ColumnTooltip
   const renderHeader = useCallback((props: HeaderRenderProps) => {
@@ -428,15 +200,14 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
 
   // Render cell content
   const renderCell = useCallback((item: EntryExitData, column: ColumnDefinition, index: number, globalIndex: number) => {
-    const key = `${item.ticker}-${item.companyName}`;
-    const currentCurrency = currencyMap.get(key) || item.currency || 'USD';
     // Use getFieldValue for individual fields (supports draft)
     const entry1 = getFieldValue(item.ticker, item.companyName, 'entry1') as number;
     const entry2 = getFieldValue(item.ticker, item.companyName, 'entry2') as number;
     const exit1 = getFieldValue(item.ticker, item.companyName, 'exit1') as number;
     const exit2 = getFieldValue(item.ticker, item.companyName, 'exit2') as number;
+    const currency = getFieldValue(item.ticker, item.companyName, 'currency') as string;
     const dateOfUpdate = getFieldValue(item.ticker, item.companyName, 'dateOfUpdate') as string | null;
-    const values = { entry1, entry2, exit1, exit2, dateOfUpdate };
+    const values = { entry1, entry2, exit1, exit2, currency, dateOfUpdate };
 
     switch (column.key) {
       case 'antal':
@@ -448,8 +219,9 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
       case 'currency':
         return (
           <select
-            value={currentCurrency}
+            value={values.currency || 'USD'}
             onChange={(e) => handleCurrencyChange(item.ticker, item.companyName, e.target.value)}
+            onBlur={() => commitField(item.ticker, item.companyName, 'currency')}
             className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             onClick={(e) => e.stopPropagation()}
           >
@@ -535,13 +307,11 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
       default:
         return null;
     }
-  }, [currencyMap, getFieldValue, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld]);
+  }, [getFieldValue, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld]);
 
   // Render mobile card with expandable view
   const renderMobileCard = useCallback((item: EntryExitData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
-    const key = `${item.ticker}-${item.companyName}`;
-    const currentCurrency = currencyMap.get(key) || item.currency || 'USD';
-    const values = getEntryExitValue(item.ticker, item.companyName) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+    const values = getEntryExitValue(item.ticker, item.companyName) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
     const rowBgClass = globalIndex % 2 === 0 
       ? 'bg-white dark:bg-gray-800' 
       : 'bg-gray-50 dark:bg-gray-800/50';
@@ -565,8 +335,9 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Currency</span>
               <select
-                value={currentCurrency}
+                value={values.currency || 'USD'}
                 onChange={(e) => handleCurrencyChange(item.ticker, item.companyName, e.target.value)}
+                onBlur={() => commitField(item.ticker, item.companyName, 'currency')}
                 className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -672,7 +443,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
         )}
       </div>
     );
-  }, [currencyMap, getFieldValue, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld]);
+  }, [getEntryExitValue, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld]);
 
   return (
     <BaseTable<EntryExitData>

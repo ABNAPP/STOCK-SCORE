@@ -10,6 +10,7 @@ export interface EntryExitValues {
   entry2: number;
   exit1: number;
   exit2: number;
+  currency: string;
   dateOfUpdate: string | null;
 }
 
@@ -137,13 +138,13 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
             // Process each remote value
             for (const [key, remoteValue] of Object.entries(remoteValues)) {
               const remoteEntry = remoteValue as EntryExitValues;
-              const prevRow = next.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+              const prevRow = next.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
               
               // Merge remote into existing
               const merged: EntryExitValues = { ...prevRow, ...remoteEntry };
               
               // Keep local edits while editing (dirty fields should not be overwritten)
-              const fields: Array<keyof EntryExitValues> = ['entry1', 'entry2', 'exit1', 'exit2', 'dateOfUpdate'];
+              const fields: Array<keyof EntryExitValues> = ['entry1', 'entry2', 'exit1', 'exit2', 'currency', 'dateOfUpdate'];
               for (const field of fields) {
                 const dk = `${key}.${field}`;
                 if (dirtyKeysRef.current.has(dk)) {
@@ -188,7 +189,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     const currentState = new Map(serverRows);
     for (const [draftKey, draftValue] of Object.entries(draft)) {
       const [key, field] = draftKey.split('.');
-      const entry = currentState.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+      const entry = currentState.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
       const updated: EntryExitValues = { ...entry, [field]: draftValue };
       
       // Update dateOfUpdate if needed
@@ -239,7 +240,9 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     
     // Otherwise return server value
     const serverEntry = serverRows.get(key);
-    return serverEntry?.[field] ?? (field === 'dateOfUpdate' ? null : 0);
+    if (field === 'dateOfUpdate') return serverEntry?.[field] ?? null;
+    if (field === 'currency') return serverEntry?.[field] ?? 'USD';
+    return serverEntry?.[field] ?? 0;
   }, [serverRows, draft]);
 
   // Backward compatibility: get full EntryExitValues object
@@ -253,7 +256,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     
     // Build result from server entry, but replace with draft values if they exist
     const result: EntryExitValues = { ...serverEntry };
-    const fields: Array<keyof EntryExitValues> = ['entry1', 'entry2', 'exit1', 'exit2', 'dateOfUpdate'];
+    const fields: Array<keyof EntryExitValues> = ['entry1', 'entry2', 'exit1', 'exit2', 'currency', 'dateOfUpdate'];
     
     for (const field of fields) {
       const dk = `${key}.${field}`;
@@ -277,7 +280,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     // Optional optimistic UI update (keeps tables consistent)
     setServerRows((rows) => {
       const newRows = new Map(rows);
-      const current = newRows.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+      const current = newRows.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
       const updated: EntryExitValues = { ...current, [field]: value };
       
       // Update dateOfUpdate if needed
@@ -303,7 +306,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     if (value === undefined) return;
 
     // Build the full entry to save
-    const serverEntry = serverRows.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+    const serverEntry = serverRows.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
     const updated: EntryExitValues = { ...serverEntry, [field]: value };
     
     // Update dateOfUpdate if needed
@@ -351,6 +354,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
             entry2: item.entry2 || 0,
             exit1: item.exit1 || 0,
             exit2: item.exit2 || 0,
+            currency: item.currency || 'USD',
             dateOfUpdate: item.dateOfUpdate || null,
           });
         }
@@ -364,7 +368,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     const result = new Map(serverRows);
     for (const [draftKey, draftValue] of Object.entries(draft)) {
       const [key, field] = draftKey.split('.');
-      const entry = result.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, dateOfUpdate: null };
+      const entry = result.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
       result.set(key, { ...entry, [field]: draftValue });
     }
     return result;

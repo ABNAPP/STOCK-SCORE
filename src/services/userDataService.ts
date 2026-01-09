@@ -45,7 +45,7 @@ function getSharedDataDoc(dataType: string) {
  */
 export async function saveEntryExitValues(
   user: User | null,
-  values: Record<string, { entry1: number; entry2: number; exit1: number; exit2: number; dateOfUpdate: string | null }>
+  values: Record<string, { entry1: number; entry2: number; exit1: number; exit2: number; currency: string; dateOfUpdate: string | null }>
 ): Promise<void> {
   if (!user) {
     // Fallback to localStorage
@@ -83,10 +83,11 @@ export async function saveEntryExitValues(
 
 /**
  * Load Entry/Exit values from Firestore
+ * Also migrates currency data from old separate collection if it exists
  */
 export async function loadEntryExitValues(
   user: User | null
-): Promise<Record<string, { entry1: number; entry2: number; exit1: number; exit2: number; dateOfUpdate: string | null }> | null> {
+): Promise<Record<string, { entry1: number; entry2: number; exit1: number; exit2: number; currency: string; dateOfUpdate: string | null }> | null> {
   if (!user) {
     // Fallback to localStorage
     try {
@@ -104,10 +105,44 @@ export async function loadEntryExitValues(
     const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.ENTRY_EXIT);
     const docSnap = await getDoc(docRef);
     
+    let values: Record<string, { entry1: number; entry2: number; exit1: number; exit2: number; currency: string; dateOfUpdate: string | null }> = {};
+    
     if (docSnap.exists()) {
       const data = docSnap.data();
-      const values = data.values || {};
+      values = data.values || {};
+    }
+    
+    // Migrate currency from old separate collection if it exists
+    try {
+      const currencyDocRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.CURRENCY);
+      const currencyDocSnap = await getDoc(currencyDocRef);
       
+      if (currencyDocSnap.exists()) {
+        const currencyData = currencyDocSnap.data();
+        const currencyValues = currencyData.values || {};
+        
+        // Merge currency into entryExit values
+        for (const [key, currency] of Object.entries(currencyValues)) {
+          if (!values[key]) {
+            values[key] = { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: currency as string || 'USD', dateOfUpdate: null };
+          } else if (!values[key].currency) {
+            values[key].currency = currency as string || 'USD';
+          }
+        }
+      }
+    } catch (currencyError) {
+      // If currency migration fails, continue without it
+      console.warn('Failed to migrate currency data:', currencyError);
+    }
+    
+    // Ensure all values have currency field
+    for (const key in values) {
+      if (!values[key].currency) {
+        values[key].currency = 'USD';
+      }
+    }
+    
+    if (Object.keys(values).length > 0) {
       // Also save to localStorage as backup
       try {
         localStorage.setItem(STORAGE_KEYS.ENTRY_EXIT, JSON.stringify(values));
@@ -122,10 +157,34 @@ export async function loadEntryExitValues(
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.ENTRY_EXIT);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Ensure all values have currency field
+        for (const key in parsed) {
+          if (!parsed[key].currency) {
+            parsed[key].currency = 'USD';
+          }
+        }
+        return parsed;
       }
     } catch (error) {
       console.error('Error loading EntryExit values from localStorage:', error);
+    }
+    
+    // Also try to migrate from old currency localStorage
+    try {
+      const currencyStored = localStorage.getItem(STORAGE_KEYS.CURRENCY);
+      if (currencyStored) {
+        const currencyParsed = JSON.parse(currencyStored);
+        const migrated: Record<string, { entry1: number; entry2: number; exit1: number; exit2: number; currency: string; dateOfUpdate: string | null }> = {};
+        for (const [key, currency] of Object.entries(currencyParsed)) {
+          migrated[key] = { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: currency as string || 'USD', dateOfUpdate: null };
+        }
+        if (Object.keys(migrated).length > 0) {
+          return migrated;
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to migrate currency from localStorage:', error);
     }
     
     return null;
@@ -135,7 +194,14 @@ export async function loadEntryExitValues(
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.ENTRY_EXIT);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Ensure all values have currency field
+        for (const key in parsed) {
+          if (!parsed[key].currency) {
+            parsed[key].currency = 'USD';
+          }
+        }
+        return parsed;
       }
     } catch (localError) {
       console.error('Error loading EntryExit values from localStorage fallback:', localError);
