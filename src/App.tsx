@@ -17,7 +17,6 @@ import { useToast } from './contexts/ToastContext';
 import ToastContainer from './components/ToastContainer';
 import LoadingFallback from './components/LoadingFallback';
 import SkipLinks from './components/SkipLinks';
-import AdminPanel from './components/AdminPanel';
 import UserProfile from './components/UserProfile';
 
 // Lazy load view components for better performance
@@ -37,7 +36,6 @@ function App() {
   const [conditionsModalOpen, setConditionsModalOpen] = useState(false);
   const [selectedViewForModal, setSelectedViewForModal] = useState<ViewId | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [userProfileOpen, setUserProfileOpen] = useState(false);
 
   // Show login/signup if user is not authenticated
@@ -187,8 +185,6 @@ function App() {
             renderView={renderView}
             metadata={metadata}
             pageName={pageName}
-            adminPanelOpen={adminPanelOpen}
-            setAdminPanelOpen={setAdminPanelOpen}
             userProfileOpen={userProfileOpen}
             setUserProfileOpen={setUserProfileOpen}
           />
@@ -210,8 +206,6 @@ function AppContent({
   renderView,
   metadata,
   pageName,
-  adminPanelOpen,
-  setAdminPanelOpen,
   userProfileOpen,
   setUserProfileOpen,
 }: {
@@ -226,8 +220,6 @@ function AppContent({
   renderView: () => JSX.Element;
   metadata: any;
   pageName: string;
-  adminPanelOpen: boolean;
-  setAdminPanelOpen: (open: boolean) => void;
   userProfileOpen: boolean;
   setUserProfileOpen: (open: boolean) => void;
 }) {
@@ -240,7 +232,6 @@ function AppContent({
         onMenuToggle={() => setSidebarOpen(!sidebarOpen)} 
         isMenuOpen={sidebarOpen}
         onNavigate={setActiveView}
-        onOpenAdminPanel={() => setAdminPanelOpen(true)}
         onOpenUserProfile={() => setUserProfileOpen(true)}
       />
       <Sidebar 
@@ -262,20 +253,6 @@ function AppContent({
         metadata={metadata}
         pageName={pageName}
       />
-      {/* Admin Panel Modal */}
-      {adminPanelOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 dark:bg-opacity-70 animate-fade-in transition-opacity duration-300 p-4 overflow-y-auto"
-          onClick={() => setAdminPanelOpen(false)}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto my-8 animate-scale-in transition-all duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <AdminPanel onClose={() => setAdminPanelOpen(false)} />
-          </div>
-        </div>
-      )}
       {/* User Profile Modal */}
       {userProfileOpen && (
         <div

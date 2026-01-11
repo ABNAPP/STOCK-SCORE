@@ -152,6 +152,9 @@ export const INDUSTRY_LEVERAGE_F2_MAP: Record<string, { greenMax: number; redMin
   'Utilities - Regulated Water': { greenMax: 4.5, redMin: 6.0 },
   'Utilities - Renewable': { greenMax: 4.0, redMin: 5.0 },
   'Waste Management': { greenMax: 3.0, redMin: 4.0 },
+  'Capital Markets': { greenMax: 2.0, redMin: 3.0 },
+  'Healthcare Plans': { greenMax: 2.0, redMin: 3.0 },
+  'Oil & Gas Midstream': { greenMax: 3.5, redMin: 4.5 },
 };
 
 /**
@@ -225,6 +228,7 @@ export const INDUSTRY_RO40_MAP: Record<string, { min: number; max: number }> = {
   'Scientific & Technical Instruments': { min: 0.30, max: 0.45 },
   'Aluminum': { min: 0.15, max: 0.25 },
   'Airlines': { min: 0.15, max: 0.25 },
+  'Oil & Gas Midstream': { min: 0.15, max: 0.25 },
 };
 
 /**
@@ -296,6 +300,9 @@ export const INDUSTRY_CASH_SDEBT_MAP: Record<string, { min: number; max: number 
   'REIT - Industrial': { min: 0.5, max: 0.8 },
   'Scientific & Technical Instruments': { min: 0.8, max: 1.2 },
   'Aluminum': { min: 0.8, max: 1.2 },
+  'Capital Markets': { min: 0.8, max: 1.2 },
+  'Healthcare Plans': { min: 0.8, max: 1.2 },
+  'Oil & Gas Midstream': { min: 0.6, max: 0.9 },
 };
 
 /**
@@ -369,5 +376,6 @@ export const INDUSTRY_CURRENT_RATIO_MAP: Record<string, { min: number; max: numb
   'Utilities - Regulated Water': { min: 0.8, max: 1.3 },
   'Utilities - Renewable': { min: 1.0, max: 1.8 },
   'Waste Management': { min: 0.9, max: 1.4 },
+  'Oil & Gas Midstream': { min: 0.9, max: 1.4 },
 };
 

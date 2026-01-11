@@ -17,7 +17,8 @@ import {
   deleteDoc,
   serverTimestamp
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../config/firebase';
 import { User } from 'firebase/auth';
 
 // Firestore collection name
@@ -216,6 +217,23 @@ export async function deletePendingRequest(userId: string): Promise<void> {
     await deleteDoc(docRef);
   } catch (error) {
     console.error('Error deleting pending request:', error);
+    throw error;
+  }
+}
+
+/**
+ * Automatically approve viewer2 request for new registrations
+ * This sets the viewer2 role via Cloud Function and updates the request status
+ * The Cloud Function handles both setting the role and updating Firestore (with admin privileges)
+ */
+export async function autoApproveViewer2Request(userId: string): Promise<void> {
+  try {
+    // Call Cloud Function to set viewer2 role and update request status
+    // The Cloud Function has admin privileges and can update Firestore
+    const autoApproveViewer2 = httpsCallable(functions, 'autoApproveViewer2');
+    await autoApproveViewer2({ userId });
+  } catch (error) {
+    console.error('Error auto-approving viewer2 request:', error);
     throw error;
   }
 }

@@ -107,3 +107,58 @@ export const deleteUserAccount = functions.https.onCall(async (data, context) =>
     throw new functions.https.HttpsError('internal', error.message);
   }
 });
+
+// Auto-approve viewer2 for new registrations
+// This function can be called without admin verification since it only sets viewer2 role
+export const autoApproveViewer2 = functions.https.onCall(async (data, context) => {
+  // Verify user is authenticated (must be the user themselves or authenticated request)
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const { userId } = data;
+
+  if (!userId) {
+    throw new functions.https.HttpsError('invalid-argument', 'UserId is required');
+  }
+
+  // Verify the user is setting their own role (for new registrations)
+  if (userId !== context.auth.uid) {
+    throw new functions.https.HttpsError('permission-denied', 'You can only approve your own registration');
+  }
+
+  try {
+    const db = admin.firestore();
+    
+    // Verify that there's a pending request for this user with viewer2 role
+    const requestRef = db.collection('pendingRequests').doc(userId);
+    const requestDoc = await requestRef.get();
+    
+    if (!requestDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Pending request not found');
+    }
+
+    const requestData = requestDoc.data();
+    if (requestData?.status !== 'pending' || requestData?.requestedRole !== 'viewer2') {
+      throw new functions.https.HttpsError('invalid-argument', 'Request must be pending viewer2 registration');
+    }
+
+    // Set custom claim to viewer2
+    await admin.auth().setCustomUserClaims(userId, { role: 'viewer2' });
+
+    // Update pending request status to approved in Firestore
+    await requestRef.update({
+      status: 'approved',
+      approvedRole: 'viewer2',
+      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true, message: 'Viewer2 role set successfully' };
+  } catch (error: any) {
+    console.error('Error auto-approving viewer2:', error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError('internal', error.message);
+  }
+});
