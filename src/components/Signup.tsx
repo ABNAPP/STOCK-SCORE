@@ -3,8 +3,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../contexts/ToastContext';
 import { createPendingRequest, RequestedRole } from '../services/pendingRequestService';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../config/firebase';
 
 interface SignupProps {
   onSwitchToLogin: () => void;
@@ -38,30 +36,12 @@ export default function Signup({ onSwitchToLogin }: SignupProps) {
       setError('');
       setLoading(true);
       
-      // Create user account
-      await signup(email, password);
+      // Create user account and get user credential directly
+      const userCredential = await signup(email, password);
+      const user = userCredential.user;
       
-      // Wait for user to be available, then create pending request
-      await new Promise<void>((resolve, reject) => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-          if (user) {
-            unsubscribe();
-            try {
-              // Create pending request
-              await createPendingRequest(user, requestedRole, 'initial_registration');
-              resolve();
-            } catch (err) {
-              reject(err);
-            }
-          }
-        });
-        
-        // Timeout after 10 seconds
-        setTimeout(() => {
-          unsubscribe();
-          reject(new Error('Timeout waiting for user'));
-        }, 10000);
-      });
+      // Create pending request immediately with the user from credential
+      await createPendingRequest(user, requestedRole, 'initial_registration');
       
       showToast(t('auth.signupSuccess'), 'success');
     } catch (err: any) {

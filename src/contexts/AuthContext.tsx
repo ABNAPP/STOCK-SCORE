@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { 
   User, 
+  UserCredential,
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signOut,
@@ -15,7 +16,7 @@ interface AuthContextType {
   currentUser: User | null;
   userRole: UserRole;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string) => Promise<UserCredential>;
   logout: () => Promise<void>;
   refreshUserRole: () => Promise<void>;
   loading: boolean;
@@ -59,10 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser, getUserRole]);
 
-  function signup(email: string, password: string) {
-    return createUserWithEmailAndPassword(auth, email, password).then(() => {
-      // User created successfully
-    });
+  function signup(email: string, password: string): Promise<UserCredential> {
+    return createUserWithEmailAndPassword(auth, email, password);
   }
 
   function login(email: string, password: string) {
