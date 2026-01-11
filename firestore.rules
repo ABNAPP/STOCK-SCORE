@@ -2,9 +2,56 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all authenticated users to read and write shared data
-    match /sharedData/{document=**} {
-      allow read, write: if request.auth != null;
+    // Helper function to get user role from custom claims
+    function getUserRole() {
+      return request.auth.token.role;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return getUserRole() == 'admin';
+    }
+    
+    // Helper function to check if user is editor or admin
+    function isEditor() {
+      return getUserRole() == 'editor' || isAdmin();
+    }
+    
+    // Helper function to check if user has any role
+    function hasRole() {
+      return getUserRole() == 'viewer' || getUserRole() == 'editor' || isAdmin();
+    }
+    
+    // Shared data - read access for all users with role, write access only for editor/admin
+    match /sharedData/{document} {
+      // Threshold data - only admin can read/write
+      match /threshold/{thresholdId} {
+        allow read, write: if isAdmin();
+      }
+      
+      // All other shared data
+      match /{sharedDoc=**} {
+        // Read: All authenticated users with role
+        allow read: if request.auth != null && hasRole();
+        
+        // Write: Only editor and admin
+        allow write: if request.auth != null && isEditor();
+      }
+    }
+    
+    // Pending requests - users can create, admin can read/update
+    match /pendingRequests/{requestId} {
+      // Allow authenticated users to create their own request
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      
+      // Allow admin to read all requests
+      allow read: if request.auth != null && isAdmin();
+      
+      // Allow admin to update request status
+      allow update: if request.auth != null && isAdmin();
+      
+      // Users can read their own request
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
     }
     
     // Deny all other access by default

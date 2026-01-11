@@ -7,6 +7,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Temporary admin setup
+temp-set-admin/
+serviceAccountKey.json
+*.json.key
+
 node_modules
 dist
 dist-ssr

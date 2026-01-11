@@ -238,12 +238,53 @@ function isEntry1Green(
   return entry1 > 0 && price !== null && price > 0 && price <= entry1 * PRICE_TOLERANCE_GREEN;
 }
 
-// Check if TheoEntry is green (both RR1 and Entry1 are green)
+// Calculate RR2: (Exit2 - Entry2) / Entry2 * 100
+function calculateRR2(entry2: number, exit2: number): number | null {
+  if (!entry2 || !exit2 || entry2 === 0) return null;
+  const rr2 = ((exit2 - entry2) / entry2) * 100;
+  return isNaN(rr2) || !isFinite(rr2) ? null : rr2;
+}
+
+// Check if RR2 is green for TheoEntry (RR2 > 60% and Price ≤ Entry2 * 1.05)
+function isRR2GreenForTheoEntry(
+  entryExitValues: EntryExitValues | undefined,
+  price: number | null | undefined
+): boolean {
+  if (!entryExitValues) return false;
+  
+  const entry2 = entryExitValues.entry2 || 0;
+  const exit2 = entryExitValues.exit2 || 0;
+  const rr2 = calculateRR2(entry2, exit2);
+
+  // RR2 is green for TheoEntry when: RR2 > 60%, Price > 0, Entry2 > 0, Price ≤ Entry2 * 1.05
+  return rr2 !== null && rr2 > RR1_GREEN_THRESHOLD_PERCENT && price !== null && price > 0 && entry2 > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN;
+}
+
+// Check if Entry2 is green
+function isEntry2Green(
+  entryExitValues: EntryExitValues | undefined,
+  price: number | null | undefined
+): boolean {
+  if (!entryExitValues) return false;
+  
+  const entry2 = entryExitValues.entry2 || 0;
+
+  // Entry2 is green when: Entry2 > 0, Price > 0, Price ≤ Entry2 * 1.05
+  return entry2 > 0 && price !== null && price > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN;
+}
+
+// Check if TheoEntry is green (either RR1+Entry1 OR RR2+Entry2 are green)
 function isTheoEntryGreen(
   entryExitValues: EntryExitValues | undefined,
   price: number | null | undefined
 ): boolean {
-  return isRR1Green(entryExitValues, price) && isEntry1Green(entryExitValues, price);
+  // RR1 path: RR1 is green AND Entry1 is green
+  const rr1Path = isRR1Green(entryExitValues, price) && isEntry1Green(entryExitValues, price);
+  
+  // RR2 path: RR2 > 60% AND Entry2 is green
+  const rr2Path = isRR2GreenForTheoEntry(entryExitValues, price) && isEntry2Green(entryExitValues, price);
+  
+  return rr1Path || rr2Path;
 }
 
 // Get price from BenjaminGrahamData

@@ -45,7 +45,9 @@
   },
   "common": {
     "underConstruction": "Denna vy är under konstruktion",
-    "viewId": "View ID:"
+    "viewId": "View ID:",
+    "close": "Stäng",
+    "loading": "Laddar..."
   },
   "refresh": {
     "refreshAll": "Uppdatera allt",
@@ -141,7 +143,7 @@
     "confirmPasswordPlaceholder": "Bekräfta ditt lösenord",
     "loginSuccess": "Inloggning lyckades",
     "loginFailed": "Inloggning misslyckades",
-    "signupSuccess": "Konto skapat! Du är nu inloggad",
+    "signupSuccess": "Din registrering har skickats! Admin kommer att granska din begäran.",
     "signupFailed": "Kontoskapande misslyckades",
     "logoutSuccess": "Utloggning lyckades",
     "logoutFailed": "Utloggning misslyckades",
@@ -159,7 +161,58 @@
     "resetFailed": "Kunde inte skicka återställningslänk",
     "emailRequired": "E-postadress krävs",
     "sending": "Skickar...",
-    "cancel": "Avbryt"
+    "cancel": "Avbryt",
+    "requestedRole": "Begärd rättighet",
+    "selectRole": "Välj önskad rättighet",
+    "roleViewer": "Endast läsrättighet",
+    "roleEditor": "Redigeringsrättighet",
+    "roleViewerDescription": "Du kan endast läsa data",
+    "roleEditorDescription": "Du kan läsa och redigera data (kräver admin-godkännande)"
+  },
+  "roles": {
+    "viewer": "Läsrättighet",
+    "editor": "Redigerare",
+    "admin": "Administratör",
+    "pending": "Väntande godkännande",
+    "noRole": "Ingen roll tilldelad"
+  },
+  "admin": {
+    "panel": "Admin-panel",
+    "pendingRequests": "Väntande begäranden",
+    "pendingRegistrations": "Väntande registreringar",
+    "pendingUpgrades": "Väntande uppgraderingsbegäranden",
+    "noPendingRequests": "Inga väntande begäranden",
+    "approveAsViewer": "Godkänn som läsare",
+    "approveAsEditor": "Godkänn som redigerare",
+    "deny": "Neka",
+    "approve": "Godkänn",
+    "userEmail": "E-post",
+    "requestedRole": "Begärd roll",
+    "requestType": "Typ",
+    "requestTypeInitial": "Ny registrering",
+    "requestTypeUpgrade": "Uppgraderingsbegäran",
+    "timestamp": "Skapad",
+    "approving": "Godkänner...",
+    "denying": "Nekar...",
+    "approveSuccess": "Begäran godkänd",
+    "denySuccess": "Begäran nekad",
+    "approveError": "Fel vid godkännande",
+    "denyError": "Fel vid nekande"
+  },
+  "profile": {
+    "title": "Min profil",
+    "currentRole": "Din roll",
+    "requestUpgrade": "Begär redigeringsrättighet",
+    "upgradeRequested": "Din begäran väntar på admin-godkännande",
+    "upgradeRequestError": "Kunde inte skicka begäran",
+    "upgradeRequestSuccess": "Begäran skickad! Admin kommer att granska den.",
+    "requesting": "Skickar begäran...",
+    "noUpgradeAvailable": "Du har redan redigeringsrättighet eller admin-rättighet"
+  },
+  "waitingApproval": {
+    "title": "Väntar på godkännande",
+    "message": "Din registrering väntar på admin-godkännande. Du kommer att få tillgång till appen när admin har godkänt din begäran.",
+    "submessage": "Vänligen kontrollera din e-post för uppdateringar."
   }
 }
 

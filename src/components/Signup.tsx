@@ -2,6 +2,9 @@ import { useState, FormEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../contexts/ToastContext';
+import { createPendingRequest, RequestedRole } from '../services/pendingRequestService';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../config/firebase';
 
 interface SignupProps {
   onSwitchToLogin: () => void;
@@ -11,6 +14,7 @@ export default function Signup({ onSwitchToLogin }: SignupProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [requestedRole, setRequestedRole] = useState<RequestedRole>('viewer');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
@@ -33,11 +37,37 @@ export default function Signup({ onSwitchToLogin }: SignupProps) {
     try {
       setError('');
       setLoading(true);
+      
+      // Create user account
       await signup(email, password);
+      
+      // Wait for user to be available, then create pending request
+      await new Promise<void>((resolve, reject) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            unsubscribe();
+            try {
+              // Create pending request
+              await createPendingRequest(user, requestedRole, 'initial_registration');
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
+          }
+        });
+        
+        // Timeout after 10 seconds
+        setTimeout(() => {
+          unsubscribe();
+          reject(new Error('Timeout waiting for user'));
+        }, 10000);
+      });
+      
       showToast(t('auth.signupSuccess'), 'success');
     } catch (err: any) {
-      setError(err.message || t('auth.signupFailed'));
-      showToast(err.message || t('auth.signupFailed'), 'error');
+      const errorMessage = err.message || t('auth.signupFailed');
+      setError(errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -103,6 +133,50 @@ export default function Signup({ onSwitchToLogin }: SignupProps) {
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder={t('auth.confirmPasswordPlaceholder')}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              {t('auth.requestedRole')}
+            </label>
+            <div className="space-y-3">
+              <label className="flex items-start p-3 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <input
+                  type="radio"
+                  name="role"
+                  value="viewer"
+                  checked={requestedRole === 'viewer'}
+                  onChange={(e) => setRequestedRole(e.target.value as RequestedRole)}
+                  className="mt-1 mr-3"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                    {t('auth.roleViewer')}
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {t('auth.roleViewerDescription')}
+                  </div>
+                </div>
+              </label>
+              <label className="flex items-start p-3 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <input
+                  type="radio"
+                  name="role"
+                  value="editor"
+                  checked={requestedRole === 'editor'}
+                  onChange={(e) => setRequestedRole(e.target.value as RequestedRole)}
+                  className="mt-1 mr-3"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                    {t('auth.roleEditor')}
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {t('auth.roleEditorDescription')}
+                  </div>
+                </div>
+              </label>
+            </div>
           </div>
 
           <button

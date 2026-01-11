@@ -45,7 +45,9 @@
   },
   "common": {
     "underConstruction": "This view is under construction",
-    "viewId": "View ID:"
+    "viewId": "View ID:",
+    "close": "Close",
+    "loading": "Loading..."
   },
   "refresh": {
     "refreshAll": "Refresh All",
@@ -141,7 +143,7 @@
     "confirmPasswordPlaceholder": "Confirm your password",
     "loginSuccess": "Login successful",
     "loginFailed": "Login failed",
-    "signupSuccess": "Account created! You are now logged in",
+    "signupSuccess": "Your registration has been submitted! Admin will review your request.",
     "signupFailed": "Sign up failed",
     "logoutSuccess": "Logout successful",
     "logoutFailed": "Logout failed",
@@ -159,7 +161,58 @@
     "resetFailed": "Failed to send reset email",
     "emailRequired": "Email address required",
     "sending": "Sending...",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "requestedRole": "Requested permission",
+    "selectRole": "Select desired permission",
+    "roleViewer": "Read-only access",
+    "roleEditor": "Editing access",
+    "roleViewerDescription": "You can only read data",
+    "roleEditorDescription": "You can read and edit data (requires admin approval)"
+  },
+  "roles": {
+    "viewer": "Viewer",
+    "editor": "Editor",
+    "admin": "Administrator",
+    "pending": "Pending approval",
+    "noRole": "No role assigned"
+  },
+  "admin": {
+    "panel": "Admin Panel",
+    "pendingRequests": "Pending Requests",
+    "pendingRegistrations": "Pending Registrations",
+    "pendingUpgrades": "Pending Upgrade Requests",
+    "noPendingRequests": "No pending requests",
+    "approveAsViewer": "Approve as Viewer",
+    "approveAsEditor": "Approve as Editor",
+    "deny": "Deny",
+    "approve": "Approve",
+    "userEmail": "Email",
+    "requestedRole": "Requested Role",
+    "requestType": "Type",
+    "requestTypeInitial": "New Registration",
+    "requestTypeUpgrade": "Upgrade Request",
+    "timestamp": "Created",
+    "approving": "Approving...",
+    "denying": "Denying...",
+    "approveSuccess": "Request approved",
+    "denySuccess": "Request denied",
+    "approveError": "Error approving request",
+    "denyError": "Error denying request"
+  },
+  "profile": {
+    "title": "My Profile",
+    "currentRole": "Your Role",
+    "requestUpgrade": "Request Editing Access",
+    "upgradeRequested": "Your request is pending admin approval",
+    "upgradeRequestError": "Could not send request",
+    "upgradeRequestSuccess": "Request sent! Admin will review it.",
+    "requesting": "Sending request...",
+    "noUpgradeAvailable": "You already have editing access or admin access"
+  },
+  "waitingApproval": {
+    "title": "Waiting for Approval",
+    "message": "Your registration is pending admin approval. You will gain access to the app once admin has approved your request.",
+    "submessage": "Please check your email for updates."
   }
 }
 

@@ -235,11 +235,11 @@ export const tableMetadata: TableMetadata[] = [
       },
       {
         columnKey: 'tbSPrice',
-        dataSource: 'Dashboard sheet, kolumn "TB/Share" dividerat med kolumn "Price"',
-        formula: '(TB/Share) / Price',
+        dataSource: 'Dashboard sheet, kolumn "(TB/S)/Price"',
+        formula: 'Hämtas direkt från kolumnen (TB/S)/Price',
         conditions: [
-          'Beräknas genom att dividera TB/Share med Price från Dashboard sheet',
-          'Visa N/A om värdet är null eller om Price är 0/null',
+          'Hämtas direkt från kolumnen "(TB/S)/Price" i Dashboard sheet',
+          'Visa N/A om värdet är null',
           'Formateras med två decimaler',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
           'Färgmarkering:',

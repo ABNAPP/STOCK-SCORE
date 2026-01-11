@@ -4,10 +4,12 @@ import Sidebar from './components/Sidebar';
 import Breadcrumbs from './components/Breadcrumbs';
 import ConditionsModal from './components/ConditionsModal';
 import AuthContainer from './components/AuthContainer';
+import WaitingApproval from './components/WaitingApproval';
 import { ViewId } from './types/navigation';
 import { getTableMetadata } from './config/tableMetadata';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from './contexts/AuthContext';
+import { useUserRole } from './hooks/useUserRole';
 import { RefreshProvider } from './contexts/RefreshContext';
 import { AutoRefreshProvider } from './contexts/AutoRefreshContext';
 import { LoadingProgressProvider } from './contexts/LoadingProgressContext';
@@ -15,6 +17,8 @@ import { useToast } from './contexts/ToastContext';
 import ToastContainer from './components/ToastContainer';
 import LoadingFallback from './components/LoadingFallback';
 import SkipLinks from './components/SkipLinks';
+import AdminPanel from './components/AdminPanel';
+import UserProfile from './components/UserProfile';
 
 // Lazy load view components for better performance
 const ScoreBoardView = lazy(() => import('./components/views/ScoreBoardView'));
@@ -26,15 +30,23 @@ const ThresholdIndustryView = lazy(() => import('./components/views/ThresholdInd
 
 function App() {
   const { currentUser } = useAuth();
+  const { hasRole } = useUserRole();
   const { t } = useTranslation();
   const [activeView, setActiveView] = useState<ViewId>('score');
   const [conditionsModalOpen, setConditionsModalOpen] = useState(false);
   const [selectedViewForModal, setSelectedViewForModal] = useState<ViewId | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [userProfileOpen, setUserProfileOpen] = useState(false);
 
   // Show login/signup if user is not authenticated
   if (!currentUser) {
     return <AuthContainer />;
+  }
+
+  // Show waiting approval screen if user has no role
+  if (!hasRole) {
+    return <WaitingApproval />;
   }
 
   const handleOpenConditionsModal = (viewId: ViewId) => {
@@ -151,6 +163,10 @@ function App() {
             renderView={renderView}
             metadata={metadata}
             pageName={pageName}
+            adminPanelOpen={adminPanelOpen}
+            setAdminPanelOpen={setAdminPanelOpen}
+            userProfileOpen={userProfileOpen}
+            setUserProfileOpen={setUserProfileOpen}
           />
         </AutoRefreshProvider>
       </RefreshProvider>
@@ -170,6 +186,10 @@ function AppContent({
   renderView,
   metadata,
   pageName,
+  adminPanelOpen,
+  setAdminPanelOpen,
+  userProfileOpen,
+  setUserProfileOpen,
 }: {
   activeView: ViewId;
   setActiveView: (view: ViewId) => void;
@@ -182,6 +202,10 @@ function AppContent({
   renderView: () => JSX.Element;
   metadata: any;
   pageName: string;
+  adminPanelOpen: boolean;
+  setAdminPanelOpen: (open: boolean) => void;
+  userProfileOpen: boolean;
+  setUserProfileOpen: (open: boolean) => void;
 }) {
   const { toasts, removeToast } = useToast();
 
@@ -192,6 +216,8 @@ function AppContent({
         onMenuToggle={() => setSidebarOpen(!sidebarOpen)} 
         isMenuOpen={sidebarOpen}
         onNavigate={setActiveView}
+        onOpenAdminPanel={() => setAdminPanelOpen(true)}
+        onOpenUserProfile={() => setUserProfileOpen(true)}
       />
       <Sidebar 
         activeView={activeView} 
@@ -212,6 +238,34 @@ function AppContent({
         metadata={metadata}
         pageName={pageName}
       />
+      {/* Admin Panel Modal */}
+      {adminPanelOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 dark:bg-opacity-70 animate-fade-in transition-opacity duration-300 p-4 overflow-y-auto"
+          onClick={() => setAdminPanelOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto my-8 animate-scale-in transition-all duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <AdminPanel onClose={() => setAdminPanelOpen(false)} />
+          </div>
+        </div>
+      )}
+      {/* User Profile Modal */}
+      {userProfileOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 dark:bg-opacity-70 animate-fade-in transition-opacity duration-300 p-4 overflow-y-auto"
+          onClick={() => setUserProfileOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto my-8 animate-scale-in transition-all duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <UserProfile onClose={() => setUserProfileOpen(false)} />
+          </div>
+        </div>
+      )}
       <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>
   );

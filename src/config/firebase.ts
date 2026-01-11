@@ -1,6 +1,7 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFunctions, Functions } from 'firebase/functions';
 
 // Validate that all required environment variables are present
 const requiredEnvVars = {
@@ -60,6 +61,7 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
+let functions: Functions;
 
 try {
   // Validate API key format (Firebase API keys start with AIza)
@@ -70,6 +72,7 @@ try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+  functions = getFunctions(app);
   console.log('✅ Firebase initialized successfully');
   console.log('📍 Firebase Project ID:', firebaseConfig.projectId);
 } catch (error) {
@@ -115,6 +118,6 @@ try {
   );
 }
 
-export { auth, db };
+export { auth, db, functions };
 export default app;
 

@@ -348,6 +348,13 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
     return isNaN(rr1) || !isFinite(rr1) ? null : rr1;
   }, []);
 
+  // Calculate RR2 helper
+  const calculateRR2 = useCallback((entry2: number, exit2: number): number | null => {
+    if (!entry2 || !exit2 || entry2 === 0) return null;
+    const rr2 = ((exit2 - entry2) / entry2) * 100;
+    return isNaN(rr2) || !isFinite(rr2) ? null : rr2;
+  }, []);
+
   // Get Price from BenjaminGrahamData
   const getPriceFromBenjaminGraham = useCallback((ticker: string, companyName: string): number | null => {
     const match = benjaminGrahamData.find(
@@ -377,10 +384,37 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
     return entry1 > 0 && price !== null && price > 0 && price <= entry1 * PRICE_TOLERANCE_GREEN;
   }, [getEntryExitValue, getPriceFromBenjaminGraham]);
 
-  // Check if TheoEntry should show "B"
+  // Check if RR2 is green for TheoEntry (RR2 > 60% and Price ≤ Entry2 * 1.05)
+  const isRR2GreenForTheoEntry = useCallback((ticker: string, companyName: string): boolean => {
+    const entryExitValues = getEntryExitValue(ticker, companyName);
+    if (!entryExitValues) return false;
+    const entry2 = entryExitValues.entry2 || 0;
+    const exit2 = entryExitValues.exit2 || 0;
+    const price = getPriceFromBenjaminGraham(ticker, companyName);
+    const rr2 = calculateRR2(entry2, exit2);
+    // RR2 is green for TheoEntry when: RR2 > 60%, Price > 0, Entry2 > 0, Price ≤ Entry2 * 1.05
+    return rr2 !== null && rr2 > RR1_GREEN_THRESHOLD_PERCENT && price !== null && price > 0 && entry2 > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN;
+  }, [getEntryExitValue, getPriceFromBenjaminGraham, calculateRR2]);
+
+  // Check if Entry2 is green
+  const isEntry2Green = useCallback((ticker: string, companyName: string): boolean => {
+    const entryExitValues = getEntryExitValue(ticker, companyName);
+    if (!entryExitValues) return false;
+    const entry2 = entryExitValues.entry2 || 0;
+    const price = getPriceFromBenjaminGraham(ticker, companyName);
+    return entry2 > 0 && price !== null && price > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN;
+  }, [getEntryExitValue, getPriceFromBenjaminGraham]);
+
+  // Check if TheoEntry should show "B" (either RR1+Entry1 OR RR2+Entry2 are green)
   const isTheoEntryGreen = useCallback((ticker: string, companyName: string): boolean => {
-    return isRR1Green(ticker, companyName) && isEntry1Green(ticker, companyName);
-  }, [isRR1Green, isEntry1Green]);
+    // RR1 path: RR1 is green AND Entry1 is green
+    const rr1Path = isRR1Green(ticker, companyName) && isEntry1Green(ticker, companyName);
+    
+    // RR2 path: RR2 > 60% AND Entry2 is green
+    const rr2Path = isRR2GreenForTheoEntry(ticker, companyName) && isEntry2Green(ticker, companyName);
+    
+    return rr1Path || rr2Path;
+  }, [isRR1Green, isEntry1Green, isRR2GreenForTheoEntry, isEntry2Green]);
 
   // Custom header renderer with ColumnTooltip
   const renderHeader = useCallback((props: HeaderRenderProps) => {

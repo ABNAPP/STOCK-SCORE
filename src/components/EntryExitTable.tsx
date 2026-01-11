@@ -5,6 +5,7 @@ import ColumnTooltip from './ColumnTooltip';
 import { getColumnMetadata } from '../config/tableMetadata';
 import { FilterConfig } from './AdvancedFilters';
 import { useEntryExitValues } from '../contexts/EntryExitContext';
+import { useUserRole } from '../hooks/useUserRole';
 import { DATE_NEAR_OLD_THRESHOLD_DAYS } from '../config/constants';
 
 interface EntryExitTableProps {
@@ -76,6 +77,7 @@ const ENTRY_EXIT_FILTERS: FilterConfig[] = [
 
 export default function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
   const { getEntryExitValue, getFieldValue, setFieldValue, commitField, initializeFromData } = useEntryExitValues();
+  const { isEditor } = useUserRole();
 
   // Initialize entry/exit values from data
   useEffect(() => {
@@ -217,6 +219,9 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
       case 'ticker':
         return <span className="text-gray-600 dark:text-gray-300">{item.ticker}</span>;
       case 'currency':
+        if (!isEditor) {
+          return <span className="text-gray-900 dark:text-gray-100">{values.currency || 'USD'}</span>;
+        }
         return (
           <select
             value={values.currency || 'USD'}
@@ -233,6 +238,9 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
           </select>
         );
       case 'entry1':
+        if (!isEditor) {
+          return <span className="text-gray-900 dark:text-gray-100">{values.entry1 || '-'}</span>;
+        }
         return (
           <input
             type="number"
@@ -247,6 +255,9 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
           />
         );
       case 'entry2':
+        if (!isEditor) {
+          return <span className="text-gray-900 dark:text-gray-100">{values.entry2 || '-'}</span>;
+        }
         return (
           <input
             type="number"
@@ -261,6 +272,9 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
           />
         );
       case 'exit1':
+        if (!isEditor) {
+          return <span className="text-gray-900 dark:text-gray-100">{values.exit1 || '-'}</span>;
+        }
         return (
           <input
             type="number"
@@ -275,6 +289,9 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
           />
         );
       case 'exit2':
+        if (!isEditor) {
+          return <span className="text-gray-900 dark:text-gray-100">{values.exit2 || '-'}</span>;
+        }
         return (
           <input
             type="number"
@@ -307,7 +324,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
       default:
         return null;
     }
-  }, [getFieldValue, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld]);
+  }, [getFieldValue, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld, isEditor]);
 
   // Render mobile card with expandable view
   const renderMobileCard = useCallback((item: EntryExitData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
@@ -334,19 +351,23 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Currency</span>
-              <select
-                value={values.currency || 'USD'}
-                onChange={(e) => handleCurrencyChange(item.ticker, item.companyName, e.target.value)}
-                onBlur={() => commitField(item.ticker, item.companyName, 'currency')}
-                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {CURRENCIES.map((currency) => (
-                  <option key={currency} value={currency}>
-                    {currency}
-                  </option>
-                ))}
-              </select>
+              {isEditor ? (
+                <select
+                  value={values.currency || 'USD'}
+                  onChange={(e) => handleCurrencyChange(item.ticker, item.companyName, e.target.value)}
+                  onBlur={() => commitField(item.ticker, item.companyName, 'currency')}
+                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {CURRENCIES.map((currency) => (
+                    <option key={currency} value={currency}>
+                      {currency}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="text-sm text-gray-900 dark:text-gray-100">{values.currency || 'USD'}</span>
+              )}
             </div>
           </div>
           <button
@@ -369,59 +390,75 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
           <div className="border-t border-gray-200 dark:border-gray-700 p-4 space-y-3 animate-fade-in">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY1</span>
-              <input
-                type="number"
-                value={values.entry1 || ''}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  handleEntryExitChange(item.ticker, item.companyName, 'entry1', value);
-                }}
-                onBlur={() => commitField(item.ticker, item.companyName, 'entry1')}
-                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-                onClick={(e) => e.stopPropagation()}
-              />
+              {isEditor ? (
+                <input
+                  type="number"
+                  value={values.entry1 || ''}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    handleEntryExitChange(item.ticker, item.companyName, 'entry1', value);
+                  }}
+                  onBlur={() => commitField(item.ticker, item.companyName, 'entry1')}
+                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span className="text-sm text-gray-900 dark:text-gray-100">{values.entry1 || '-'}</span>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY2</span>
-              <input
-                type="number"
-                value={values.entry2 || ''}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  handleEntryExitChange(item.ticker, item.companyName, 'entry2', value);
-                }}
-                onBlur={() => commitField(item.ticker, item.companyName, 'entry2')}
-                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-                onClick={(e) => e.stopPropagation()}
-              />
+              {isEditor ? (
+                <input
+                  type="number"
+                  value={values.entry2 || ''}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    handleEntryExitChange(item.ticker, item.companyName, 'entry2', value);
+                  }}
+                  onBlur={() => commitField(item.ticker, item.companyName, 'entry2')}
+                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span className="text-sm text-gray-900 dark:text-gray-100">{values.entry2 || '-'}</span>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT1</span>
-              <input
-                type="number"
-                value={values.exit1 || ''}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  handleEntryExitChange(item.ticker, item.companyName, 'exit1', value);
-                }}
-                onBlur={() => commitField(item.ticker, item.companyName, 'exit1')}
-                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-                onClick={(e) => e.stopPropagation()}
-              />
+              {isEditor ? (
+                <input
+                  type="number"
+                  value={values.exit1 || ''}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    handleEntryExitChange(item.ticker, item.companyName, 'exit1', value);
+                  }}
+                  onBlur={() => commitField(item.ticker, item.companyName, 'exit1')}
+                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span className="text-sm text-gray-900 dark:text-gray-100">{values.exit1 || '-'}</span>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT2</span>
-              <input
-                type="number"
-                value={values.exit2 || ''}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  handleEntryExitChange(item.ticker, item.companyName, 'exit2', value);
-                }}
-                onBlur={() => commitField(item.ticker, item.companyName, 'exit2')}
-                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-                onClick={(e) => e.stopPropagation()}
-              />
+              {isEditor ? (
+                <input
+                  type="number"
+                  value={values.exit2 || ''}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    handleEntryExitChange(item.ticker, item.companyName, 'exit2', value);
+                  }}
+                  onBlur={() => commitField(item.ticker, item.companyName, 'exit2')}
+                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span className="text-sm text-gray-900 dark:text-gray-100">{values.exit2 || '-'}</span>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date of Update</span>
@@ -443,7 +480,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
         )}
       </div>
     );
-  }, [getEntryExitValue, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld]);
+  }, [getEntryExitValue, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld, isEditor]);
 
   return (
     <BaseTable<EntryExitData>

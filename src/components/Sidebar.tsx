@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ViewId, NavigationSection } from '../types/navigation';
 import ConditionsSidebar from './ConditionsSidebar';
+import { useUserRole } from '../hooks/useUserRole';
 
 interface SidebarProps {
   activeView: ViewId;
@@ -11,7 +12,7 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-const getNavigationSections = (t: (key: string) => string): NavigationSection[] => [
+const getAllNavigationSections = (t: (key: string) => string): NavigationSection[] => [
   {
     id: 'score',
     label: t('navigation.score'),
@@ -58,7 +59,19 @@ const getNavigationSections = (t: (key: string) => string): NavigationSection[] 
 
 export default function Sidebar({ activeView, onViewChange, onOpenConditionsModal, isOpen, onClose }: SidebarProps) {
   const { t } = useTranslation();
-  const navigationSections = getNavigationSections(t);
+  const { isAdmin } = useUserRole();
+  
+  // Filter navigation sections based on user role
+  const navigationSections = useMemo(() => {
+    const allSections = getAllNavigationSections(t);
+    // Hide threshold-industry for non-admin users
+    return allSections.filter(section => {
+      if (section.id === 'threshold-industry') {
+        return isAdmin;
+      }
+      return true;
+    });
+  }, [t, isAdmin]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(['score'])
   );

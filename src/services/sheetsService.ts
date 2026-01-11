@@ -1194,9 +1194,8 @@ export async function fetchScoreBoardData(
              cashSdebtStr.trim().toUpperCase() === 'INF' ||
              cashSdebtStr.trim().toUpperCase() === '∞');
           
-          // Get TB/Share and Price for (TB/S)/Price calculation
-          const tbShareStr = getValueAllowZero(['TB/Share', 'TB/Share', 'tb/share', 'TB/SHARE'], row);
-          const priceStr = getValueAllowZero(['Price', 'price', 'PRICE'], row);
+          // Get (TB/S)/Price directly from Dashboard sheet
+          const tbSPriceStr = getValueAllowZero(['(TB/S)/Price', '(TB/S)/Price', '(tb/s)/price', '(TB/S)/PRICE'], row);
           
           const pe1Str = getValueAllowZero(['P/E1', 'P/E 1', 'pe1', 'PE1'], row);
           const pe2Str = getValueAllowZero(['P/E2', 'P/E 2', 'pe2', 'PE2'], row);
@@ -1217,13 +1216,8 @@ export async function fetchScoreBoardData(
           const currentRatio = parseNumericValueNullable(currentRatioStr);
           const cashSdebt = parseNumericValueNullable(cashSdebtStr);
           
-          // Calculate (TB/Share) / Price
-          const tbShare = parseNumericValueNullable(tbShareStr);
-          const price = parseNumericValueNullable(priceStr);
-          let tbSPrice: number | null = null;
-          if (tbShare !== null && price !== null && price !== 0 && isFinite(price) && isFinite(tbShare)) {
-            tbSPrice = tbShare / price;
-          }
+          // Parse (TB/S)/Price directly from column
+          const tbSPrice = parseNumericValueNullable(tbSPriceStr);
           
           // Calculate P/E1 INDUSTRY (procentuell skillnad)
           const pe1 = parseNumericValueNullable(pe1Str);
@@ -1312,9 +1306,8 @@ export async function fetchScoreBoardData(
                cashSdebtStr.trim().toUpperCase() === 'INF' ||
                cashSdebtStr.trim().toUpperCase() === '∞');
             
-            // Get TB/Share and Price for (TB/S)/Price calculation
-            const tbShareStr = getValueAllowZero(['TB/Share', 'TB/Share', 'tb/share', 'TB/SHARE'], row);
-            const priceStr = getValueAllowZero(['Price', 'price', 'PRICE'], row);
+            // Get (TB/S)/Price directly from Dashboard sheet
+            const tbSPriceStr = getValueAllowZero(['(TB/S)/Price', '(TB/S)/Price', '(tb/s)/price', '(TB/S)/PRICE'], row);
             
             const pe1Str = getValueAllowZero(['P/E1', 'P/E 1', 'pe1', 'PE1'], row);
             const pe2Str = getValueAllowZero(['P/E2', 'P/E 2', 'pe2', 'PE2'], row);
@@ -1335,13 +1328,8 @@ export async function fetchScoreBoardData(
             const currentRatio = parseNumericValueNullable(currentRatioStr);
             const cashSdebt = parseNumericValueNullable(cashSdebtStr);
             
-            // Calculate (TB/Share) / Price
-            const tbShare = parseNumericValueNullable(tbShareStr);
-            const price = parseNumericValueNullable(priceStr);
-            let tbSPrice: number | null = null;
-            if (tbShare !== null && price !== null && price !== 0 && isFinite(price) && isFinite(tbShare)) {
-              tbSPrice = tbShare / price;
-            }
+            // Parse (TB/S)/Price directly from column
+            const tbSPrice = parseNumericValueNullable(tbSPriceStr);
             
             // Calculate P/E1 INDUSTRY (procentuell skillnad)
             const pe1 = parseNumericValueNullable(pe1Str);
