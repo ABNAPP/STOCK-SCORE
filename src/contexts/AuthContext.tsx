@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 
-export type UserRole = 'viewer' | 'editor' | 'admin' | null;
+export type UserRole = 'viewer1' | 'viewer2' | 'editor' | 'admin' | null;
 
 interface AuthContextType {
   currentUser: User | null;
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const tokenResult = await getIdTokenResult(user, true); // Force refresh to get latest claims
       const role = tokenResult.claims.role as string;
       
-      if (role === 'viewer' || role === 'editor' || role === 'admin') {
+      if (role === 'viewer1' || role === 'viewer2' || role === 'editor' || role === 'admin') {
         return role;
       }
       

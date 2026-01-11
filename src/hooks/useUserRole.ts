@@ -12,14 +12,16 @@ export function useUserRole() {
 
   const isAdmin = userRole === 'admin';
   const isEditor = userRole === 'editor' || isAdmin; // Admin has editor permissions too
-  const isViewer = userRole === 'viewer' || isEditor; // Editor and admin have viewer permissions
+  const isViewer1 = userRole === 'viewer1' || isEditor; // Editor and admin have viewer1 permissions
+  const isViewer2 = userRole === 'viewer2' || isViewer1; // Viewer1, editor and admin have viewer2 permissions
   const hasRole = userRole !== null;
 
   return {
     userRole,
     isAdmin,
     isEditor,
-    isViewer,
+    isViewer1,
+    isViewer2,
     hasRole,
     refreshUserRole,
   };

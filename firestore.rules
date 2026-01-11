@@ -17,9 +17,19 @@ service cloud.firestore {
       return getUserRole() == 'editor' || isAdmin();
     }
     
+    // Helper function to check if user is viewer1 or higher
+    function isViewer1() {
+      return getUserRole() == 'viewer1' || isEditor();
+    }
+    
+    // Helper function to check if user is viewer2 or higher
+    function isViewer2() {
+      return getUserRole() == 'viewer2' || isViewer1();
+    }
+    
     // Helper function to check if user has any role
     function hasRole() {
-      return getUserRole() == 'viewer' || getUserRole() == 'editor' || isAdmin();
+      return getUserRole() == 'viewer1' || getUserRole() == 'viewer2' || getUserRole() == 'editor' || isAdmin();
     }
     
     // Shared data - read access for all users with role, write access only for editor/admin
@@ -52,6 +62,9 @@ service cloud.firestore {
       
       // Users can read their own request
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own pending request
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid && resource.data.status == 'pending';
     }
     
     // Deny all other access by default

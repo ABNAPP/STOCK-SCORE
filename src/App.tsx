@@ -1,4 +1,4 @@
-import { useState, Suspense, lazy } from 'react';
+import { useState, Suspense, lazy, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Breadcrumbs from './components/Breadcrumbs';
@@ -30,8 +30,9 @@ const ThresholdIndustryView = lazy(() => import('./components/views/ThresholdInd
 
 function App() {
   const { currentUser } = useAuth();
-  const { hasRole } = useUserRole();
+  const { hasRole, userRole } = useUserRole();
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [activeView, setActiveView] = useState<ViewId>('score');
   const [conditionsModalOpen, setConditionsModalOpen] = useState(false);
   const [selectedViewForModal, setSelectedViewForModal] = useState<ViewId | null>(null);
@@ -48,6 +49,29 @@ function App() {
   if (!hasRole) {
     return <WaitingApproval />;
   }
+
+  // Redirect viewer2 users if they try to access unauthorized views
+  useEffect(() => {
+    if (userRole === 'viewer2') {
+      const allowedViews: ViewId[] = ['score', 'score-board'];
+      if (!allowedViews.includes(activeView)) {
+        setActiveView('score');
+        showToast(t('common.unauthorizedView') || 'Du har inte tillgång till denna vy', 'warning');
+      }
+    }
+  }, [activeView, userRole, showToast, t]);
+
+  const handleViewChange = (viewId: ViewId) => {
+    // Check if viewer2 is trying to access unauthorized view
+    if (userRole === 'viewer2') {
+      const allowedViews: ViewId[] = ['score', 'score-board'];
+      if (!allowedViews.includes(viewId)) {
+        showToast(t('common.unauthorizedView') || 'Du har inte tillgång till denna vy', 'warning');
+        return;
+      }
+    }
+    setActiveView(viewId);
+  };
 
   const handleOpenConditionsModal = (viewId: ViewId) => {
     setSelectedViewForModal(viewId);
@@ -153,7 +177,7 @@ function App() {
         <AutoRefreshProvider>
           <AppContent
             activeView={activeView}
-            setActiveView={setActiveView}
+            setActiveView={handleViewChange}
             sidebarOpen={sidebarOpen}
             setSidebarOpen={setSidebarOpen}
             conditionsModalOpen={conditionsModalOpen}

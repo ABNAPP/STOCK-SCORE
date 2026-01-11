@@ -47,7 +47,10 @@
     "underConstruction": "Denna vy är under konstruktion",
     "viewId": "View ID:",
     "close": "Stäng",
-    "loading": "Laddar..."
+    "loading": "Laddar...",
+    "cancel": "Avbryt",
+    "checking": "Kontrollerar status...",
+    "unauthorizedView": "Du har inte tillgång till denna vy"
   },
   "refresh": {
     "refreshAll": "Uppdatera allt",
@@ -164,13 +167,17 @@
     "cancel": "Avbryt",
     "requestedRole": "Begärd rättighet",
     "selectRole": "Välj önskad rättighet",
-    "roleViewer": "Endast läsrättighet",
+    "roleViewer1": "Visare 1 - Full tillgång",
+    "roleViewer2": "Visare 2 - Begränsad tillgång",
     "roleEditor": "Redigeringsrättighet",
-    "roleViewerDescription": "Du kan endast läsa data",
+    "roleViewer1Description": "Du kan se alla tabeller och data förutom Threshold INDUSTRY",
+    "roleViewer2Description": "Du kan endast se SCORE och SCORE BOARD tabeller",
     "roleEditorDescription": "Du kan läsa och redigera data (kräver admin-godkännande)"
   },
   "roles": {
     "viewer": "Läsrättighet",
+    "viewer1": "Visare 1",
+    "viewer2": "Visare 2",
     "editor": "Redigerare",
     "admin": "Administratör",
     "pending": "Väntande godkännande",
@@ -182,7 +189,8 @@
     "pendingRegistrations": "Väntande registreringar",
     "pendingUpgrades": "Väntande uppgraderingsbegäranden",
     "noPendingRequests": "Inga väntande begäranden",
-    "approveAsViewer": "Godkänn som läsare",
+    "approveAsViewer1": "Godkänn som Visare 1",
+    "approveAsViewer2": "Godkänn som Visare 2",
     "approveAsEditor": "Godkänn som redigerare",
     "deny": "Neka",
     "approve": "Godkänn",
@@ -212,7 +220,33 @@
   "waitingApproval": {
     "title": "Väntar på godkännande",
     "message": "Din registrering väntar på admin-godkännande. Du kommer att få tillgång till appen när admin har godkänt din begäran.",
-    "submessage": "Vänligen kontrollera din e-post för uppdateringar."
+    "submessage": "Vänligen kontrollera din e-post för uppdateringar.",
+    "withdrawRequest": "Dra tillbaka begäran",
+    "confirmWithdraw": "Bekräfta återkallelse",
+    "withdrawConfirmMessage": "Är du säker på att du vill dra tillbaka din begäran? Du kommer att loggas ut och kan registrera dig igen senare.",
+    "confirmWithdrawButton": "Ja, dra tillbaka",
+    "withdrawSuccess": "Begäran har dragits tillbaka",
+    "withdrawError": "Kunde inte dra tillbaka begäran",
+    "withdrawing": "Tar bort..."
+  },
+  "profile": {
+    "title": "Min profil",
+    "currentRole": "Din roll",
+    "requestUpgrade": "Begär redigeringsrättighet",
+    "upgradeRequested": "Din begäran väntar på admin-godkännande",
+    "upgradeRequestError": "Kunde inte skicka begäran",
+    "upgradeRequestSuccess": "Begäran skickad! Admin kommer att granska den.",
+    "requesting": "Skickar begäran...",
+    "noUpgradeAvailable": "Du har redan redigeringsrättighet eller admin-rättighet",
+    "deregister": "Avregistrera konto",
+    "deregisterTitle": "Avregistrera konto",
+    "deregisterWarning": "Om du avregistrerar ditt konto kommer det att tas bort permanent. Denna åtgärd kan inte ångras.",
+    "confirmDeregister": "Bekräfta avregistrering",
+    "confirmDeregisterMessage": "Är du säker på att du vill avregistrera ditt konto? Ditt konto och all data kommer att tas bort permanent. Denna åtgärd kan inte ångras.",
+    "confirmDeregisterButton": "Ja, avregistrera",
+    "deregisterSuccess": "Ditt konto har tagits bort",
+    "deregisterError": "Kunde inte ta bort kontot",
+    "deregistering": "Tar bort..."
   }
 }
 

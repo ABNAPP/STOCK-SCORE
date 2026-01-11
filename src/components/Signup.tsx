@@ -12,7 +12,7 @@ export default function Signup({ onSwitchToLogin }: SignupProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [requestedRole, setRequestedRole] = useState<RequestedRole>('viewer');
+  const [requestedRole, setRequestedRole] = useState<RequestedRole>('viewer1');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
@@ -124,17 +124,35 @@ export default function Signup({ onSwitchToLogin }: SignupProps) {
                 <input
                   type="radio"
                   name="role"
-                  value="viewer"
-                  checked={requestedRole === 'viewer'}
+                  value="viewer1"
+                  checked={requestedRole === 'viewer1'}
                   onChange={(e) => setRequestedRole(e.target.value as RequestedRole)}
                   className="mt-1 mr-3"
                 />
                 <div className="flex-1">
                   <div className="font-medium text-gray-900 dark:text-gray-100">
-                    {t('auth.roleViewer')}
+                    {t('auth.roleViewer1')}
                   </div>
                   <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {t('auth.roleViewerDescription')}
+                    {t('auth.roleViewer1Description')}
+                  </div>
+                </div>
+              </label>
+              <label className="flex items-start p-3 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <input
+                  type="radio"
+                  name="role"
+                  value="viewer2"
+                  checked={requestedRole === 'viewer2'}
+                  onChange={(e) => setRequestedRole(e.target.value as RequestedRole)}
+                  className="mt-1 mr-3"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                    {t('auth.roleViewer2')}
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {t('auth.roleViewer2Description')}
                   </div>
                 </div>
               </label>

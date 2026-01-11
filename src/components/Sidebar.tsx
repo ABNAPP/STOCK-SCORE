@@ -59,19 +59,27 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
 
 export default function Sidebar({ activeView, onViewChange, onOpenConditionsModal, isOpen, onClose }: SidebarProps) {
   const { t } = useTranslation();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, isEditor, isViewer1, userRole } = useUserRole();
   
   // Filter navigation sections based on user role
   const navigationSections = useMemo(() => {
     const allSections = getAllNavigationSections(t);
-    // Hide threshold-industry for non-admin users
-    return allSections.filter(section => {
-      if (section.id === 'threshold-industry') {
-        return isAdmin;
-      }
-      return true;
-    });
-  }, [t, isAdmin]);
+    
+    // Viewer2: Only show 'score' and 'score-board'
+    if (userRole === 'viewer2') {
+      return allSections.filter(section => 
+        section.id === 'score' || section.id === 'score-board'
+      );
+    }
+    
+    // Viewer1: Show everything except 'threshold-industry'
+    if (userRole === 'viewer1') {
+      return allSections.filter(section => section.id !== 'threshold-industry');
+    }
+    
+    // Editor and Admin: Show everything including 'threshold-industry'
+    return allSections;
+  }, [t, isAdmin, isEditor, isViewer1, userRole]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(['score'])
   );

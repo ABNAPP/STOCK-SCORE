@@ -14,6 +14,7 @@ import {
   where,
   getDocs,
   updateDoc,
+  deleteDoc,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -29,7 +30,7 @@ export type RequestType = 'initial_registration' | 'upgrade_request';
 export type RequestStatus = 'pending' | 'approved' | 'denied';
 
 // Request roles
-export type RequestedRole = 'viewer' | 'editor';
+export type RequestedRole = 'viewer1' | 'viewer2' | 'editor';
 
 // Pending Request interface
 export interface PendingRequest {
@@ -40,7 +41,7 @@ export interface PendingRequest {
   requestType: RequestType;
   status: RequestStatus;
   timestamp: any; // Firestore Timestamp or Date
-  approvedRole?: RequestedRole | 'admin';
+  approvedRole?: RequestedRole | 'admin' | 'viewer1' | 'viewer2';
   approvedAt?: any;
   approvedBy?: string;
   deniedAt?: any;
@@ -183,6 +184,38 @@ export async function updateRequestStatus(
     await updateDoc(docRef, updateData);
   } catch (error) {
     console.error('Error updating request status:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a pending request (for user to withdraw their request)
+ * Only allowed if the request is still pending
+ */
+export async function deletePendingRequest(userId: string): Promise<void> {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, userId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      throw new Error('Request not found');
+    }
+    
+    const requestData = docSnap.data() as PendingRequest;
+    
+    // Only allow deletion if request is pending
+    if (requestData.status !== 'pending') {
+      throw new Error('Can only withdraw pending requests');
+    }
+    
+    // Verify the request belongs to the user
+    if (requestData.userId !== userId) {
+      throw new Error('Unauthorized: Request does not belong to user');
+    }
+    
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.error('Error deleting pending request:', error);
     throw error;
   }
 }

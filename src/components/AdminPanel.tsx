@@ -70,7 +70,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
     return () => unsubscribe();
   }, [isAdmin, showToast, t]);
 
-  const handleApprove = useCallback(async (request: PendingRequest, role: 'viewer' | 'editor') => {
+  const handleApprove = useCallback(async (request: PendingRequest, role: 'viewer1' | 'viewer2' | 'editor') => {
     if (!currentUser || !isAdmin) return;
 
     const requestId = request.userId;
@@ -213,9 +213,13 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       <span className="font-medium">{t('admin.requestedRole')}:</span>{' '}
-                      {request.requestedRole === 'viewer' 
-                        ? t('roles.viewer')
-                        : t('roles.editor')}
+                      {request.requestedRole === 'viewer1' 
+                        ? t('roles.viewer1')
+                        : request.requestedRole === 'viewer2'
+                        ? t('roles.viewer2')
+                        : request.requestedRole === 'editor'
+                        ? t('roles.editor')
+                        : request.requestedRole}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                       {t('admin.timestamp')}: {formatDate(request.timestamp)}
@@ -225,11 +229,18 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
                 <div className="flex gap-2 justify-end">
                   <button
-                    onClick={() => handleApprove(request, 'viewer')}
+                    onClick={() => handleApprove(request, 'viewer1')}
                     disabled={isProcessing}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {isProcessing ? t('admin.approving') : t('admin.approveAsViewer')}
+                    {isProcessing ? t('admin.approving') : t('admin.approveAsViewer1')}
+                  </button>
+                  <button
+                    onClick={() => handleApprove(request, 'viewer2')}
+                    disabled={isProcessing}
+                    className="px-4 py-2 text-sm font-medium text-white bg-cyan-600 rounded-md hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isProcessing ? t('admin.approving') : t('admin.approveAsViewer2')}
                   </button>
                   <button
                     onClick={() => handleApprove(request, 'editor')}
