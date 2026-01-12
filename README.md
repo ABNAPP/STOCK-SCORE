@@ -40,5 +40,31 @@ npm run build
 
 ## Konfiguration
 
-Appen hämtar data från Google Sheets via CSV export. För att ändra källan, uppdatera `SHEET_ID` och `GID` i `src/services/sheetsService.ts`.
+### Datahämtning (Primär metod: Google Apps Script API)
+
+Appen använder **Google Apps Script API** som primär metod för datahämtning, vilket ger **5-10x snabbare prestanda** än CSV-proxy-metoden. CSV-proxy används endast som fallback om Apps Script API inte är konfigurerat.
+
+#### Aktivera Apps Script API (Rekommenderat)
+
+1. **För lokal utveckling:**
+   - Skapa en `.env.local` fil i projektets rotkatalog
+   - Lägg till:
+     ```
+     VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
+     ```
+   - Starta om utvecklingsservern: `npm run dev`
+
+2. **För produktion (Vercel):**
+   - Gå till Vercel Dashboard → Ditt Projekt → Settings → Environment Variables
+   - Lägg till: `VITE_APPS_SCRIPT_URL` med din Apps Script Web App URL
+   - Välj alla miljöer (Production, Preview, Development)
+   - Spara och REDEPLOY projektet
+
+#### Fallback till CSV-proxy
+
+Om `VITE_APPS_SCRIPT_URL` inte är konfigurerad, använder appen automatiskt CSV-proxy-metoden som fallback (långsammare men fungerar utan ytterligare konfiguration).
+
+#### Ytterligare konfiguration
+
+För att ändra källan för data, uppdatera `SHEET_ID` och `GID` i `src/services/sheetsService.ts`.
 

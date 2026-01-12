@@ -21,8 +21,8 @@ export const CACHE_KEYS = {
   THRESHOLD_INDUSTRY: 'cache:thresholdIndustry',
 } as const;
 
-// Default TTL: 5 minutes (300000 ms)
-export const DEFAULT_TTL = 5 * 60 * 1000;
+// Default TTL: 20 minutes (1200000 ms)
+export const DEFAULT_TTL = 20 * 60 * 1000;
 
 /**
  * Get cached data if it exists and is not expired

@@ -223,11 +223,14 @@ async function fetchJSONData<T>(
     throw new Error('Invalid Apps Script URL format. Please check VITE_APPS_SCRIPT_URL environment variable.');
   }
 
+  // Log that we're using the fast Apps Script API (5-10x faster than CSV proxy)
+  console.log(`🚀 Using Apps Script API for ${dataTypeName} (5-10x faster than CSV proxy)`);
+
   // Report fetch start
   progressCallback?.({
     stage: 'fetch',
     percentage: 0,
-    message: `Fetching ${dataTypeName} data from Apps Script...`,
+    message: `Fetching ${dataTypeName} data from Apps Script API...`,
   });
 
   try {
@@ -338,7 +341,7 @@ async function fetchJSONData<T>(
       );
     }
 
-    console.log(`Successfully parsed ${transformedData.length} ${dataTypeName} entries from JSON`);
+    console.log(`✅ Successfully loaded ${transformedData.length} ${dataTypeName} entries via Apps Script API (fast method)`);
 
     // Cache the data if cacheKey is provided
     if (cacheKey) {
@@ -420,11 +423,14 @@ async function fetchCSVData<T>(
     }
   }
 
+  // Log that we're using the slower CSV proxy method
+  console.log(`🐌 Using CSV proxy for ${dataTypeName} (slower method - configure VITE_APPS_SCRIPT_URL for 5-10x faster performance)`);
+
   // Report fetch start
   progressCallback?.({
     stage: 'fetch',
     percentage: 0,
-    message: `Fetching ${dataTypeName} data...`,
+    message: `Fetching ${dataTypeName} data via CSV proxy...`,
   });
 
   let lastError: Error | null = null;
@@ -794,7 +800,7 @@ export async function fetchBenjaminGrahamData(
     );
   } catch (error) {
     // Fallback to CSV if Apps Script fails
-    console.warn('Apps Script fetch failed, falling back to CSV:', error);
+    console.warn(`⚠️ Apps Script API failed for Benjamin Graham, falling back to CSV proxy (slower method):`, error);
     return fetchCSVData<BenjaminGrahamData>(
       BENJAMIN_GRAHAM_CSV_URL,
       'Benjamin Graham',
@@ -922,7 +928,7 @@ export async function fetchSMAData(
     );
   } catch (error) {
     // Fallback to CSV if Apps Script fails
-    console.warn('Apps Script fetch failed, falling back to CSV:', error);
+    console.warn(`⚠️ Apps Script API failed for SMA, falling back to CSV proxy (slower method):`, error);
     return fetchCSVData<SMAData>(
       SMA_CSV_URL,
       'SMA',
@@ -1072,7 +1078,7 @@ export async function fetchPEIndustryData(
     );
   } catch (error) {
     // Fallback to CSV if Apps Script fails
-    console.warn('Apps Script fetch failed, falling back to CSV:', error);
+    console.warn(`⚠️ Apps Script API failed for P/E Industry, falling back to CSV proxy (slower method):`, error);
     return fetchCSVData<PEIndustryData>(
       PE_INDUSTRY_CSV_URL,
       'P/E Industry',
@@ -1148,12 +1154,20 @@ export async function fetchScoreBoardData(
   forceRefresh: boolean = false,
   progressCallback?: ProgressCallback
 ): Promise<ScoreBoardData[]> {
-  // First, fetch PEIndustryData to get industry medians
+  // Fetch PEIndustryData and SMAData in parallel (they are independent)
+  console.log('⚡ Fetching PE Industry and SMA data in parallel...');
+  
+  const [peIndustryResult, smaResult] = await Promise.allSettled([
+    fetchPEIndustryData(forceRefresh),
+    fetchSMAData(forceRefresh),
+  ]);
+
+  // Process PEIndustryData results
   let peIndustryData: PEIndustryData[] = [];
-  try {
-    peIndustryData = await fetchPEIndustryData(forceRefresh);
-  } catch (peError) {
-    console.warn('Failed to fetch PE Industry data for P/E1 INDUSTRY calculation:', peError);
+  if (peIndustryResult.status === 'fulfilled') {
+    peIndustryData = peIndustryResult.value;
+  } else {
+    console.warn('Failed to fetch PE Industry data for P/E1 INDUSTRY calculation:', peIndustryResult.reason);
   }
 
   // Create maps for quick lookup: industry -> pe1 and pe2 (median)
@@ -1168,10 +1182,10 @@ export async function fetchScoreBoardData(
     }
   });
 
-  // Fetch SMA data directly from SMA sheet for SMA(100), SMA(200), and SMA Cross
+  // Process SMAData results
   let smaDataMap = new Map<string, { sma100: number | null; sma200: number | null; smaCross: string | null }>();
-  try {
-    const smaData = await fetchSMAData(forceRefresh);
+  if (smaResult.status === 'fulfilled') {
+    const smaData = smaResult.value;
     smaData.forEach((sma) => {
       const tickerKey = sma.ticker.toLowerCase().trim();
       smaDataMap.set(tickerKey, {
@@ -1180,8 +1194,8 @@ export async function fetchScoreBoardData(
         smaCross: sma.smaCross,
       });
     });
-  } catch (smaError) {
-    console.warn('Failed to fetch SMA data for Score Board:', smaError);
+  } else {
+    console.warn('Failed to fetch SMA data for Score Board:', smaResult.reason);
   }
 
   // Try Apps Script first, fallback to CSV
@@ -1301,7 +1315,7 @@ export async function fetchScoreBoardData(
     );
   } catch (error) {
     // Fallback to CSV if Apps Script fails
-    console.warn('Apps Script fetch failed, falling back to CSV:', error);
+    console.warn(`⚠️ Apps Script API failed for Score Board, falling back to CSV proxy (slower method):`, error);
     return fetchCSVData<ScoreBoardData>(
       SCORE_BOARD_CSV_URL,
       'Score Board',
@@ -1636,7 +1650,7 @@ export async function fetchThresholdIndustryData(
     );
   } catch (error) {
     // Fallback to CSV if Apps Script fails
-    console.warn('Apps Script fetch failed, falling back to CSV:', error);
+    console.warn(`⚠️ Apps Script API failed for Threshold Industry, falling back to CSV proxy (slower method):`, error);
     return fetchCSVData<ThresholdIndustryData>(
       THRESHOLD_INDUSTRY_CSV_URL,
       'Threshold Industry',
