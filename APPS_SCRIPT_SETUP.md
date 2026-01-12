@@ -1,12 +1,22 @@
 # Apps Script Setup Guide
 
-Denna guide visar hur du skapar en Google Apps Script för att ersätta CORS proxy-lösningen med en direkt JSON API.
+Denna guide visar hur du skapar en Google Apps Script för att ersätta CORS proxy-lösningen med en direkt JSON API. Denna guide inkluderar även delta-sync funktionalitet för effektivare datauppdateringar.
+
+## Delta Sync Support
+
+Appen stödjer nu delta-sync för effektivare datauppdateringar:
+- Första gången: Hämtar full snapshot av all data
+- Därefter: Hämtar endast ändringar (delta) var 15-30 minuter
+- Uppdaterar UI inkrementellt utan full sid-reload
+
+Delta-sync är aktiverat som standard. För att inaktivera, sätt `VITE_DELTA_SYNC_ENABLED=false` i environment variables.
 
 ## Steg 1: Skapa Apps Script
 
 1. Öppna ditt Google Sheet: https://docs.google.com/spreadsheets/d/1KOOSLJVGdDZHBV1MUmb4D9oVIKUJj5TIgYCerjkWYcE
 2. Gå till **Extensions** → **Apps Script**
-3. Ersätt all kod med följande:
+3. **För delta-sync support**: Kopiera koden från `apps-script/Code.gs` i detta projekt
+4. **Alternativt (endast grundläggande API)**: Ersätt all kod med följande:
 
 ```javascript
 function doGet(e) {
@@ -40,7 +50,32 @@ function doGet(e) {
 }
 ```
 
-## Steg 2: Deploya som Web App
+## Steg 2: Konfigurera API Token (Valfritt, rekommenderat för delta-sync)
+
+För delta-sync API-token autentisering (valfritt men rekommenderat):
+
+1. I Apps Script, gå till **Project Settings** (kugghjulsikonen)
+2. Klicka på **Script properties**
+3. Lägg till en ny property:
+   - **Property**: `API_TOKEN`
+   - **Value**: Välj en säker token (t.ex. generera med `openssl rand -hex 32`)
+4. Klicka **Save**
+5. **Viktigt**: Kopiera denna token - du behöver den för frontend-konfiguration
+
+**Notera**: Om ingen token sätts, tillåts alla requests (för enklare setup, men mindre säkert).
+
+## Steg 3: Installera onEdit Trigger (Endast för delta-sync)
+
+Om du använder delta-sync-koden:
+
+1. I Apps Script, välj funktionen `installTriggers` i dropdown-menyn
+2. Klicka på **Run** (kör)
+3. **Notera**: `onEdit` är en "simple trigger" som installeras automatiskt av Google Sheets - ingen manuell installation behövs
+4. Varje gång data ändras i DashBoard eller SMA-ark, loggas ändringen automatiskt i ChangeLog-arket
+
+**ChangeLog-ark**: Skapas automatiskt av Apps Script-koden. Detta ark trackar alla ändringar i övervakade sheets.
+
+## Steg 4: Deploya som Web App
 
 1. Klicka på **Deploy** → **New deployment**
 2. Välj typ: **Web app** (INTE "Library"!)
@@ -54,14 +89,22 @@ function doGet(e) {
    - ⚠️ **INTE** `/library/...` - det är för libraries, inte Web Apps
    - ✅ Måste vara `/s/.../exec` format
 
-## Steg 3: Konfigurera i appen
+## Steg 5: Konfigurera i appen
 
 ### För lokal utveckling:
 
 Skapa en `.env.local` fil i projektets root:
 ```
 VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec
+VITE_DELTA_SYNC_ENABLED=true
+VITE_DELTA_SYNC_POLL_MINUTES=15
+VITE_APPS_SCRIPT_TOKEN=your-token-here
 ```
+
+**Delta-sync inställningar** (valfria):
+- `VITE_DELTA_SYNC_ENABLED`: Aktivera/inaktivera delta-sync (default: `true`)
+- `VITE_DELTA_SYNC_POLL_MINUTES`: Poll-intervall i minuter (default: `15`)
+- `VITE_APPS_SCRIPT_TOKEN`: API-token för autentisering (valfritt)
 
 ### För Vercel deployment (VIKTIGT!):
 
@@ -73,12 +116,16 @@ VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/AKfycby519iyhursADbzQUTT
    - **Key**: `VITE_APPS_SCRIPT_URL`
    - **Value**: `https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec`
    - **Environment**: Välj alla (Production, Preview, Development)
+6. (Valfritt) Lägg till delta-sync inställningar:
+   - **Key**: `VITE_DELTA_SYNC_ENABLED`, **Value**: `true`
+   - **Key**: `VITE_DELTA_SYNC_POLL_MINUTES`, **Value**: `15`
+   - **Key**: `VITE_APPS_SCRIPT_TOKEN`, **Value**: `your-token-here` (samma token som i Apps Script)
 6. Klicka **Save**
 7. **VIKTIGT**: Du måste **redeploya** projektet efter att ha lagt till environment variables!
    - Gå till **Deployments** → Välj senaste deployment → **Redeploy**
    - Eller pusha en ny commit till GitHub (detta triggar automatisk redeploy)
 
-## Steg 4: Testa
+## Steg 6: Testa
 
 1. Starta appen: `npm run dev`
 2. Öppna Developer Tools → Network tab
@@ -138,3 +185,7 @@ För att kontrollera om Apps Script URL är korrekt konfigurerad:
    https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec?sheet=DashBoard
    ```
    Du bör se JSON-data direkt. Om du ser en inloggningssida eller fel, kontrollera deployment-inställningarna.
+
+4. **Testa delta-sync endpoints** (om delta-sync är aktiverat):
+   - Snapshot: `?action=snapshot&sheet=DashBoard&token=your-token`
+   - Changes: `?action=changes&sheet=DashBoard&since=0&token=your-token`

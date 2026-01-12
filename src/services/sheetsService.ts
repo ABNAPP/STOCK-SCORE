@@ -69,7 +69,7 @@ const FETCH_TIMEOUT = 30000;
 
 // Type for row data (compatible with both CSV and JSON)
 // Values can be string, number, or undefined
-type DataRow = Record<string, string | number | undefined>;
+export type DataRow = Record<string, string | number | undefined>;
 
 /**
  * Validates CSV text to ensure it's not HTML or empty
@@ -638,7 +638,7 @@ const BENJAMIN_GRAHAM_GID = '1180885830';
 const BENJAMIN_GRAHAM_CSV_URL = `https://docs.google.com/spreadsheets/d/${BENJAMIN_GRAHAM_SHEET_ID}/export?format=csv&gid=${BENJAMIN_GRAHAM_GID}`;
 
 // Helper function to get value from row with case-insensitive matching
-function getValue(possibleNames: string[], row: DataRow): string {
+export function getValue(possibleNames: string[], row: DataRow): string {
   for (const name of possibleNames) {
     // Try exact match first
     if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
@@ -656,14 +656,14 @@ function getValue(possibleNames: string[], row: DataRow): string {
 }
 
 // Helper function to validate values (filter out #N/A, etc.)
-function isValidValue(value: string): boolean {
+export function isValidValue(value: string): boolean {
   if (!value) return false;
   const normalized = value.trim().toUpperCase();
   return normalized !== '#N/A' && normalized !== 'N/A' && normalized !== '#NUM!' && normalized !== '#VALUE!' && normalized !== '#DIV/0!' && normalized !== '#REF!';
 }
 
 // Helper function to parse numeric values that can distinguish between invalid (null) and actual zero (0)
-function parseNumericValueNullable(valueStr: string): number | null {
+export function parseNumericValueNullable(valueStr: string): number | null {
   if (!isValidValue(valueStr)) return null;
   
   // Remove common prefixes and clean the string
@@ -681,7 +681,7 @@ function parseNumericValueNullable(valueStr: string): number | null {
 }
 
 // Helper function to get value from row with case-insensitive matching (allows 0 values)
-function getValueAllowZero(possibleNames: string[], row: DataRow): string {
+export function getValueAllowZero(possibleNames: string[], row: DataRow): string {
   for (const name of possibleNames) {
     // Try exact match first
     if (row[name] !== undefined && row[name] !== null) {
@@ -720,7 +720,7 @@ function getValueAllowZero(possibleNames: string[], row: DataRow): string {
 }
 
 // Helper function to parse percentage values that can distinguish between invalid (null) and actual zero (0)
-function parsePercentageValueNullable(valueStr: string): number | null {
+export function parsePercentageValueNullable(valueStr: string): number | null {
   if (!isValidValue(valueStr)) return null;
   
   // Remove % sign and clean the string

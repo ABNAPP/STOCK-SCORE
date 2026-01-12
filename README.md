@@ -40,9 +40,16 @@ npm run build
 
 ## Konfiguration
 
-### Datahämtning (Primär metod: Google Apps Script API)
+### Datahämtning (Primär metod: Google Apps Script API med Delta Sync)
 
 Appen använder **Google Apps Script API** som primär metod för datahämtning, vilket ger **5-10x snabbare prestanda** än CSV-proxy-metoden. CSV-proxy används endast som fallback om Apps Script API inte är konfigurerat.
+
+Appen stödjer nu **Delta Sync** för effektivare datauppdateringar:
+- Första gången: Hämtar full snapshot av all data
+- Därefter: Hämtar endast ändringar (delta) var 15-30 minuter
+- Uppdaterar UI inkrementellt utan full sid-reload
+
+Delta-sync är aktiverat som standard. Se `APPS_SCRIPT_SETUP.md` för detaljerad setup-instruktioner.
 
 #### Aktivera Apps Script API (Rekommenderat)
 
@@ -51,6 +58,8 @@ Appen använder **Google Apps Script API** som primär metod för datahämtning,
    - Lägg till:
      ```
      VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
+     VITE_DELTA_SYNC_ENABLED=true
+     VITE_DELTA_SYNC_POLL_MINUTES=15
      ```
    - Starta om utvecklingsservern: `npm run dev`
 
