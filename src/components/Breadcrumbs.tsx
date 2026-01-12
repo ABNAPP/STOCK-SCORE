@@ -69,35 +69,6 @@ export default function Breadcrumbs({ activeView, onViewChange }: BreadcrumbsPro
       return breadcrumbs;
     }
 
-    if (activeView === 'teknikal-sma-100') {
-      breadcrumbs.push({
-        id: 'teknikal-sma-100',
-        label: t('navigation.sma100'),
-      });
-      return breadcrumbs;
-    }
-
-    // Handle other teknikal views
-    if (activeView.startsWith('teknikal-')) {
-      if (activeView === 'teknikal-sma-200') {
-        breadcrumbs.push({
-          id: 'teknikal-sma-200',
-          label: t('navigation.sma200'),
-        });
-      } else if (activeView === 'teknikal-sma-cross') {
-        breadcrumbs.push({
-          id: 'teknikal-sma-cross',
-          label: t('navigation.smaCross'),
-        });
-      } else if (activeView === 'teknikal-tachart') {
-        breadcrumbs.push({
-          id: 'teknikal-tachart',
-          label: t('navigation.tachart'),
-        });
-      }
-      return breadcrumbs;
-    }
-
     // Handle other entry-exit views
     if (activeView.startsWith('entry-exit-')) {
       const viewLabels: Partial<Record<ViewId, string>> = {

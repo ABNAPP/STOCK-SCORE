@@ -39,12 +39,6 @@ const getNavigationSections = (t: (key: string) => string): NavigationSection[] 
     collapsible: false,
   },
   {
-    id: 'teknikal-sma-100',
-    label: t('navigation.sma100'),
-    items: [{ id: 'teknikal-sma-100', label: t('navigation.sma100') }],
-    collapsible: false,
-  },
-  {
     id: 'threshold-industry',
     label: t('navigation.thresholdIndustry'),
     items: [{ id: 'threshold-industry', label: t('navigation.thresholdIndustry') }],
@@ -95,7 +89,6 @@ export default function ConditionsSidebar({ onOpenModal }: ConditionsSidebarProp
     if (viewId === 'entry-exit-benjamin-graham') return 'benjamin-graham';
     if (viewId === 'fundamental-pe-industry') return 'pe-industry';
     if (viewId === 'entry-exit-entry1') return 'entry-exit-entry1';
-    if (viewId === 'teknikal-sma-100') return 'sma-100';
     if (viewId === 'threshold-industry') return 'threshold-industry';
     return null;
   };

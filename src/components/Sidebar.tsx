@@ -44,12 +44,6 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
     collapsible: false,
   },
   {
-    id: 'teknikal-sma-100',
-    label: t('navigation.sma100'),
-    items: [{ id: 'teknikal-sma-100', label: t('navigation.sma100') }],
-    collapsible: false,
-  },
-  {
     id: 'threshold-industry',
     label: t('navigation.thresholdIndustry'),
     items: [{ id: 'threshold-industry', label: t('navigation.thresholdIndustry') }],

@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next';
 import { useMemo, lazy, Suspense, useEffect } from 'react';
 import { useScoreBoardData } from '../../hooks/useScoreBoardData';
 import { useThresholdIndustryData } from '../../hooks/useThresholdIndustryData';
-import { useSMAData } from '../../hooks/useSMAData';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
 import { EntryExitData, ScoreBoardData } from '../../types/stock';
 import ProgressIndicator from '../ProgressIndicator';
@@ -25,16 +24,15 @@ function ScoreViewInner() {
   const { t } = useTranslation();
   const { data: scoreBoardData, loading, error } = useScoreBoardData();
   const { data: thresholdData, loading: thresholdLoading } = useThresholdIndustryData();
-  const { data: smaData, loading: smaLoading } = useSMAData();
   const { data: benjaminGrahamData, loading: bgLoading } = useBenjaminGrahamData();
   const { initializeFromData, entryExitValues } = useEntryExitValues();
   
-  const isLoading = loading || thresholdLoading || smaLoading || bgLoading;
+  const isLoading = loading || thresholdLoading || bgLoading;
 
-  // Initialize EntryExitContext with SMAData (same as EntryExitTable)
+  // Initialize EntryExitContext with ScoreBoardData (same as EntryExitTable)
   useEffect(() => {
-    if (smaData && smaData.length > 0) {
-      const entryExitData: EntryExitData[] = smaData.map((item) => ({
+    if (scoreBoardData && scoreBoardData.length > 0) {
+      const entryExitData: EntryExitData[] = scoreBoardData.map((item) => ({
         companyName: item.companyName,
         ticker: item.ticker,
         currency: 'USD',
@@ -46,9 +44,10 @@ function ScoreViewInner() {
       }));
       initializeFromData(entryExitData);
     }
-  }, [smaData, initializeFromData]);
+  }, [scoreBoardData, initializeFromData]);
 
-  // Match SMA data and Price data with Score Board data based on ticker, then calculate scores
+  // Match Price data with Score Board data based on ticker, then calculate scores
+  // SMA data is already included in ScoreBoardData from fetchScoreBoardData
   const scoreData: ScoreData[] = useMemo(() => {
     if (!scoreBoardData || scoreBoardData.length === 0) return [];
 
@@ -61,31 +60,15 @@ function ScoreViewInner() {
       });
     }
 
-    // Create a map of SMA data by ticker (case-insensitive)
-    const smaMap = new Map<string, { sma100: number | null; sma200: number | null; smaCross: string | null }>();
-    if (smaData && smaData.length > 0) {
-      smaData.forEach(sma => {
-        const tickerKey = sma.ticker.toLowerCase().trim();
-        smaMap.set(tickerKey, {
-          sma100: sma.sma100,
-          sma200: sma.sma200,
-          smaCross: sma.smaCross,
-        });
-      });
-    }
-
-    // Match Score Board data with SMA data and Price data, then calculate scores
+    // Match Score Board data with Price data, then calculate scores
+    // SMA data (sma100, sma200, smaCross) is already included in ScoreBoardData
     return scoreBoardData.map(item => {
       const tickerKey = item.ticker.toLowerCase().trim();
-      const smaMatch = smaMap.get(tickerKey);
       const price = priceMap.get(tickerKey) ?? null;
       
-      // Create enhanced ScoreBoardData with SMA and price
+      // Create enhanced ScoreBoardData with price
       const enhancedData = {
         ...item,
-        sma100: smaMatch ? smaMatch.sma100 : null,
-        sma200: smaMatch ? smaMatch.sma200 : null,
-        smaCross: smaMatch ? smaMatch.smaCross : null,
         price: price,
       };
 
@@ -104,7 +87,7 @@ function ScoreViewInner() {
         scoreBoardData: enhancedData,
       };
     });
-  }, [scoreBoardData, smaData, benjaminGrahamData, thresholdData, entryExitValues]);
+  }, [scoreBoardData, benjaminGrahamData, thresholdData, entryExitValues]);
 
   return (
     <div className="h-full bg-gray-100 dark:bg-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6 flex flex-col transition-all duration-300 ease-in-out">

@@ -76,10 +76,9 @@ export function AutoRefreshProvider({ children }: AutoRefreshProviderProps) {
       const saved = localStorage.getItem(STORAGE_KEY_INTERVAL);
       if (saved !== null) {
         const parsed = parseInt(saved, 10);
-        // Validate that parsed value is a valid interval
+        // Validate that parsed value is a valid interval (MIN_15 removed from UI)
         const validIntervals = [
           AUTO_REFRESH_INTERVALS.OFF,
-          AUTO_REFRESH_INTERVALS.MIN_15,
           AUTO_REFRESH_INTERVALS.MIN_30,
           AUTO_REFRESH_INTERVALS.MIN_60,
         ];

@@ -1168,6 +1168,22 @@ export async function fetchScoreBoardData(
     }
   });
 
+  // Fetch SMA data directly from SMA sheet for SMA(100), SMA(200), and SMA Cross
+  let smaDataMap = new Map<string, { sma100: number | null; sma200: number | null; smaCross: string | null }>();
+  try {
+    const smaData = await fetchSMAData(forceRefresh);
+    smaData.forEach((sma) => {
+      const tickerKey = sma.ticker.toLowerCase().trim();
+      smaDataMap.set(tickerKey, {
+        sma100: sma.sma100,
+        sma200: sma.sma200,
+        smaCross: sma.smaCross,
+      });
+    });
+  } catch (smaError) {
+    console.warn('Failed to fetch SMA data for Score Board:', smaError);
+  }
+
   // Try Apps Script first, fallback to CSV
   try {
     return await fetchJSONData<ScoreBoardData>(
@@ -1247,6 +1263,10 @@ export async function fetchScoreBoardData(
             }
           }
 
+          // Match SMA(100), SMA(200), and SMA Cross from SMA sheet by ticker
+          const tickerKey = ticker.toLowerCase().trim();
+          const smaMatch = smaDataMap.get(tickerKey);
+
           return {
             companyName: companyName,
             ticker: ticker,
@@ -1264,9 +1284,9 @@ export async function fetchScoreBoardData(
             currentRatio: currentRatio,
             cashSdebt: cashSdebt,
             isCashSdebtDivZero: isCashSdebtDivZero || false,
-            sma100: null, // Will be populated later from SMA data
-            sma200: null, // Will be populated later from SMA data
-            smaCross: null, // Will be populated later from SMA data
+            sma100: smaMatch ? smaMatch.sma100 : null, // Directly from SMA sheet
+            sma200: smaMatch ? smaMatch.sma200 : null, // Directly from SMA sheet
+            smaCross: smaMatch ? smaMatch.smaCross : null, // Directly from SMA sheet
           };
         })
         .filter((data) => data !== null) as ScoreBoardData[];
@@ -1359,6 +1379,10 @@ export async function fetchScoreBoardData(
               }
             }
 
+            // Match SMA(100), SMA(200), and SMA Cross from SMA sheet by ticker
+            const tickerKey = ticker.toLowerCase().trim();
+            const smaMatch = smaDataMap.get(tickerKey);
+
             return {
               companyName: companyName,
               ticker: ticker,
@@ -1376,9 +1400,9 @@ export async function fetchScoreBoardData(
               currentRatio: currentRatio,
               cashSdebt: cashSdebt,
               isCashSdebtDivZero: isCashSdebtDivZero || false,
-              sma100: null, // Will be populated later from SMA data
-              sma200: null, // Will be populated later from SMA data
-              smaCross: null, // Will be populated later from SMA data
+              sma100: smaMatch ? smaMatch.sma100 : null, // Directly from SMA sheet
+              sma200: smaMatch ? smaMatch.sma200 : null, // Directly from SMA sheet
+              smaCross: smaMatch ? smaMatch.smaCross : null, // Directly from SMA sheet
             };
           })
           .filter((data) => data !== null) as ScoreBoardData[];

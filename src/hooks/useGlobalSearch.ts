@@ -2,13 +2,12 @@ import { useMemo } from 'react';
 import { useScoreBoardData } from './useScoreBoardData';
 import { useBenjaminGrahamData } from './useBenjaminGrahamData';
 import { usePEIndustryData } from './usePEIndustryData';
-import { useSMAData } from './useSMAData';
 import { useThresholdIndustryData } from './useThresholdIndustryData';
 import { ViewId } from '../types/navigation';
 
 export interface SearchResult {
   id: string;
-  type: 'score-board' | 'benjamin-graham' | 'pe-industry' | 'sma' | 'entry-exit' | 'threshold-industry';
+  type: 'score-board' | 'benjamin-graham' | 'pe-industry' | 'entry-exit' | 'threshold-industry';
   viewId: ViewId;
   label: string;
   companyName?: string;
@@ -21,7 +20,6 @@ export function useGlobalSearch() {
   const { data: scoreBoardData } = useScoreBoardData();
   const { data: benjaminGrahamData } = useBenjaminGrahamData();
   const { data: peIndustryData } = usePEIndustryData();
-  const { data: smaData } = useSMAData();
   const { data: thresholdIndustryData } = useThresholdIndustryData();
 
   const search = useMemo(() => {
@@ -108,35 +106,6 @@ export function useGlobalSearch() {
         }
       });
 
-      // Search in SMAData
-      smaData.forEach((item, index) => {
-        const companyName = item.companyName?.toLowerCase() || '';
-        const ticker = item.ticker?.toLowerCase() || '';
-
-        if (companyName.includes(normalizedQuery) || ticker.includes(normalizedQuery)) {
-          results.push({
-            id: `sma-${index}`,
-            type: 'sma',
-            viewId: 'teknikal-sma-100',
-            label: companyName.includes(normalizedQuery) ? item.companyName : `${item.companyName} (${item.ticker})`,
-            companyName: item.companyName,
-            ticker: item.ticker,
-            matchField: companyName.includes(normalizedQuery) ? 'companyName' : 'ticker',
-          });
-          
-          // Also add as EntryExit result since EntryExit uses SMAData
-          results.push({
-            id: `entry-exit-${index}`,
-            type: 'entry-exit',
-            viewId: 'entry-exit-entry1',
-            label: companyName.includes(normalizedQuery) ? item.companyName : `${item.companyName} (${item.ticker})`,
-            companyName: item.companyName,
-            ticker: item.ticker,
-            matchField: companyName.includes(normalizedQuery) ? 'companyName' : 'ticker',
-          });
-        }
-      });
-
       // Search in ThresholdIndustryData
       thresholdIndustryData.forEach((item, index) => {
         const industry = item.industry?.toLowerCase() || '';
@@ -160,7 +129,7 @@ export function useGlobalSearch() {
       // Limit to 50 results for performance (increased from 20 since we show all tables)
       return uniqueResults.slice(0, 50);
     };
-  }, [scoreBoardData, benjaminGrahamData, peIndustryData, smaData, thresholdIndustryData]);
+  }, [scoreBoardData, benjaminGrahamData, peIndustryData, thresholdIndustryData]);
 
   return { search };
 }

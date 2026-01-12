@@ -54,6 +54,7 @@
   },
   "refresh": {
     "refreshAll": "Refresh All",
+    "refreshNow": "Refresh Now",
     "refreshing": "Refreshing...",
     "refreshAllTooltip": "Refresh all data from all sources",
     "autoRefresh": "Auto Refresh",

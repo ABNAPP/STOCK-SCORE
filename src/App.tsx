@@ -4,7 +4,6 @@ import Sidebar from './components/Sidebar';
 import Breadcrumbs from './components/Breadcrumbs';
 import ConditionsModal from './components/ConditionsModal';
 import AuthContainer from './components/AuthContainer';
-import WaitingApproval from './components/WaitingApproval';
 import { ViewId } from './types/navigation';
 import { getTableMetadata } from './config/tableMetadata';
 import { useTranslation } from 'react-i18next';
@@ -24,7 +23,6 @@ const ScoreBoardView = lazy(() => import('./components/views/ScoreBoardView'));
 const ScoreView = lazy(() => import('./components/views/ScoreView'));
 const EntryExitView = lazy(() => import('./components/views/EntryExitView'));
 const FundamentalView = lazy(() => import('./components/views/FundamentalView'));
-const TeknikalView = lazy(() => import('./components/views/TeknikalView'));
 const ThresholdIndustryView = lazy(() => import('./components/views/ThresholdIndustryView'));
 
 function App() {
@@ -38,17 +36,8 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userProfileOpen, setUserProfileOpen] = useState(false);
 
-  // Show login/signup if user is not authenticated
-  if (!currentUser) {
-    return <AuthContainer />;
-  }
-
-  // Show waiting approval screen if user has no role
-  if (!hasRole) {
-    return <WaitingApproval />;
-  }
-
   // Redirect viewer2 users if they try to access unauthorized views
+  // This useEffect must be called before any early returns to maintain hook order
   useEffect(() => {
     if (userRole === 'viewer2') {
       const allowedViews: ViewId[] = ['score', 'score-board'];
@@ -58,6 +47,11 @@ function App() {
       }
     }
   }, [activeView, userRole, showToast, t]);
+
+  // Show login/signup if user is not authenticated
+  if (!currentUser) {
+    return <AuthContainer />;
+  }
 
   const handleViewChange = (viewId: ViewId) => {
     // Check if viewer2 is trying to access unauthorized view
@@ -88,7 +82,6 @@ function App() {
     if (viewId === 'entry-exit-entry1') return 'entry-exit-entry1';
     if (viewId === 'fundamental-pe-industry') return 'pe-industry';
     if (viewId === 'threshold-industry') return 'threshold-industry';
-    if (viewId === 'teknikal-sma-100') return 'sma-100';
     return null;
   };
 
@@ -100,7 +93,6 @@ function App() {
       'entry-exit-entry1': t('navigation.tachart'),
       'fundamental-pe-industry': t('navigation.peIndustry'),
       'threshold-industry': t('navigation.thresholdIndustry'),
-      'teknikal-sma-100': t('navigation.sma100'),
     };
     return names[viewId] || viewId;
   };
@@ -134,14 +126,6 @@ function App() {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <FundamentalView viewId={activeView} />
-        </Suspense>
-      );
-    }
-
-    if (activeView.startsWith('teknikal-')) {
-      return (
-        <Suspense fallback={<LoadingFallback />}>
-          <TeknikalView viewId={activeView} />
         </Suspense>
       );
     }
@@ -224,6 +208,7 @@ function AppContent({
   setUserProfileOpen: (open: boolean) => void;
 }) {
   const { toasts, removeToast } = useToast();
+  const { t } = useTranslation();
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
@@ -241,7 +226,7 @@ function AppContent({
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
-      <main id="main-content" className="flex-1 lg:ml-64 mt-16 overflow-hidden flex flex-col w-full" role="main" aria-label={useTranslation().t('aria.mainContent', 'Huvudinnehåll')}>
+      <main id="main-content" className="flex-1 lg:ml-64 mt-16 overflow-hidden flex flex-col w-full" role="main" aria-label={t('aria.mainContent', 'Huvudinnehåll')}>
         <Breadcrumbs activeView={activeView} onViewChange={setActiveView} />
         <div className="h-full transition-all duration-300 ease-in-out animate-fade-in" aria-live="polite" aria-atomic="true" role="region">
           {renderView()}

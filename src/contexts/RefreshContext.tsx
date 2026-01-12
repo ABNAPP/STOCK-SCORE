@@ -1,6 +1,5 @@
 import { createContext, useContext, ReactNode, useCallback } from 'react';
 import { useBenjaminGrahamData } from '../hooks/useBenjaminGrahamData';
-import { useSMAData } from '../hooks/useSMAData';
 import { useScoreBoardData } from '../hooks/useScoreBoardData';
 import { usePEIndustryData } from '../hooks/usePEIndustryData';
 import { useThresholdIndustryData } from '../hooks/useThresholdIndustryData';
@@ -14,7 +13,6 @@ interface RefreshContextType {
   isRefreshing: boolean;
   // Individual refetch functions for future use
   refreshBenjaminGraham: () => Promise<void>;
-  refreshSMA: () => Promise<void>;
   refreshScoreBoard: () => Promise<void>;
   refreshPEIndustry: () => Promise<void>;
   refreshThresholdIndustry: () => Promise<void>;
@@ -36,9 +34,9 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
   const { reset: resetProgress } = useLoadingProgress();
   
   // Use all data hooks (Stock Score is calculated from ScoreBoard data, so no separate hook needed)
+  // SMA data is fetched internally by fetchScoreBoardData, so no separate hook needed
   // These hooks use useLoadingProgress which requires LoadingProgressProvider as parent
   const benjaminGraham = useBenjaminGrahamData();
-  const sma = useSMAData();
   const scoreBoard = useScoreBoardData();
   const peIndustry = usePEIndustryData();
   const threshold = useThresholdIndustryData();
@@ -52,9 +50,9 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
       resetProgress();
       
       // Check if any failed
+      // Note: SMA data is fetched internally by fetchScoreBoardData, so no separate refresh needed
       const results = await Promise.allSettled([
         benjaminGraham.refetch(true),
-        sma.refetch(true),
         scoreBoard.refetch(true),
         peIndustry.refetch(true),
         threshold.refetch(true),
@@ -72,7 +70,6 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
     }
   }, [
     benjaminGraham.refetch,
-    sma.refetch,
     scoreBoard.refetch,
     peIndustry.refetch,
     threshold.refetch,
@@ -85,7 +82,6 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
   // Check if any refresh is in progress
   const isRefreshing =
     benjaminGraham.loading ||
-    sma.loading ||
     scoreBoard.loading ||
     peIndustry.loading ||
     threshold.loading;
@@ -94,7 +90,6 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
     refreshAll,
     isRefreshing,
     refreshBenjaminGraham: () => benjaminGraham.refetch(true),
-    refreshSMA: () => sma.refetch(true),
     refreshScoreBoard: () => scoreBoard.refetch(true),
     refreshPEIndustry: () => peIndustry.refetch(true),
     refreshThresholdIndustry: () => threshold.refetch(true),

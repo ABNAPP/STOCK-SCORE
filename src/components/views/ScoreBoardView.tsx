@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next';
 import { useMemo, lazy, Suspense, useEffect } from 'react';
 import { useScoreBoardData } from '../../hooks/useScoreBoardData';
 import { useThresholdIndustryData } from '../../hooks/useThresholdIndustryData';
-import { useSMAData } from '../../hooks/useSMAData';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
 import { ScoreBoardData, EntryExitData } from '../../types/stock';
 import ProgressIndicator from '../ProgressIndicator';
@@ -18,16 +17,15 @@ function ScoreBoardViewInner() {
   const { t } = useTranslation();
   const { data, loading, error } = useScoreBoardData();
   const { data: thresholdData, loading: thresholdLoading } = useThresholdIndustryData();
-  const { data: smaData, loading: smaLoading } = useSMAData();
   const { data: benjaminGrahamData, loading: bgLoading } = useBenjaminGrahamData();
   const { initializeFromData } = useEntryExitValues();
   
-  const isLoading = loading || thresholdLoading || smaLoading || bgLoading;
+  const isLoading = loading || thresholdLoading || bgLoading;
 
-  // Initialize EntryExitContext with SMAData (same as EntryExitTable)
+  // Initialize EntryExitContext with ScoreBoardData (same as EntryExitTable)
   useEffect(() => {
-    if (smaData && smaData.length > 0) {
-      const entryExitData: EntryExitData[] = smaData.map((item) => ({
+    if (data && data.length > 0) {
+      const entryExitData: EntryExitData[] = data.map((item) => ({
         companyName: item.companyName,
         ticker: item.ticker,
         currency: 'USD',
@@ -39,10 +37,10 @@ function ScoreBoardViewInner() {
       }));
       initializeFromData(entryExitData);
     }
-  }, [smaData, initializeFromData]);
+  }, [data, initializeFromData]);
 
-  // Match SMA data and Price data with Score Board data based on ticker
-  const dataWithSMA: ScoreBoardData[] = useMemo(() => {
+  // Match Price data with Score Board data based on ticker (SMA(100) and SMA(200) are now fetched directly in fetchScoreBoardData)
+  const dataWithPrice: ScoreBoardData[] = useMemo(() => {
     // Create a map of Price data by ticker (case-insensitive)
     const priceMap = new Map<string, number | null>();
     if (benjaminGrahamData && benjaminGrahamData.length > 0) {
@@ -52,34 +50,17 @@ function ScoreBoardViewInner() {
       });
     }
 
-    // Create a map of SMA data by ticker (case-insensitive)
-    const smaMap = new Map<string, { sma100: number | null; sma200: number | null; smaCross: string | null }>();
-    if (smaData && smaData.length > 0) {
-      smaData.forEach(sma => {
-        const tickerKey = sma.ticker.toLowerCase().trim();
-        smaMap.set(tickerKey, {
-          sma100: sma.sma100,
-          sma200: sma.sma200,
-          smaCross: sma.smaCross,
-        });
-      });
-    }
-
-    // Match Score Board data with SMA data and Price data
+    // Match Score Board data with Price data (SMA(100) and SMA(200) are already included from fetchScoreBoardData)
     return data.map(item => {
       const tickerKey = item.ticker.toLowerCase().trim();
-      const smaMatch = smaMap.get(tickerKey);
       const price = priceMap.get(tickerKey) ?? null;
       
       return {
         ...item,
-        sma100: smaMatch ? smaMatch.sma100 : null,
-        sma200: smaMatch ? smaMatch.sma200 : null,
-        smaCross: smaMatch ? smaMatch.smaCross : null,
         price: price, // Add price for color comparison
       };
     });
-  }, [data, smaData, benjaminGrahamData]);
+  }, [data, benjaminGrahamData]);
 
   return (
     <div className="h-full bg-gray-100 dark:bg-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6 flex flex-col transition-all duration-300 ease-in-out">
@@ -97,7 +78,7 @@ function ScoreBoardViewInner() {
         )}
         <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
           <Suspense fallback={<TableSkeleton rows={15} columns={12} hasStickyColumns={true} />}>
-            <ScoreBoardTable data={dataWithSMA} loading={isLoading} error={error} thresholdData={thresholdData} />
+            <ScoreBoardTable data={dataWithPrice} loading={isLoading} error={error} thresholdData={thresholdData} />
           </Suspense>
         </div>
       </div>

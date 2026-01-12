@@ -92,7 +92,6 @@ export default function GlobalSearch({ onNavigate }: GlobalSearchProps) {
       'score-board': t('navigation.scoreBoard'),
       'benjamin-graham': t('navigation.benjaminGraham'),
       'pe-industry': t('navigation.peIndustry'),
-      'sma': t('navigation.sma100'),
       'entry-exit': t('navigation.tachart'),
       'threshold-industry': t('navigation.thresholdIndustry'),
     };

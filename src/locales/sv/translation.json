@@ -54,6 +54,7 @@
   },
   "refresh": {
     "refreshAll": "Uppdatera allt",
+    "refreshNow": "Uppdatera nu",
     "refreshing": "Uppdaterar...",
     "refreshAllTooltip": "Uppdatera all data från alla källor",
     "autoRefresh": "Automatisk uppdatering",

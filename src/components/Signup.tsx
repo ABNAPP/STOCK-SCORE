@@ -2,7 +2,8 @@ import { useState, FormEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../contexts/ToastContext';
-import { createPendingRequest, autoApproveViewer2Request } from '../services/pendingRequestService';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../config/firebase';
 
 interface SignupProps {
   onSwitchToLogin: () => void;
@@ -39,11 +40,9 @@ export default function Signup({ onSwitchToLogin }: SignupProps) {
       const userCredential = await signup(email, password);
       const user = userCredential.user;
       
-      // Create pending request immediately with viewer2 role (automatic)
-      await createPendingRequest(user, 'viewer2', 'initial_registration');
-      
-      // Automatically approve viewer2 request and set role
-      await autoApproveViewer2Request(user.uid);
+      // Set viewer2 role directly via Cloud Function
+      const autoApproveViewer2 = httpsCallable(functions, 'autoApproveViewer2');
+      await autoApproveViewer2({ userId: user.uid });
       
       // Refresh user role to get the new custom claims
       await refreshUserRole();

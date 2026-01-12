@@ -2,7 +2,7 @@ import { useMemo, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ViewId } from '../../types/navigation';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
-import { useSMAData } from '../../hooks/useSMAData';
+import { useScoreBoardData } from '../../hooks/useScoreBoardData';
 import { EntryExitData } from '../../types/stock';
 import { TableSkeleton } from '../SkeletonLoader';
 import { EntryExitProvider } from '../../contexts/EntryExitContext';
@@ -20,11 +20,11 @@ export default function EntryExitView({ viewId }: EntryExitViewProps) {
   const isBenjaminGraham = viewId === 'entry-exit-benjamin-graham';
   const isEntryExit = viewId === 'entry-exit-entry1';
   const { data: benjaminGrahamData, loading: benjaminGrahamLoading, error: benjaminGrahamError } = useBenjaminGrahamData();
-  const { data: smaData, loading: entryExitLoading, error: entryExitError } = useSMAData();
+  const { data: scoreBoardData, loading: entryExitLoading, error: entryExitError } = useScoreBoardData();
   
-  // Map SMAData to EntryExitData with default values
+  // Map ScoreBoardData to EntryExitData with default values
   const entryExitData: EntryExitData[] = useMemo(() => {
-    return smaData.map((item) => ({
+    return scoreBoardData.map((item) => ({
       companyName: item.companyName,
       ticker: item.ticker,
       currency: 'USD', // Default currency
@@ -34,7 +34,7 @@ export default function EntryExitView({ viewId }: EntryExitViewProps) {
       exit2: 0,
       dateOfUpdate: null,
     }));
-  }, [smaData]);
+  }, [scoreBoardData]);
   
   const getViewTitle = () => {
     const titles: Partial<Record<ViewId, string>> = {

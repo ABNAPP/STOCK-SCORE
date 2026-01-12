@@ -15,9 +15,6 @@ export type ViewId =
   | 'fundamental-ro40-f1'
   | 'fundamental-ro40-f2'
   | 'teknikal-tachart'
-  | 'teknikal-sma-100'
-  | 'teknikal-sma-200'
-  | 'teknikal-sma-cross'
   | 'threshold-industry';
 
 export interface NavigationItem {
