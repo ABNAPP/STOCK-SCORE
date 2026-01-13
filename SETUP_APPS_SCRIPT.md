@@ -1,5 +1,7 @@
 # Quick Setup: Apps Script URL
 
+**Notera**: Detta är en snabbguide. För detaljerad dokumentation inklusive delta-sync setup, se `APPS_SCRIPT_SETUP.md`.
+
 ## Snabbinstruktion för att fixa CORS-problemet
 
 ### ✅ Steg 1: Skapa .env.local (för lokal utveckling)
@@ -89,4 +91,6 @@ Efter att ha lagt till environment variables i Vercel **måste** du redeploya:
 
 ## Ytterligare hjälp
 
-Se `APPS_SCRIPT_SETUP.md` för detaljerad dokumentation om Apps Script setup.
+- **Detaljerad guide**: Se `APPS_SCRIPT_SETUP.md` för komplett dokumentation om Apps Script setup inklusive delta-sync
+- **Alternativ snabbguide**: Se `QUICK_FIX.md` för en kortare version av denna guide
+- **Problem?**: Kontrollera att Apps Script är deployat som "Web app" (inte "Library") med "Who has access" = "Anyone"

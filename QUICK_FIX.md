@@ -109,3 +109,8 @@ https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4i
 ## Template fil
 
 En fil som heter `env.template` finns i projektets root som du kan kopiera till `.env.local` för lokal utveckling.
+
+## Ytterligare hjälp
+
+- **Detaljerad guide**: Se `APPS_SCRIPT_SETUP.md` för komplett dokumentation om Apps Script setup inklusive delta-sync
+- **Alternativ snabbguide**: Se `SETUP_APPS_SCRIPT.md` för en liknande snabbguide

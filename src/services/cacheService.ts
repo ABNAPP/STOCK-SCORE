@@ -34,6 +34,124 @@ export const CACHE_KEYS = {
 // Default TTL: 20 minutes (1200000 ms)
 export const DEFAULT_TTL = 20 * 60 * 1000;
 
+// Cache statistics storage key
+const STATS_STORAGE_KEY = 'cache:stats';
+
+// Cache statistics interface
+export interface CacheStats {
+  hits: Record<string, number>;
+  misses: Record<string, number>;
+  sizes: Record<string, number>; // Size in bytes (approximate)
+  lastAccessed: Record<string, number>; // Timestamp of last access
+}
+
+/**
+ * Get cache statistics
+ */
+export function getCacheStats(): CacheStats {
+  try {
+    const statsJson = localStorage.getItem(STATS_STORAGE_KEY);
+    if (statsJson) {
+      return JSON.parse(statsJson);
+    }
+  } catch (error) {
+    console.warn('Failed to load cache statistics:', error);
+  }
+  
+  return {
+    hits: {},
+    misses: {},
+    sizes: {},
+    lastAccessed: {},
+  };
+}
+
+/**
+ * Update cache statistics
+ */
+function updateCacheStats(
+  key: string,
+  type: 'hit' | 'miss',
+  size?: number
+): void {
+  try {
+    const stats = getCacheStats();
+    
+    if (type === 'hit') {
+      stats.hits[key] = (stats.hits[key] || 0) + 1;
+    } else {
+      stats.misses[key] = (stats.misses[key] || 0) + 1;
+    }
+    
+    stats.lastAccessed[key] = Date.now();
+    
+    if (size !== undefined) {
+      stats.sizes[key] = size;
+    }
+    
+    localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(stats));
+  } catch (error) {
+    // Silently fail - stats are not critical
+    if (import.meta.env.DEV) {
+      console.warn('Failed to update cache statistics:', error);
+    }
+  }
+}
+
+/**
+ * Get cache statistics for a specific key
+ */
+export function getCacheStatsForKey(key: string): {
+  hits: number;
+  misses: number;
+  hitRate: number;
+  size: number;
+  lastAccessed: number | null;
+} {
+  const stats = getCacheStats();
+  
+  const hits = stats.hits[key] || 0;
+  const misses = stats.misses[key] || 0;
+  const total = hits + misses;
+  const hitRate = total > 0 ? (hits / total) * 100 : 0;
+  
+  return {
+    hits,
+    misses,
+    hitRate: Math.round(hitRate * 100) / 100, // Round to 2 decimal places
+    size: stats.sizes[key] || 0,
+    lastAccessed: stats.lastAccessed[key] || null,
+  };
+}
+
+/**
+ * Get total cache size (approximate, in bytes)
+ */
+export function getTotalCacheSize(): number {
+  const stats = getCacheStats();
+  return Object.values(stats.sizes).reduce((sum, size) => sum + size, 0);
+}
+
+/**
+ * Reset cache statistics
+ */
+export function resetCacheStats(key?: string): void {
+  try {
+    if (key) {
+      const stats = getCacheStats();
+      delete stats.hits[key];
+      delete stats.misses[key];
+      delete stats.sizes[key];
+      delete stats.lastAccessed[key];
+      localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(stats));
+    } else {
+      localStorage.removeItem(STATS_STORAGE_KEY);
+    }
+  } catch (error) {
+    console.warn('Failed to reset cache statistics:', error);
+  }
+}
+
 /**
  * Get cached data if it exists and is not expired
  * Supports both TTL-based (legacy) and version-based (delta sync) cache entries
@@ -44,9 +162,11 @@ export function getCachedData<T>(key: string): T | null {
   try {
     const cached = localStorage.getItem(key);
     if (!cached) {
+      updateCacheStats(key, 'miss');
       return null;
     }
 
+    const cachedSize = new Blob([cached]).size;
     const parsed = JSON.parse(cached);
     const now = Date.now();
 
@@ -59,10 +179,12 @@ export function getCachedData<T>(key: string): T | null {
         const age = now - entry.timestamp;
         if (age > entry.ttl) {
           localStorage.removeItem(key);
+          updateCacheStats(key, 'miss');
           return null;
         }
       }
       
+      updateCacheStats(key, 'hit', cachedSize);
       return entry.data;
     } else {
       // Legacy TTL-based cache entry
@@ -73,14 +195,17 @@ export function getCachedData<T>(key: string): T | null {
       if (age > entry.ttl) {
         // Cache expired, remove it
         localStorage.removeItem(key);
+        updateCacheStats(key, 'miss');
         return null;
       }
 
+      updateCacheStats(key, 'hit', cachedSize);
       return entry.data;
     }
   } catch (error) {
     // If parsing fails or localStorage is unavailable, return null
     console.warn(`Failed to get cached data for key "${key}":`, error);
+    updateCacheStats(key, 'miss');
     return null;
   }
 }
@@ -148,7 +273,15 @@ export function setCachedData<T>(key: string, data: T, ttl: number = DEFAULT_TTL
       ttl,
     };
 
-    localStorage.setItem(key, JSON.stringify(entry));
+    const serialized = JSON.stringify(entry);
+    const size = new Blob([serialized]).size;
+    localStorage.setItem(key, serialized);
+    
+    // Update cache statistics with size
+    const stats = getCacheStats();
+    stats.sizes[key] = size;
+    stats.lastAccessed[key] = Date.now();
+    localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(stats));
   } catch (error) {
     // If localStorage is full or unavailable, log warning but don't throw
     // This allows the app to continue functioning without cache
@@ -188,7 +321,15 @@ export function setDeltaCacheEntry<T>(
       ttl,
     };
 
-    localStorage.setItem(key, JSON.stringify(entry));
+    const serialized = JSON.stringify(entry);
+    const size = new Blob([serialized]).size;
+    localStorage.setItem(key, serialized);
+    
+    // Update cache statistics with size
+    const stats = getCacheStats();
+    stats.sizes[key] = size;
+    stats.lastAccessed[key] = now;
+    localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(stats));
   } catch (error) {
     if (error instanceof Error && error.name === 'QuotaExceededError') {
       console.warn('localStorage quota exceeded, delta cache not saved');
@@ -249,6 +390,69 @@ export function clearCache(key?: string): void {
   } catch (error) {
     console.warn('Failed to clear cache:', error);
   }
+}
+
+/**
+ * Get cache age in milliseconds
+ * @param key Cache key
+ * @returns Age in milliseconds, or null if cache doesn't exist or is invalid
+ */
+export function getCacheAge(key: string): number | null {
+  try {
+    const cached = localStorage.getItem(key);
+    if (!cached) {
+      return null;
+    }
+
+    const parsed = JSON.parse(cached);
+    const now = Date.now();
+
+    // Check if it's a delta cache entry
+    if (parsed.version !== undefined) {
+      const entry = parsed as DeltaCacheEntry<unknown>;
+      if (entry.timestamp) {
+        return now - entry.timestamp;
+      }
+      if (entry.lastUpdated) {
+        return now - entry.lastUpdated;
+      }
+      return null;
+    } else {
+      // Legacy TTL-based cache entry
+      const entry = parsed as CacheEntry<unknown>;
+      return now - entry.timestamp;
+    }
+  } catch (error) {
+    console.warn(`Failed to get cache age for key "${key}":`, error);
+    return null;
+  }
+}
+
+/**
+ * Check if cache is fresh (recently updated)
+ * @param key Cache key
+ * @param freshThresholdMs Threshold in milliseconds (default: 5 minutes)
+ * @returns true if cache is fresh, false otherwise
+ */
+export function isCacheFresh(key: string, freshThresholdMs: number = 5 * 60 * 1000): boolean {
+  const age = getCacheAge(key);
+  return age !== null && age < freshThresholdMs;
+}
+
+/**
+ * Check if cache is stale but valid (within TTL but older than fresh threshold)
+ * @param key Cache key
+ * @param freshThresholdMs Threshold in milliseconds (default: 5 minutes)
+ * @returns true if cache is stale but valid, false otherwise
+ */
+export function isCacheStale(key: string, freshThresholdMs: number = 5 * 60 * 1000): boolean {
+  const cached = getCachedData(key);
+  if (!cached) {
+    return false;
+  }
+  
+  const age = getCacheAge(key);
+  return age !== null && age >= freshThresholdMs;
 }
 
 /**

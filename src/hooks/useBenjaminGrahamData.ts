@@ -17,14 +17,15 @@ import {
   snapshotToTransformerFormat,
   type DeltaSyncConfig
 } from '../services/deltaSyncService';
-import { setDeltaCacheEntry } from '../services/cacheService';
-import { CACHE_KEYS } from '../services/cacheService';
+import { setDeltaCacheEntry, getDeltaCacheEntry, getCachedData, CACHE_KEYS, isCacheFresh, isCacheStale } from '../services/cacheService';
 import { BenjaminGrahamData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
+import { usePageVisibility } from './usePageVisibility';
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
 const SHEET_NAME = 'DashBoard';
 const CACHE_KEY = CACHE_KEYS.BENJAMIN_GRAHAM;
+const FRESH_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
 // Transformer function for Benjamin Graham data
 function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields: string[] | null } }): BenjaminGrahamData[] {
@@ -75,25 +76,49 @@ function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields:
 }
 
 export function useBenjaminGrahamData() {
-  const [data, setData] = useState<BenjaminGrahamData[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Check cache synchronously on mount to avoid unnecessary loading state
+  // Try delta cache first, then fallback to regular cache
+  const deltaCacheEntry = getDeltaCacheEntry<BenjaminGrahamData[]>(CACHE_KEY);
+  const regularCache = getCachedData<BenjaminGrahamData[]>(CACHE_KEY);
+  const cachedData = deltaCacheEntry?.data || regularCache;
+  const hasInitialData = cachedData !== null && cachedData.length > 0;
+  // For delta cache, check if it's fresh/stale using lastUpdated timestamp
+  // For regular cache, use cache service functions
+  const cacheAge = deltaCacheEntry?.lastUpdated 
+    ? Date.now() - deltaCacheEntry.lastUpdated
+    : null;
+  const isFresh = hasInitialData && (deltaCacheEntry 
+    ? (cacheAge !== null && cacheAge < FRESH_THRESHOLD_MS)
+    : isCacheFresh(CACHE_KEY, FRESH_THRESHOLD_MS));
+  const isStale = hasInitialData && !isFresh && (deltaCacheEntry
+    ? (cacheAge !== null && cacheAge >= FRESH_THRESHOLD_MS)
+    : isCacheStale(CACHE_KEY, FRESH_THRESHOLD_MS));
+  
+  const [data, setData] = useState<BenjaminGrahamData[]>(cachedData || []);
+  const [loading, setLoading] = useState(!hasInitialData); // Only show loading if no cache
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { updateProgress } = useLoadingProgress();
-  const currentVersionRef = useRef<number>(0);
+  const isPageVisible = usePageVisibility();
+  const currentVersionRef = useRef<number>(deltaCacheEntry?.version || 0);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const backgroundUpdateRef = useRef<Promise<void> | null>(null);
 
   // Load data using delta-sync or fallback to regular fetch
-  const loadData = useCallback(async (forceRefresh: boolean = false) => {
+  const loadData = useCallback(async (forceRefresh: boolean = false, isBackground: boolean = false) => {
     try {
-      setLoading(true);
+      if (!isBackground) {
+        setLoading(true);
+      }
       setError(null);
       
-      updateProgress('benjamin-graham', {
-        status: 'loading',
-        progress: 0,
-        message: 'Loading data...',
-      });
+      if (!isBackground) {
+        updateProgress('benjamin-graham', {
+          status: 'loading',
+          progress: 0,
+          message: 'Loading data...',
+        });
+      }
 
       // Try delta-sync if enabled
       if (isDeltaSyncEnabled() && APPS_SCRIPT_URL && !forceRefresh) {
@@ -114,13 +139,17 @@ export function useBenjaminGrahamData() {
           currentVersionRef.current = result.version;
           setLastUpdated(new Date());
           
-          updateProgress('benjamin-graham', {
-            status: 'complete',
-            progress: 100,
-            message: 'Data loaded',
-          });
+          if (!isBackground) {
+            updateProgress('benjamin-graham', {
+              status: 'complete',
+              progress: 100,
+              message: 'Data loaded',
+            });
+          }
           
-          setLoading(false);
+          if (!isBackground) {
+            setLoading(false);
+          }
           return;
         } catch (deltaSyncError) {
           // Delta sync failed, fallback to regular fetch
@@ -130,37 +159,70 @@ export function useBenjaminGrahamData() {
 
       // Fallback to regular fetch
       const progressCallback: ProgressCallback = (progress) => {
-        updateProgress('benjamin-graham', {
-          progress: progress.percentage,
-          status: progress.stage === 'complete' ? 'complete' : 'loading',
-          message: progress.message,
-          rowsLoaded: progress.rowsProcessed,
-          totalRows: progress.totalRows,
-        });
+        if (!isBackground) {
+          updateProgress('benjamin-graham', {
+            progress: progress.percentage,
+            status: progress.stage === 'complete' ? 'complete' : 'loading',
+            message: progress.message,
+            rowsLoaded: progress.rowsProcessed,
+            totalRows: progress.totalRows,
+          });
+        }
       };
       
       const fetchedData = await fetchBenjaminGrahamData(forceRefresh, progressCallback);
       setData(fetchedData);
       setLastUpdated(new Date());
       
-      updateProgress('benjamin-graham', {
-        status: 'complete',
-        progress: 100,
-      });
+      if (!isBackground) {
+        updateProgress('benjamin-graham', {
+          status: 'complete',
+          progress: 100,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch Benjamin Graham data');
-      console.error('Error fetching Benjamin Graham data:', err);
-      updateProgress('benjamin-graham', {
-        status: 'error',
-        progress: 0,
-      });
+      if (!isBackground) {
+        console.error('Error fetching Benjamin Graham data:', err);
+        updateProgress('benjamin-graham', {
+          status: 'error',
+          progress: 0,
+        });
+      }
     } finally {
-      setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
   }, [updateProgress]);
 
+  // Background revalidate (stale-while-revalidate pattern for non-delta-sync)
+  const revalidateInBackground = useCallback(async () => {
+    // Only revalidate if page is visible and not already updating
+    if (!isPageVisible || backgroundUpdateRef.current) {
+      return;
+    }
+
+    // Only revalidate if cache is stale (5-20 minutes old) and delta-sync is not enabled
+    if (!isStale || isDeltaSyncEnabled()) {
+      return; // Delta-sync handles updates automatically
+    }
+
+    backgroundUpdateRef.current = loadData(false, true);
+    try {
+      await backgroundUpdateRef.current;
+    } finally {
+      backgroundUpdateRef.current = null;
+    }
+  }, [isPageVisible, isStale, loadData]);
+
   // Poll for changes using delta-sync
   const pollForChanges = useCallback(async () => {
+    // Only poll if page is visible
+    if (!isPageVisible) {
+      return;
+    }
+
     if (!isDeltaSyncEnabled() || !APPS_SCRIPT_URL || currentVersionRef.current === 0) {
       return;
     }
@@ -193,16 +255,22 @@ export function useBenjaminGrahamData() {
       // Silently fail polling - don't show errors to user
       console.warn('Polling for changes failed:', pollError);
     }
-  }, []);
+  }, [isPageVisible]);
 
-  // Initial fetch
+  // Initial fetch - only if we don't have cache or cache is expired
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!hasInitialData) {
+      loadData();
+    } else if (isStale && isPageVisible && !isDeltaSyncEnabled()) {
+      // Stale-while-revalidate: show cache immediately, update in background (only for non-delta-sync)
+      revalidateInBackground();
+    }
+    // If cache is fresh or delta-sync is enabled, no need to fetch or revalidate
+  }, [loadData, hasInitialData, isStale, isPageVisible, revalidateInBackground]);
 
-  // Set up polling for changes
+  // Set up polling for changes (delta-sync only)
   useEffect(() => {
-    if (isDeltaSyncEnabled() && APPS_SCRIPT_URL) {
+    if (isDeltaSyncEnabled() && APPS_SCRIPT_URL && isPageVisible) {
       const intervalMs = getPollIntervalMs();
       
       // Poll immediately after initial load (with delay)
@@ -210,7 +278,7 @@ export function useBenjaminGrahamData() {
         pollForChanges();
       }, 5000); // Wait 5 seconds after initial load
 
-      // Set up periodic polling
+      // Set up periodic polling (only when page is visible)
       pollIntervalRef.current = setInterval(() => {
         pollForChanges();
       }, intervalMs);
@@ -221,8 +289,14 @@ export function useBenjaminGrahamData() {
           clearInterval(pollIntervalRef.current);
         }
       };
+    } else {
+      // Clear interval if page becomes hidden or delta-sync is disabled
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
     }
-  }, [pollForChanges]);
+  }, [pollForChanges, isPageVisible]);
 
   const refetch = useCallback((forceRefresh?: boolean) => {
     loadData(forceRefresh ?? false);

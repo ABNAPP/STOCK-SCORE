@@ -1,4 +1,5 @@
 import { useState, Suspense, lazy, useEffect } from 'react';
+import { warmCache } from './services/cacheWarmingService';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Breadcrumbs from './components/Breadcrumbs';
@@ -47,6 +48,19 @@ function App() {
       }
     }
   }, [activeView, userRole, showToast, t]);
+
+  // Cache warming: Preload cache data in background when user is authenticated
+  useEffect(() => {
+    if (currentUser) {
+      // Warm cache in background (fire-and-forget)
+      warmCache().catch(error => {
+        // Silently fail - cache warming is not critical
+        if (import.meta.env.DEV) {
+          console.debug('Cache warming failed:', error);
+        }
+      });
+    }
+  }, [currentUser]);
 
   // Show login/signup if user is not authenticated
   if (!currentUser) {
