@@ -37,7 +37,7 @@ const ConditionsModal = lazy(() => import('./components/ConditionsModal'));
 const UserProfileModal = lazy(() => import('./components/UserProfileModal'));
 
 function App() {
-  const { currentUser } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
   const { hasRole, userRole } = useUserRole();
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -75,12 +75,16 @@ function App() {
     }
   }, [currentUser]);
 
-  // Show login/signup if user is not authenticated
-  if (!currentUser) {
-    return <AuthContainer />;
-  }
+  // IMPORTANT: All hooks (including useCallback, useMemo) must be called BEFORE any early returns
+  // This ensures hooks are always called in the same order on every render
+  const handleLoadShareableLink = useCallback((link: ShareableLink) => {
+    setLoadedShareableLink(link);
+    setActiveView(link.viewId as ViewId);
+    // Apply filter state and sort config from link
+    // This will be handled by the view components
+  }, []);
 
-  const handleViewChange = (viewId: ViewId) => {
+  const handleViewChange = useCallback((viewId: ViewId) => {
     // Check if viewer2 is trying to access unauthorized view
     if (userRole === 'viewer2') {
       const allowedViews: ViewId[] = ['score', 'score-board'];
@@ -92,14 +96,17 @@ function App() {
     setActiveView(viewId);
     // Update URL without navigation
     navigate(`/${viewId}`, { replace: true });
-  };
+  }, [userRole, showToast, t, navigate]);
 
-  const handleLoadShareableLink = useCallback((link: ShareableLink) => {
-    setLoadedShareableLink(link);
-    setActiveView(link.viewId as ViewId);
-    // Apply filter state and sort config from link
-    // This will be handled by the view components
-  }, []);
+  // Show loading state while auth is initializing
+  if (authLoading) {
+    return <LoadingFallback />;
+  }
+
+  // Show login/signup if user is not authenticated
+  if (!currentUser) {
+    return <AuthContainer />;
+  }
 
   const handleOpenConditionsModal = (viewId: ViewId) => {
     setSelectedViewForModal(viewId);
