@@ -7,13 +7,12 @@ interface SkeletonLoaderProps {
 export default function SkeletonLoader({ className = '', width, height }: SkeletonLoaderProps) {
   return (
     <div
-      className={`animate-pulse bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 rounded ${className}`}
+      className={`animate-shimmer bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 rounded ${className}`}
       style={{
         width: width || '100%',
         height: height || '1rem',
         backgroundSize: '200% 100%',
       }}
-      className="animate-shimmer"
     />
   );
 }

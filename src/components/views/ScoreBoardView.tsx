@@ -20,7 +20,10 @@ function ScoreBoardViewInner() {
   const { data: benjaminGrahamData, loading: bgLoading } = useBenjaminGrahamData();
   const { initializeFromData } = useEntryExitValues();
   
-  const isLoading = loading || thresholdLoading || bgLoading;
+  // Progressive loading: Only block rendering on main data (scoreBoardData)
+  // Allow thresholdData and benjaminGrahamData to load in background
+  const isLoading = loading;
+  const isBackgroundLoading = thresholdLoading || bgLoading;
 
   // Initialize EntryExitContext with ScoreBoardData (same as EntryExitTable)
   useEffect(() => {
@@ -76,10 +79,23 @@ function ScoreBoardViewInner() {
             <EnhancedLoadingState />
           </div>
         )}
+        {!isLoading && isBackgroundLoading && (
+          <div className="mb-2 flex-shrink-0">
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              {t('common.loadingAdditionalData', 'Laddar ytterligare data i bakgrunden...')}
+            </p>
+          </div>
+        )}
         <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
-          <Suspense fallback={<TableSkeleton rows={15} columns={12} hasStickyColumns={true} />}>
-            <ScoreBoardTable data={dataWithPrice} loading={isLoading} error={error} thresholdData={thresholdData} />
-          </Suspense>
+          {!isLoading && dataWithPrice.length > 0 ? (
+            <Suspense fallback={<TableSkeleton rows={15} columns={12} hasStickyColumns={true} />}>
+              <ScoreBoardTable data={dataWithPrice} loading={false} error={error} thresholdData={thresholdData} />
+            </Suspense>
+          ) : isLoading ? (
+            <TableSkeleton rows={15} columns={12} hasStickyColumns={true} />
+          ) : error ? (
+            <div className="text-red-600 dark:text-red-400 p-4">{error}</div>
+          ) : null}
         </div>
       </div>
     </div>

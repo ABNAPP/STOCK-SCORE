@@ -27,7 +27,10 @@ function ScoreViewInner() {
   const { data: benjaminGrahamData, loading: bgLoading } = useBenjaminGrahamData();
   const { initializeFromData, entryExitValues } = useEntryExitValues();
   
-  const isLoading = loading || thresholdLoading || bgLoading;
+  // Progressive loading: Only block rendering on main data (scoreBoardData)
+  // Allow thresholdData and benjaminGrahamData to load in background
+  const isLoading = loading;
+  const isBackgroundLoading = thresholdLoading || bgLoading;
 
   // Initialize EntryExitContext with ScoreBoardData (same as EntryExitTable)
   useEffect(() => {
@@ -103,17 +106,30 @@ function ScoreViewInner() {
             <ProgressIndicator isLoading={true} label="Loading data..." />
           </div>
         )}
+        {!isLoading && isBackgroundLoading && (
+          <div className="mb-2 flex-shrink-0">
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              {t('common.loadingAdditionalData', 'Laddar ytterligare data i bakgrunden...')}
+            </p>
+          </div>
+        )}
         <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
-          <Suspense fallback={<TableSkeleton rows={15} columns={4} hasStickyColumns={true} />}>
-            <ScoreTable 
-              data={scoreData} 
-              loading={isLoading} 
-              error={error}
-              thresholdData={thresholdData || []}
-              benjaminGrahamData={benjaminGrahamData || []}
-              entryExitValues={entryExitValues}
-            />
-          </Suspense>
+          {!isLoading && scoreData.length > 0 ? (
+            <Suspense fallback={<TableSkeleton rows={15} columns={4} hasStickyColumns={true} />}>
+              <ScoreTable 
+                data={scoreData} 
+                loading={false}
+                error={error}
+                thresholdData={thresholdData || []}
+                benjaminGrahamData={benjaminGrahamData || []}
+                entryExitValues={entryExitValues}
+              />
+            </Suspense>
+          ) : isLoading ? (
+            <TableSkeleton rows={15} columns={4} hasStickyColumns={true} />
+          ) : error ? (
+            <div className="text-red-600 dark:text-red-400 p-4">{error}</div>
+          ) : null}
         </div>
       </div>
     </div>

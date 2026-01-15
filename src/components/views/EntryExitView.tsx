@@ -47,6 +47,7 @@ export default function EntryExitView({ viewId }: EntryExitViewProps) {
   };
 
   if (isBenjaminGraham) {
+    // Benjamin Graham view only depends on benjaminGrahamData, so no progressive loading needed
     return (
       <EntryExitProvider>
         <div className="h-full bg-gray-100 dark:bg-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6 flex flex-col transition-all duration-300 ease-in-out">
@@ -58,9 +59,15 @@ export default function EntryExitView({ viewId }: EntryExitViewProps) {
               </div>
             </div>
             <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
-              <Suspense fallback={<TableSkeleton rows={10} columns={5} hasStickyColumns={true} />}>
-                <BenjaminGrahamTable data={benjaminGrahamData} loading={benjaminGrahamLoading} error={benjaminGrahamError} />
-              </Suspense>
+              {!benjaminGrahamLoading && benjaminGrahamData.length > 0 ? (
+                <Suspense fallback={<TableSkeleton rows={10} columns={5} hasStickyColumns={true} />}>
+                  <BenjaminGrahamTable data={benjaminGrahamData} loading={false} error={benjaminGrahamError} />
+                </Suspense>
+              ) : benjaminGrahamLoading ? (
+                <TableSkeleton rows={10} columns={5} hasStickyColumns={true} />
+              ) : benjaminGrahamError ? (
+                <div className="text-red-600 dark:text-red-400 p-4">{benjaminGrahamError}</div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -69,6 +76,10 @@ export default function EntryExitView({ viewId }: EntryExitViewProps) {
   }
 
   if (isEntryExit) {
+    // Progressive loading: Render table as soon as scoreBoardData is ready
+    // benjaminGrahamData can load in background (it's only used for price display)
+    const isBackgroundLoading = benjaminGrahamLoading;
+    
     return (
       <EntryExitProvider>
         <div className="h-full bg-gray-100 dark:bg-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6 flex flex-col transition-all duration-300 ease-in-out">
@@ -79,10 +90,23 @@ export default function EntryExitView({ viewId }: EntryExitViewProps) {
                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Entry och exit-punkter för aktier</p>
               </div>
             </div>
+            {!entryExitLoading && isBackgroundLoading && (
+              <div className="mb-2 flex-shrink-0">
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  {t('common.loadingAdditionalData', 'Laddar ytterligare data i bakgrunden...')}
+                </p>
+              </div>
+            )}
             <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
-              <Suspense fallback={<TableSkeleton rows={10} columns={8} hasStickyColumns={true} />}>
-                <EntryExitTable data={entryExitData} loading={entryExitLoading} error={entryExitError} />
-              </Suspense>
+              {!entryExitLoading && entryExitData.length > 0 ? (
+                <Suspense fallback={<TableSkeleton rows={10} columns={8} hasStickyColumns={true} />}>
+                  <EntryExitTable data={entryExitData} loading={false} error={entryExitError} />
+                </Suspense>
+              ) : entryExitLoading ? (
+                <TableSkeleton rows={10} columns={8} hasStickyColumns={true} />
+              ) : entryExitError ? (
+                <div className="text-red-600 dark:text-red-400 p-4">{entryExitError}</div>
+              ) : null}
             </div>
           </div>
         </div>
