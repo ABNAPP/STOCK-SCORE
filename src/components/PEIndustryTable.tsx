@@ -173,7 +173,7 @@ export default function PEIndustryTable({ data, loading, error }: PEIndustryTabl
           <button
             onClick={toggleExpand}
             className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-all duration-200 flex-shrink-0"
-            aria-label={isExpanded ? 'Dölj detaljer' : 'Visa detaljer'}
+            aria-label={isExpanded ? t('aria.collapseRow') : t('aria.expandRow')}
             aria-expanded={isExpanded}
           >
             <svg

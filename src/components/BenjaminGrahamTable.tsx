@@ -64,7 +64,7 @@ const BENJAMIN_GRAHAM_FILTERS: FilterConfig[] = [
   },
 ];
 
-export default function BenjaminGrahamTable({ data, loading, error }: BenjaminGrahamTableProps) {
+function BenjaminGrahamTable({ data, loading, error }: BenjaminGrahamTableProps) {
   const { t } = useTranslation();
   const [expandedRows, setExpandedRows] = useState<{ [key: string]: boolean }>({});
   const { getEntryExitValue } = useEntryExitValues();
@@ -84,7 +84,7 @@ export default function BenjaminGrahamTable({ data, loading, error }: BenjaminGr
   // Get color for RR1 cell based on conditions
   const getRR1Color = useCallback((rr1: number | null, price: number | null, entry1: number): string | null => {
     if (rr1 !== null && rr1 > RR1_GREEN_THRESHOLD_PERCENT && price !== null && price > 0 && entry1 > 0 && price <= entry1 * PRICE_TOLERANCE_GREEN) {
-      return 'text-green-600 dark:text-green-300 bg-green-50 dark:bg-green-900/20';
+      return 'text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20';
     }
     return null;
   }, []);
@@ -99,7 +99,7 @@ export default function BenjaminGrahamTable({ data, loading, error }: BenjaminGr
   // Get color for RR2 cell based on conditions
   const getRR2Color = useCallback((rr2: number | null, price: number | null, entry2: number): string | null => {
     if (rr2 !== null && rr2 >= RR2_GREEN_THRESHOLD_PERCENT && price !== null && price > 0 && entry2 > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN) {
-      return 'text-green-600 dark:text-green-300 bg-green-50 dark:bg-green-900/20';
+      return 'text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20';
     }
     return null;
   }, []);
@@ -182,11 +182,11 @@ export default function BenjaminGrahamTable({ data, loading, error }: BenjaminGr
               : item.benjaminGraham > 0 && 
                 item.price !== null && item.price > 0 && 
                 item.price <= item.benjaminGraham * PRICE_TOLERANCE_GREEN
-              ? 'text-green-600 dark:text-green-300'
+              ? 'text-green-700 dark:text-green-200'
               : item.benjaminGraham > 0 && 
                 item.price !== null && item.price > 0 && 
                 item.price <= item.benjaminGraham * PRICE_TOLERANCE_BLUE
-              ? 'text-blue-700 dark:text-blue-300'
+              ? 'text-blue-700 dark:text-blue-400'
               : 'text-gray-900 dark:text-gray-100'
           }>
             {item.benjaminGraham !== null ? item.benjaminGraham.toLocaleString() : 'N/A'}
@@ -268,7 +268,7 @@ export default function BenjaminGrahamTable({ data, loading, error }: BenjaminGr
           <button
             onClick={toggleExpand}
             className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-all duration-200 flex-shrink-0"
-            aria-label={isExpanded ? 'Dölj detaljer' : 'Visa detaljer'}
+            aria-label={isExpanded ? t('aria.collapseRow') : t('aria.expandRow')}
             aria-expanded={isExpanded}
           >
             <svg
@@ -306,11 +306,11 @@ export default function BenjaminGrahamTable({ data, loading, error }: BenjaminGr
                   : item.benjaminGraham > 0 && 
                     item.price !== null && item.price > 0 && 
                     item.price <= item.benjaminGraham * PRICE_TOLERANCE_GREEN
-                  ? 'text-green-600 dark:text-green-300'
+                  ? 'text-green-700 dark:text-green-200'
                   : item.benjaminGraham > 0 && 
                     item.price !== null && item.price > 0 && 
                     item.price <= item.benjaminGraham * PRICE_TOLERANCE_BLUE
-                  ? 'text-blue-700 dark:text-blue-300'
+                  ? 'text-blue-700 dark:text-blue-400'
                   : 'text-gray-900 dark:text-gray-100'
               }`}>
                 {item.benjaminGraham !== null ? item.benjaminGraham.toLocaleString() : 'N/A'}
@@ -376,3 +376,5 @@ export default function BenjaminGrahamTable({ data, loading, error }: BenjaminGr
     />
   );
 }
+
+export default React.memo(BenjaminGrahamTable);

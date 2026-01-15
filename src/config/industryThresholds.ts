@@ -6,7 +6,7 @@
  * expected ranges and values for different industries.
  * 
  * To update these values, modify this file directly. The values are
- * automatically imported and used by the sheetsService.
+ * automatically imported and used by the sheets services.
  */
 
 /**

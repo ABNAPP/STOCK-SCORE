@@ -2,6 +2,7 @@ import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getFunctions, Functions } from 'firebase/functions';
+import { logger } from '../utils/logger';
 
 // Validate that all required environment variables are present
 const requiredEnvVars = {
@@ -14,16 +15,15 @@ const requiredEnvVars = {
 };
 
 // Debug: Log environment variables (masked for security)
-if (import.meta.env.DEV) {
-  console.log('🔍 Firebase Config Check:', {
-    apiKey: requiredEnvVars.apiKey ? `${requiredEnvVars.apiKey.substring(0, 10)}...` : 'MISSING',
-    authDomain: requiredEnvVars.authDomain || 'MISSING',
-    projectId: requiredEnvVars.projectId || 'MISSING',
-    storageBucket: requiredEnvVars.storageBucket || 'MISSING',
-    messagingSenderId: requiredEnvVars.messagingSenderId || 'MISSING',
-    appId: requiredEnvVars.appId ? `${requiredEnvVars.appId.substring(0, 20)}...` : 'MISSING',
-  });
-}
+logger.debug('Firebase Config Check', {
+  component: 'firebase',
+  apiKey: requiredEnvVars.apiKey ? `${requiredEnvVars.apiKey.substring(0, 10)}...` : 'MISSING',
+  authDomain: requiredEnvVars.authDomain || 'MISSING',
+  projectId: requiredEnvVars.projectId || 'MISSING',
+  storageBucket: requiredEnvVars.storageBucket || 'MISSING',
+  messagingSenderId: requiredEnvVars.messagingSenderId || 'MISSING',
+  appId: requiredEnvVars.appId ? `${requiredEnvVars.appId.substring(0, 20)}...` : 'MISSING',
+});
 
 const missingVars = Object.entries(requiredEnvVars)
   .filter(([_, value]) => !value || value === 'undefined')
@@ -39,8 +39,7 @@ if (missingVars.length > 0) {
     `Vercel Environment Variables (for production).\n\n` +
     `Go to: Vercel Dashboard → Your Project → Settings → Environment Variables`;
   
-  console.error('🔥 Firebase Configuration Error:', errorMessage);
-  console.error('Missing variables:', missingVars);
+  logger.error('Firebase Configuration Error', new Error(errorMessage), { component: 'firebase', missingVars });
   
   // In production, throw error to be caught by error boundaries
   if (import.meta.env.PROD) {
@@ -66,19 +65,19 @@ let functions: Functions;
 try {
   // Validate API key format (Firebase API keys start with AIza)
   if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('AIza') && firebaseConfig.apiKey !== 'missing-api-key') {
-    console.warn('⚠️ Firebase API Key format looks incorrect. It should start with "AIza"');
+    if (import.meta.env.DEV) {
+      logger.warn('Firebase API Key format looks incorrect. It should start with "AIza"', { component: 'firebase' });
+    }
   }
   
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
   functions = getFunctions(app);
-  console.log('✅ Firebase initialized successfully');
-  console.log('📍 Firebase Project ID:', firebaseConfig.projectId);
-} catch (error) {
+  logger.info('Firebase initialized successfully', { component: 'firebase', projectId: firebaseConfig.projectId });
+} catch (error: unknown) {
   const errorMessage = error instanceof Error ? error.message : String(error);
-  console.error('🔥 Firebase initialization error:', errorMessage);
-  console.error('Full error:', error);
+  logger.error('Firebase initialization error', error instanceof Error ? error : new Error(errorMessage), { component: 'firebase', errorMessage });
   
   // Check if it's an API key error
   if (errorMessage.includes('api-key-not-valid') || errorMessage.includes('API key')) {

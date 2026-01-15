@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { getPendingRequest, deletePendingRequest } from '../services/pendingRequestService';
 import { useUserRole } from '../hooks/useUserRole';
 import { useToast } from '../contexts/ToastContext';
+import { logger } from '../utils/logger';
 
 export default function WaitingApproval() {
   const { t } = useTranslation();
@@ -31,8 +32,8 @@ export default function WaitingApproval() {
         }
         
         setChecking(false);
-      } catch (error) {
-        console.error('Error checking request status:', error);
+      } catch (error: unknown) {
+        logger.error('Error checking request status', error, { component: 'WaitingApproval', operation: 'checkRequestStatus' });
         setChecking(false);
       }
     };
@@ -54,9 +55,11 @@ export default function WaitingApproval() {
       showToast(t('waitingApproval.withdrawSuccess') || 'Begäran har dragits tillbaka', 'success');
       // Log out user after withdrawing request
       await logout();
-    } catch (error: any) {
-      console.error('Error withdrawing request:', error);
-      const errorMessage = error.message || t('waitingApproval.withdrawError') || 'Kunde inte dra tillbaka begäran';
+    } catch (error: unknown) {
+      logger.error('Error withdrawing request', error, { component: 'WaitingApproval', operation: 'withdrawRequest' });
+      const errorMessage = error instanceof Error 
+        ? (error.message || t('waitingApproval.withdrawError') || 'Kunde inte dra tillbaka begäran')
+        : (t('waitingApproval.withdrawError') || 'Kunde inte dra tillbaka begäran');
       showToast(errorMessage, 'error');
     } finally {
       setWithdrawing(false);
@@ -95,7 +98,7 @@ export default function WaitingApproval() {
           <button
             onClick={() => setShowWithdrawConfirm(true)}
             disabled={withdrawing}
-            className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {t('waitingApproval.withdrawRequest') || 'Dra tillbaka begäran'}
           </button>

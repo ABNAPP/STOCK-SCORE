@@ -5,7 +5,7 @@ import { ThresholdIndustryData, BenjaminGrahamData } from '../types/stock';
 import { EntryExitValues } from '../contexts/EntryExitContext';
 import { calculateDetailedScoreBreakdown } from '../utils/calculateScoreDetailed';
 import ScoreBreakdownTooltip from './ScoreBreakdownTooltip';
-import { FilterConfig } from './AdvancedFilters';
+import { FilterConfig } from '../types/filters';
 
 interface ScoreTableProps {
   data: ScoreData[];
@@ -46,8 +46,8 @@ const SCORE_FILTERS: FilterConfig[] = [
 
 export default function ScoreTable({ data, loading, error, thresholdData = [], benjaminGrahamData = [], entryExitValues = new Map() }: ScoreTableProps) {
   const getScoreColorClass = useCallback((score: number): string => {
-    if (score >= 75) return 'text-green-600 dark:text-green-400 font-bold';
-    if (score >= 45) return 'text-blue-600 dark:text-blue-400 font-semibold';
+    if (score >= 75) return 'text-green-700 dark:text-green-200 font-bold';
+    if (score >= 45) return 'text-blue-700 dark:text-blue-400 font-semibold';
     return 'text-gray-600 dark:text-gray-400';
   }, []);
 
@@ -139,6 +139,10 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
       ariaLabel="Score"
       minTableWidth="600px"
       getRowKey={(item, index) => `${item.ticker}-${item.companyName}-${index}`}
+      enableExport={true}
+      enablePrint={true}
+      enableShareableLink={true}
+      viewId="score"
     />
   );
 }

@@ -1,16 +1,51 @@
 import { useMemo, useState, useEffect } from 'react';
 
-interface UseTablePaginationOptions {
-  data: any[];
+interface UseTablePaginationOptions<T> {
+  data: T[];
   itemsPerPage?: number;
   initialPage?: number;
 }
 
-export function useTablePagination({
+/**
+ * Custom hook for table pagination
+ * 
+ * Provides pagination functionality with:
+ * - Automatic page reset when data changes significantly
+ * - Page navigation (next, previous, first, last, go to page)
+ * - Calculated indices for display (e.g., "Showing 1-50 of 150")
+ * 
+ * **Pagination Strategy:**
+ * - Default: 50 items per page (configurable)
+ * - Automatically resets to page 1 if current page exceeds total pages
+ * - Provides 1-based page numbers for user-friendly display
+ * 
+ * @template T - Type of data items being paginated
+ * @param options - Pagination options
+ * @param options.data - Array of data items to paginate
+ * @param options.itemsPerPage - Number of items per page (default: 50)
+ * @param options.initialPage - Initial page number (default: 1)
+ * @returns Object with pagination state and navigation functions
+ * 
+ * @example
+ * ```typescript
+ * const {
+ *   currentPage,
+ *   totalPages,
+ *   paginatedData,
+ *   goToPage,
+ *   nextPage
+ * } = useTablePagination({
+ *   data: stockData,
+ *   itemsPerPage: 25,
+ *   initialPage: 1
+ * });
+ * ```
+ */
+export function useTablePagination<T>({
   data,
   itemsPerPage = 50,
   initialPage = 1,
-}: UseTablePaginationOptions) {
+}: UseTablePaginationOptions<T>) {
   const [currentPage, setCurrentPage] = useState(initialPage);
 
   const totalPages = Math.ceil(data.length / itemsPerPage);

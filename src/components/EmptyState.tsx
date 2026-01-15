@@ -72,7 +72,7 @@ export default function EmptyState({
         actions: onClearSearch ? (
           <button
             onClick={onClearSearch}
-            className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200"
+            className="mt-4 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200"
           >
             Rensa sökning
           </button>
@@ -103,7 +103,7 @@ export default function EmptyState({
         actions: onClearFilters ? (
           <button
             onClick={onClearFilters}
-            className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200"
+            className="mt-4 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200"
           >
             Rensa alla filter
           </button>
@@ -151,7 +151,7 @@ export default function EmptyState({
             {onClearSearch && (
               <button
                 onClick={onClearSearch}
-                className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200"
+                className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200"
               >
                 Rensa sökning
               </button>
@@ -159,7 +159,7 @@ export default function EmptyState({
             {onClearFilters && (
               <button
                 onClick={onClearFilters}
-                className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200"
+                className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200"
               >
                 Rensa alla filter
               </button>

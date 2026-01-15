@@ -1,4 +1,4 @@
-export interface BenjaminGrahamData {
+export interface BenjaminGrahamData extends Record<string, unknown> {
   companyName: string;
   ticker: string;
   price: number | null; // null means invalid/missing value, 0 means actual zero
@@ -7,7 +7,7 @@ export interface BenjaminGrahamData {
   irr1?: number | null; // Optional: IRR1 column from Dashboard sheet
 }
 
-export interface PEIndustryData {
+export interface PEIndustryData extends Record<string, unknown> {
   industry: string;
   pe: number | null; // null means invalid/missing value, 0 means actual zero
   pe1: number | null;
@@ -15,7 +15,7 @@ export interface PEIndustryData {
   companyCount: number; // This is a counter, not from Dashboard sheet
 }
 
-export interface ScoreBoardData {
+export interface ScoreBoardData extends Record<string, unknown> {
   companyName: string;
   ticker: string;
   industry: string; // Added: Industry from Dashboard sheet for threshold matching
@@ -51,7 +51,7 @@ export interface ThresholdIndustryData extends Record<string, unknown> {
   currentRatioMax: number;
 }
 
-export interface SMAData {
+export interface SMAData extends Record<string, unknown> {
   companyName: string;
   ticker: string;
   sma100: number | null; // null means invalid/missing value, 0 means actual zero
@@ -59,7 +59,7 @@ export interface SMAData {
   smaCross: string | null; // null means missing value
 }
 
-export interface EntryExitData {
+export interface EntryExitData extends Record<string, unknown> {
   companyName: string;
   ticker: string;
   currency: string;

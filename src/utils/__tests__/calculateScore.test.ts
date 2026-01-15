@@ -378,5 +378,224 @@ describe('calculateScore', () => {
       expect(score).toBeCloseTo(score, 1); // Rounded to 1 decimal
     });
   });
+
+  describe('Additional edge cases', () => {
+    it('should handle extreme positive values', () => {
+      const scoreBoardData = createMockScoreBoardData({
+        industry: 'Test Industry',
+        valueCreation: 1000000,
+        mungerQualityScore: 100,
+        irr: 1000,
+        ro40F1: 100,
+        ro40F2: 100,
+        leverageF2: 0.1,
+        cashSdebt: 1000,
+        currentRatio: 100,
+        pe1Industry: -1000,
+        pe2Industry: -1000,
+        tbSPrice: 1000,
+      });
+
+      const entryExitValues = createMockEntryExitValuesMap();
+      const score = calculateScore(scoreBoardData, mockThresholdData, mockBenjaminGrahamData, entryExitValues);
+
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(100);
+    });
+
+    it('should handle extreme negative values', () => {
+      const scoreBoardData = createMockScoreBoardData({
+        industry: 'Test Industry',
+        valueCreation: -1000000,
+        mungerQualityScore: -100,
+        irr: -1000,
+        ro40F1: -100,
+        ro40F2: -100,
+        leverageF2: 1000,
+        cashSdebt: -1000,
+        currentRatio: -100,
+        pe1Industry: 1000,
+        pe2Industry: 1000,
+        tbSPrice: -1000,
+      });
+
+      const entryExitValues = createMockEntryExitValuesMap();
+      const score = calculateScore(scoreBoardData, mockThresholdData, mockBenjaminGrahamData, entryExitValues);
+
+      expect(score).toBe(0);
+    });
+
+    it('should handle very small decimal values', () => {
+      const scoreBoardData = createMockScoreBoardData({
+        industry: 'Test Industry',
+        valueCreation: 0.0001,
+        mungerQualityScore: 0.0001,
+        irr: 0.0001,
+      });
+
+      const entryExitValues = createMockEntryExitValuesMap();
+      const score = calculateScore(scoreBoardData, mockThresholdData, mockBenjaminGrahamData, entryExitValues);
+
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(100);
+    });
+
+    it('should handle boundary threshold values exactly at min', () => {
+      const scoreBoardData = createMockScoreBoardData({
+        industry: 'Test Industry',
+        irr: 25, // Exactly at threshold min
+        ro40F1: 15, // Exactly at threshold min (15% = 0.15)
+        ro40F2: 15,
+        leverageF2: 2.0, // Exactly at threshold min (inverted)
+        cashSdebt: 0.7, // Exactly at threshold min
+        currentRatio: 1.1, // Exactly at threshold min
+      });
+
+      const entryExitValues = createMockEntryExitValuesMap();
+      const score = calculateScore(scoreBoardData, mockThresholdData, mockBenjaminGrahamData, entryExitValues);
+
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(100);
+    });
+
+    it('should handle boundary threshold values exactly at max', () => {
+      const scoreBoardData = createMockScoreBoardData({
+        industry: 'Test Industry',
+        irr: 25,
+        ro40F1: 25, // Exactly at threshold max (25% = 0.25)
+        ro40F2: 25,
+        leverageF2: 3.0, // Exactly at threshold max (inverted)
+        cashSdebt: 1.2, // Exactly at threshold max
+        currentRatio: 2.0, // Exactly at threshold max
+      });
+
+      const entryExitValues = createMockEntryExitValuesMap();
+      const score = calculateScore(scoreBoardData, mockThresholdData, mockBenjaminGrahamData, entryExitValues);
+
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(100);
+    });
+
+    it('should handle values just below threshold boundaries', () => {
+      const scoreBoardData = createMockScoreBoardData({
+        industry: 'Test Industry',
+        irr: 24.999, // Just below threshold
+        ro40F1: 14.999,
+        leverageF2: 3.001, // Just above max (inverted, so RED)
+      });
+
+      const entryExitValues = createMockEntryExitValuesMap();
+      const score = calculateScore(scoreBoardData, mockThresholdData, mockBenjaminGrahamData, entryExitValues);
+
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(100);
+    });
+
+    it('should handle values just above threshold boundaries', () => {
+      const scoreBoardData = createMockScoreBoardData({
+        industry: 'Test Industry',
+        irr: 25.001, // Just above threshold
+        ro40F1: 25.001,
+        leverageF2: 1.999, // Just below min (inverted, so GREEN)
+      });
+
+      const entryExitValues = createMockEntryExitValuesMap();
+      const score = calculateScore(scoreBoardData, mockThresholdData, mockBenjaminGrahamData, entryExitValues);
+
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(100);
+    });
+
+    it('should handle NaN values gracefully', () => {
+      const scoreBoardData = createMockScoreBoardData({
+        industry: 'Test Industry',
+        valueCreation: NaN as unknown as number,
+        mungerQualityScore: NaN as unknown as number,
+      });
+
+      const entryExitValues = createMockEntryExitValuesMap();
+      const score = calculateScore(scoreBoardData, mockThresholdData, mockBenjaminGrahamData, entryExitValues);
+
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(100);
+      expect(isNaN(score)).toBe(false);
+    });
+
+    it('should handle Infinity values gracefully', () => {
+      const scoreBoardData = createMockScoreBoardData({
+        industry: 'Test Industry',
+        valueCreation: Infinity,
+        mungerQualityScore: Infinity,
+      });
+
+      const entryExitValues = createMockEntryExitValuesMap();
+      const score = calculateScore(scoreBoardData, mockThresholdData, mockBenjaminGrahamData, entryExitValues);
+
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(100);
+      expect(isFinite(score)).toBe(true);
+    });
+
+    it('should handle multiple industries with different thresholds', () => {
+      const thresholdData1 = createMockThresholdData({
+        industry: 'Industry A',
+        irr: 20,
+      });
+      const thresholdData2 = createMockThresholdData({
+        industry: 'Industry B',
+        irr: 30,
+      });
+
+      const scoreBoardData1 = createMockScoreBoardData({
+        industry: 'Industry A',
+        irr: 25, // GREEN for Industry A (>= 20)
+      });
+      const scoreBoardData2 = createMockScoreBoardData({
+        industry: 'Industry B',
+        irr: 25, // RED for Industry B (< 30)
+      });
+
+      const entryExitValues = createMockEntryExitValuesMap();
+      const score1 = calculateScore(scoreBoardData1, [thresholdData1, thresholdData2], mockBenjaminGrahamData, entryExitValues);
+      const score2 = calculateScore(scoreBoardData2, [thresholdData1, thresholdData2], mockBenjaminGrahamData, entryExitValues);
+
+      expect(score1).toBeGreaterThan(score2);
+    });
+
+    it('should handle concurrent entry/exit values for same ticker', () => {
+      const entryExitValues = createMockEntryExitValuesMap([
+        {
+          ticker: 'TEST',
+          companyName: 'Test Company',
+          values: {
+            entry1: 100,
+            exit1: 200,
+            entry2: 150,
+            exit2: 250,
+          },
+        },
+      ]);
+
+      const benjaminGrahamData = [
+        createMockBenjaminGrahamData({
+          ticker: 'TEST',
+          companyName: 'Test Company',
+          price: 105, // Within tolerance of entry1
+        }),
+      ];
+
+      const scoreBoardData = createMockScoreBoardData({
+        industry: 'Test Industry',
+        sma100: 90,
+        sma200: 80,
+        smaCross: 'GOLDEN',
+      });
+
+      const score = calculateScore(scoreBoardData, mockThresholdData, benjaminGrahamData, entryExitValues);
+
+      expect(score).toBeGreaterThan(0);
+      expect(score).toBeLessThanOrEqual(100);
+    });
+  });
 });
 

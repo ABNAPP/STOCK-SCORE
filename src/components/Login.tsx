@@ -26,9 +26,10 @@ export default function Login() {
       setLoading(true);
       await login(email, password);
       showToast(t('auth.loginSuccess'), 'success');
-    } catch (err: any) {
-      setError(err.message || t('auth.loginFailed'));
-      showToast(err.message || t('auth.loginFailed'), 'error');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : t('auth.loginFailed');
+      setError(errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -52,8 +53,8 @@ export default function Login() {
       showToast(t('auth.resetEmailSent') || 'Password reset email sent!', 'success');
       setShowReset(false);
       setResetEmail('');
-    } catch (err: any) {
-      const errorMsg = err.message || t('auth.resetFailed') || 'Failed to send reset email';
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : (t('auth.resetFailed') || 'Failed to send reset email');
       setError(errorMsg);
       showToast(errorMsg, 'error');
     } finally {
@@ -103,7 +104,7 @@ export default function Login() {
                   setError('');
                   setResetMessage('');
                 }}
-                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+                className="text-sm text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
               >
                 {t('auth.forgotPassword')}
               </button>
@@ -142,7 +143,7 @@ export default function Login() {
                 </button>
               </div>
               {resetMessage && (
-                <p className="mt-2 text-sm text-green-600 dark:text-green-400">{resetMessage}</p>
+                <p className="mt-2 text-sm text-green-700 dark:text-green-200">{resetMessage}</p>
               )}
               <button
                 type="button"

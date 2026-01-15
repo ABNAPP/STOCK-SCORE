@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
 import { ColumnMetadata } from '../types/columnMetadata';
 
 interface ColumnTooltipProps {
@@ -11,6 +11,7 @@ export default function ColumnTooltip({ metadata, children }: ColumnTooltipProps
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const tooltipRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const tooltipId = useId();
 
   useEffect(() => {
     if (isVisible && triggerRef.current) {
@@ -58,12 +59,15 @@ export default function ColumnTooltip({ metadata, children }: ColumnTooltipProps
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className="relative"
+        aria-describedby={isVisible ? tooltipId : undefined}
       >
         {children}
       </div>
       {isVisible && (
         <div
           ref={tooltipRef}
+          id={tooltipId}
+          role="tooltip"
           className="fixed z-50 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 rounded-lg shadow-xl p-4 max-w-sm border border-gray-700"
           style={{
             top: `${position.top}px`,

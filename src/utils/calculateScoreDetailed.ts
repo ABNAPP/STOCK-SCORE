@@ -193,6 +193,19 @@ function getSMAColor(
   return 'BLUE'; // price === smaValue (yellow in UI, but counts as blue)
 }
 
+/**
+ * Classifies SMA Cross color with inverted logic for detailed view
+ * 
+ * **Why inverted logic (GOLDEN=RED, DEATH=GREEN)?**
+ * - In the detailed scoring view, the business logic interprets signals differently
+ * - GOLDEN cross (short-term above long-term) can indicate overbought conditions
+ * - DEATH cross (short-term below long-term) can indicate oversold opportunities
+ * - This inversion reflects a contrarian approach in the detailed analysis
+ * - Note: This differs from the main score calculation which uses standard logic
+ * 
+ * @param smaCross - SMA cross signal ('GOLDEN', 'DEATH', or null)
+ * @returns Color classification (inverted for detailed view)
+ */
 function getSMACrossColor(smaCross: string | null): ColorType {
   if (!smaCross) return 'BLANK';
   const upper = smaCross.toUpperCase();
@@ -222,7 +235,7 @@ function isRR1Green(
   const rr1 = calculateRR1(entry1, exit1);
 
   // RR1 is green when: RR1 >= 60%, Price > 0, Entry1 > 0, Price ≤ Entry1 * 1.05
-  return rr1 !== null && rr1 >= RR1_GREEN_THRESHOLD_PERCENT && price !== null && price > 0 && entry1 > 0 && price <= entry1 * PRICE_TOLERANCE_GREEN;
+  return rr1 !== null && rr1 >= RR1_GREEN_THRESHOLD_PERCENT && price !== null && price !== undefined && price > 0 && entry1 > 0 && price <= entry1 * PRICE_TOLERANCE_GREEN;
 }
 
 // Check if Entry1 is green
@@ -235,7 +248,7 @@ function isEntry1Green(
   const entry1 = entryExitValues.entry1 || 0;
 
   // Entry1 is green when: Entry1 > 0, Price > 0, Price ≤ Entry1 * 1.05
-  return entry1 > 0 && price !== null && price > 0 && price <= entry1 * PRICE_TOLERANCE_GREEN;
+  return entry1 > 0 && price !== null && price !== undefined && price > 0 && price <= entry1 * PRICE_TOLERANCE_GREEN;
 }
 
 // Calculate RR2: (Exit2 - Entry2) / Entry2 * 100
@@ -257,7 +270,7 @@ function isRR2GreenForTheoEntry(
   const rr2 = calculateRR2(entry2, exit2);
 
   // RR2 is green for TheoEntry when: RR2 > 60%, Price > 0, Entry2 > 0, Price ≤ Entry2 * 1.05
-  return rr2 !== null && rr2 > RR1_GREEN_THRESHOLD_PERCENT && price !== null && price > 0 && entry2 > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN;
+  return rr2 !== null && rr2 > RR1_GREEN_THRESHOLD_PERCENT && price !== null && price !== undefined && price > 0 && entry2 > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN;
 }
 
 // Check if Entry2 is green
@@ -270,7 +283,7 @@ function isEntry2Green(
   const entry2 = entryExitValues.entry2 || 0;
 
   // Entry2 is green when: Entry2 > 0, Price > 0, Price ≤ Entry2 * 1.05
-  return entry2 > 0 && price !== null && price > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN;
+  return entry2 > 0 && price !== null && price !== undefined && price > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN;
 }
 
 // Check if TheoEntry is green (either RR1+Entry1 OR RR2+Entry2 are green)
@@ -310,23 +323,88 @@ function getEntryExitValue(
   return entryExitValues.get(key);
 }
 
+/**
+ * Individual metric breakdown item
+ * 
+ * Represents how a single metric contributes to the overall score.
+ */
 export interface ScoreBreakdownItem {
+  /** Metric name (e.g., 'VALUE CREATION', 'TheoEntry') */
   metric: string;
+  /** Weight of this metric in the total score calculation */
   weight: number;
+  /** Color classification: GREEN (1.00), BLUE (0.70), RED (0.00), or BLANK (0.00) */
   color: 'GREEN' | 'BLUE' | 'RED' | 'BLANK';
-  factor: number; // 1.00, 0.70, eller 0.00
-  points: number; // weight * factor
+  /** Color factor applied: 1.00 (GREEN), 0.70 (BLUE/ORANGE), or 0.00 (RED/BLANK) */
+  factor: number;
+  /** Points contributed: weight * factor */
+  points: number;
+  /** Category: 'Fundamental' or 'Technical' */
   category: 'Fundamental' | 'Technical';
 }
 
+/**
+ * Complete score breakdown structure
+ * 
+ * Provides detailed breakdown of how the score was calculated, allowing
+ * users to understand which metrics contributed positively or negatively.
+ */
 export interface ScoreBreakdown {
+  /** Total score (0-100) */
   totalScore: number;
+  /** Array of individual metric contributions */
   items: ScoreBreakdownItem[];
+  /** Sum of all fundamental metric points */
   fundamentalTotal: number;
+  /** Sum of all technical metric points */
   technicalTotal: number;
 }
 
-// Calculate detailed score breakdown for a single stock
+/**
+ * Calculates detailed score breakdown showing individual metric contributions
+ * 
+ * This function provides transparency into how the score was calculated by
+ * breaking down each metric's contribution. Useful for:
+ * - Understanding which metrics are driving the score
+ * - Identifying areas for improvement
+ * - Debugging score calculations
+ * - Displaying score breakdown in UI tooltips
+ * 
+ * **Differences from calculateScore():**
+ * - Returns detailed breakdown instead of just final score
+ * - Separates fundamental vs technical totals
+ * - Uses BLUE instead of ORANGE for consistency with detailed view
+ * - Provides per-metric point contributions
+ * 
+ * **Score Breakdown Structure:**
+ * - Each metric shows: name, weight, color, factor, points, category
+ * - Fundamental total: Sum of all fundamental metric points
+ * - Technical total: Sum of all technical metric points
+ * - Total score: Sum of both categories (0-100)
+ * 
+ * @param scoreBoardData - Core stock data with fundamental and technical metrics
+ * @param thresholdData - Industry-specific threshold values for metric classification
+ * @param benjaminGrahamData - Price data for technical metric calculations
+ * @param entryExitValues - Entry/exit values for TheoEntry calculation
+ * @returns Detailed score breakdown with per-metric contributions
+ * 
+ * @example
+ * ```typescript
+ * const breakdown = calculateDetailedScoreBreakdown(
+ *   scoreBoardData,
+ *   thresholdData,
+ *   benjaminGrahamData,
+ *   entryExitValues
+ * );
+ * 
+ * console.log(`Total Score: ${breakdown.totalScore}`);
+ * console.log(`Fundamental: ${breakdown.fundamentalTotal}`);
+ * console.log(`Technical: ${breakdown.technicalTotal}`);
+ * breakdown.items.forEach(item => {
+ *   console.log(`${item.metric}: ${item.points} points (${item.color})`);
+ * });
+ * ```
+ */
 export function calculateDetailedScoreBreakdown(
   scoreBoardData: ScoreBoardData,
   thresholdData: ThresholdIndustryData[],
@@ -455,7 +533,39 @@ export function calculateDetailedScoreBreakdown(
   };
 }
 
-// Calculate detailed score for a single stock
+/**
+ * Calculates detailed score (0-100) using the detailed scoring algorithm
+ * 
+ * This function uses the same algorithm as calculateScore() but with
+ * different metric weights optimized for the detailed view. The main
+ * differences are:
+ * 
+ * - Different weight distribution (50p fundamental + 50p technical)
+ * - Uses BLUE color classification instead of ORANGE
+ * - SMA Cross has inverted logic (GOLDEN=RED, DEATH=GREEN) for detailed view
+ * 
+ * **When to use:**
+ * - For detailed score view that matches the breakdown display
+ * - When consistency with calculateDetailedScoreBreakdown() is required
+ * - For alternative scoring perspective with balanced fundamental/technical weights
+ * 
+ * @param scoreBoardData - Core stock data with fundamental and technical metrics
+ * @param thresholdData - Industry-specific threshold values for metric classification
+ * @param benjaminGrahamData - Price data for technical metric calculations
+ * @param entryExitValues - Entry/exit values for TheoEntry calculation
+ * @returns Stock score between 0.0 and 100.0 (rounded to 1 decimal)
+ * 
+ * @example
+ * ```typescript
+ * const detailedScore = calculateDetailedScore(
+ *   scoreBoardData,
+ *   thresholdData,
+ *   benjaminGrahamData,
+ *   entryExitValues
+ * );
+ * // Returns: 78.5 (example score using detailed algorithm)
+ * ```
+ */
 export function calculateDetailedScore(
   scoreBoardData: ScoreBoardData,
   thresholdData: ThresholdIndustryData[],

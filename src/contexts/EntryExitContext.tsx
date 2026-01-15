@@ -4,6 +4,9 @@ import { useAuth } from './AuthContext';
 import { saveEntryExitValues, loadEntryExitValues } from '../services/userDataService';
 import { onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { isObject, isNumber, isString, isNullOrUndefined } from '../utils/typeGuards';
+import { logger } from '../utils/logger';
+import { validateEntryExitValue } from '../utils/inputValidator';
 
 export interface EntryExitValues {
   entry1: number;
@@ -27,6 +30,33 @@ export const EntryExitContext = createContext<EntryExitContextType | undefined>(
 
 const STORAGE_KEY = 'entryExitValues';
 
+// Type guard for EntryExitValues
+function isEntryExitValues(value: unknown): value is EntryExitValues {
+  if (!isObject(value)) {
+    return false;
+  }
+  
+  const obj = value as Record<string, unknown>;
+  
+  // Check required numeric fields
+  if (!isNumber(obj.entry1) || !isNumber(obj.entry2) || 
+      !isNumber(obj.exit1) || !isNumber(obj.exit2)) {
+    return false;
+  }
+  
+  // Check required string field
+  if (!isString(obj.currency)) {
+    return false;
+  }
+  
+  // Check optional dateOfUpdate field (can be null or string)
+  if (!isNullOrUndefined(obj.dateOfUpdate) && !isString(obj.dateOfUpdate)) {
+    return false;
+  }
+  
+  return true;
+}
+
 // Load from localStorage (fallback)
 const loadFromStorage = (): Map<string, EntryExitValues> => {
   try {
@@ -35,8 +65,8 @@ const loadFromStorage = (): Map<string, EntryExitValues> => {
       const parsed = JSON.parse(stored);
       return new Map(Object.entries(parsed));
     }
-  } catch (error) {
-    console.error('Error loading EntryExit values from localStorage:', error);
+  } catch (error: unknown) {
+    logger.error('Error loading EntryExit values from localStorage', error, { component: 'EntryExitContext', operation: 'loadFromLocalStorage' });
   }
   return new Map();
 };
@@ -46,8 +76,8 @@ const saveToStorage = (values: Map<string, EntryExitValues>) => {
   try {
     const obj = Object.fromEntries(values);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-  } catch (error) {
-    console.error('Error saving EntryExit values to localStorage:', error);
+  } catch (error: unknown) {
+    logger.error('Error saving EntryExit values to localStorage', error, { component: 'EntryExitContext', operation: 'saveToLocalStorage' });
   }
 };
 
@@ -93,8 +123,8 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
             setServerRows(localData);
           }
         }
-      } catch (error) {
-        console.error('Error loading EntryExit values:', error);
+      } catch (error: unknown) {
+        logger.error('Error loading EntryExit values', error, { component: 'EntryExitContext', operation: 'loadEntryExitValues' });
         // Fallback to localStorage
         const localData = loadFromStorage();
         if (localData.size > 0) {
@@ -137,7 +167,11 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
             
             // Process each remote value
             for (const [key, remoteValue] of Object.entries(remoteValues)) {
-              const remoteEntry = remoteValue as EntryExitValues;
+              if (!isEntryExitValues(remoteValue)) {
+                logger.warn(`Invalid EntryExitValues format for key ${key}`, { component: 'EntryExitContext', operation: 'loadEntryExitValues', key, remoteValue });
+                continue;
+              }
+              const remoteEntry = remoteValue;
               const prevRow = next.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
               
               // Merge remote into existing
@@ -149,7 +183,8 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
                 const dk = `${key}.${field}`;
                 if (dirtyKeysRef.current.has(dk)) {
                   // This field is being edited, keep the local value
-                  merged[field] = prevRow[field];
+                  // Type assertion is safe here because prevRow and merged have the same structure
+                  (merged as Record<keyof EntryExitValues, number | string | null>)[field] = prevRow[field];
                 }
               }
               
@@ -167,7 +202,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
         }
       },
       (error) => {
-        console.error('Error listening to EntryExit values:', error);
+        logger.error('Error listening to EntryExit values', error, { component: 'EntryExitContext', operation: 'listenToEntryExitValues' });
       }
     );
 
@@ -190,7 +225,8 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     for (const [draftKey, draftValue] of Object.entries(draft)) {
       const [key, field] = draftKey.split('.');
       const entry = currentState.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
-      const updated: EntryExitValues = { ...entry, [field]: draftValue };
+      // Type assertion is safe here because field comes from our own draft keys which are validated
+      const updated: EntryExitValues = { ...entry, [field as keyof EntryExitValues]: draftValue as number | string | null };
       
       // Update dateOfUpdate if needed
       const allEmpty = updated.entry1 === 0 && updated.entry2 === 0 && updated.exit1 === 0 && updated.exit2 === 0;
@@ -215,8 +251,8 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
         // After successful save, release dirty locks + remove draft
         dirtyKeysRef.current.clear();
         setDraft({});
-      } catch (error) {
-        console.error('Error saving EntryExit values to Firestore:', error);
+      } catch (error: unknown) {
+        logger.error('Error saving EntryExit values to Firestore', error, { component: 'EntryExitContext', operation: 'saveEntryExitValues' });
         // On error, keep dirty keys and draft so user's edits aren't lost
       }
     }, 1000); // Wait 1 second after last change
@@ -261,7 +297,16 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     for (const field of fields) {
       const dk = `${key}.${field}`;
       if (dk in draft) {
-        result[field] = draft[dk] as any;
+        const draftValue = draft[dk];
+        // Type-safe assignment with runtime checks
+        if (field === 'currency' && typeof draftValue === 'string') {
+          result.currency = draftValue;
+        } else if (field === 'dateOfUpdate' && (typeof draftValue === 'string' || draftValue === null)) {
+          result.dateOfUpdate = draftValue;
+        } else if ((field === 'entry1' || field === 'entry2' || field === 'exit1' || field === 'exit2') && typeof draftValue === 'number') {
+          // Type assertion is safe here because we've verified the field type and value type match
+          (result as Record<'entry1' | 'entry2' | 'exit1' | 'exit2', number>)[field] = draftValue;
+        }
       }
     }
     
@@ -270,6 +315,20 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
 
   // While typing: mark dirty + update draft (and optionally optimistic update serverRows)
   const setFieldValue = useCallback((ticker: string, companyName: string, field: keyof EntryExitValues, value: number | string | null) => {
+    // Validate the value before setting
+    const validation = validateEntryExitValue(field, value);
+    if (!validation.isValid) {
+      logger.warn('Invalid EntryExit value rejected', {
+        component: 'EntryExitContext',
+        operation: 'setFieldValue',
+        field,
+        value,
+        error: validation.error,
+      });
+      // Still allow the change for UI responsiveness, but log the warning
+      // The UI component will show the validation error
+    }
+
     const key = `${ticker}-${companyName}`;
     const dk = `${key}.${field}`;
     
@@ -305,9 +364,39 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     
     if (value === undefined) return;
 
+    // Validate before committing to Firestore
+    const validation = validateEntryExitValue(field, value);
+    if (!validation.isValid) {
+      logger.warn('Cannot commit invalid EntryExit value', {
+        component: 'EntryExitContext',
+        operation: 'commitField',
+        field,
+        value,
+        error: validation.error,
+      });
+      // Don't commit invalid values
+      return;
+    }
+
     // Build the full entry to save
     const serverEntry = serverRows.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
     const updated: EntryExitValues = { ...serverEntry, [field]: value };
+    
+    // Validate the complete entry
+    const entryValidation = Object.entries(updated).every(([f, v]) => {
+      const fieldValidation = validateEntryExitValue(f as keyof EntryExitValues, v);
+      return fieldValidation.isValid;
+    });
+
+    if (!entryValidation) {
+      logger.warn('Cannot commit EntryExit entry with invalid values', {
+        component: 'EntryExitContext',
+        operation: 'commitField',
+        key,
+        updated,
+      });
+      return;
+    }
     
     // Update dateOfUpdate if needed
     const allEmpty = updated.entry1 === 0 && updated.entry2 === 0 && updated.exit1 === 0 && updated.exit2 === 0;
@@ -337,8 +426,8 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
         newRows.set(key, updated);
         return newRows;
       });
-    } catch (error) {
-      console.error('Error committing field to Firestore:', error);
+    } catch (error: unknown) {
+      logger.error('Error committing field to Firestore', error, { component: 'EntryExitContext', operation: 'commitField' });
     }
   }, [draft, serverRows, currentUser]);
 

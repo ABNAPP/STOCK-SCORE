@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useRef, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode, useCallback, useMemo } from 'react';
 import { useRefresh } from './RefreshContext';
 import { useTranslation } from 'react-i18next';
+import { logger } from '../utils/logger';
 
 interface AutoRefreshContextType {
   enabled: boolean;
@@ -52,14 +53,14 @@ export function AutoRefreshProvider({ children }: AutoRefreshProviderProps) {
   
   // Debug: Log before calling useRefresh to verify provider is available
   if (import.meta.env.DEV) {
-    console.log('🔍 AutoRefreshProvider: About to call useRefresh()...');
+    logger.debug('AutoRefreshProvider: About to call useRefresh()...', { component: 'AutoRefreshContext' });
   }
   
   const { refreshAll, isRefreshing } = useRefresh();
   
   // Debug: Log after successfully getting context
   if (import.meta.env.DEV) {
-    console.log('✅ AutoRefreshProvider: Successfully got RefreshContext', {
+    logger.debug('AutoRefreshProvider: Successfully got RefreshContext', {
       hasRefreshAll: !!refreshAll,
       isRefreshing,
     });
@@ -88,7 +89,7 @@ export function AutoRefreshProvider({ children }: AutoRefreshProviderProps) {
       }
       return DEFAULT_INTERVAL;
     } catch (error) {
-      console.warn('Failed to load auto-refresh interval from localStorage:', error);
+      logger.warn('Failed to load auto-refresh interval from localStorage', { component: 'AutoRefreshContext', error });
       return DEFAULT_INTERVAL;
     }
   });
@@ -121,7 +122,7 @@ export function AutoRefreshProvider({ children }: AutoRefreshProviderProps) {
       await refreshAll();
       setLastRefreshTime(new Date());
     } catch (error) {
-      console.error('Auto-refresh failed:', error);
+      logger.error('Auto-refresh failed', error, { component: 'AutoRefreshContext', operation: 'handleAutoRefresh' });
     }
   }, [refreshAll, isRefreshing]);
 
@@ -176,13 +177,13 @@ export function AutoRefreshProvider({ children }: AutoRefreshProviderProps) {
     };
   }, [enabled, interval, isRefreshing, lastRefreshTime, handleAutoRefresh]);
 
-  const value: AutoRefreshContextType = {
+  const value: AutoRefreshContextType = useMemo(() => ({
     enabled,
     interval,
     setEnabled,
     setIntervalValue,
     lastRefreshTime,
-  };
+  }), [enabled, interval, setEnabled, setIntervalValue, lastRefreshTime]);
 
   return (
     <AutoRefreshContext.Provider value={value}>

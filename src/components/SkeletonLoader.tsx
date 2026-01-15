@@ -12,8 +12,8 @@ export default function SkeletonLoader({ className = '', width, height }: Skelet
         width: width || '100%',
         height: height || '1rem',
         backgroundSize: '200% 100%',
-        animation: 'shimmer 1.5s ease-in-out infinite',
       }}
+      className="animate-shimmer"
     />
   );
 }

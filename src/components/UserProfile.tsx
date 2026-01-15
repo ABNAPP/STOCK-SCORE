@@ -1,10 +1,19 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserRole } from '../hooks/useUserRole';
+import { useNotifications } from '../contexts/NotificationContext';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
+import { logger } from '../utils/logger';
+import {
+  getUserPreferences,
+  updateNotificationPreferences,
+  NotificationPreferences,
+  DEFAULT_NOTIFICATION_PREFERENCES,
+} from '../services/userPreferencesService';
+import Checkbox from './ui/Checkbox';
 
 interface UserProfileProps {
   onClose?: () => void;
@@ -15,8 +24,12 @@ export default function UserProfile({ onClose }: UserProfileProps) {
   const { showToast } = useToast();
   const { currentUser, logout } = useAuth();
   const { userRole, isEditor, isAdmin } = useUserRole();
+  const { requestPermission, permissionState } = useNotifications();
   const [showDeregisterConfirm, setShowDeregisterConfirm] = useState(false);
   const [deregistering, setDeregistering] = useState(false);
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
+  const [loadingPrefs, setLoadingPrefs] = useState(true);
+  const [savingPrefs, setSavingPrefs] = useState(false);
 
   const handleDeregister = useCallback(async () => {
     if (!currentUser || deregistering) return;
@@ -30,15 +43,74 @@ export default function UserProfile({ onClose }: UserProfileProps) {
       showToast(t('profile.deregisterSuccess') || 'Ditt konto har tagits bort', 'success');
       // Log out user after account deletion
       await logout();
-    } catch (error: any) {
-      console.error('Error deregistering:', error);
-      const errorMessage = error.message || error.code || t('profile.deregisterError') || 'Kunde inte ta bort kontot';
+    } catch (error: unknown) {
+      logger.error('Error deregistering', error, { component: 'UserProfile', operation: 'deregister' });
+      const errorMessage = error instanceof Error 
+        ? (error.message || (error as { code?: string }).code || t('profile.deregisterError') || 'Kunde inte ta bort kontot')
+        : (t('profile.deregisterError') || 'Kunde inte ta bort kontot');
       showToast(errorMessage, 'error');
     } finally {
       setDeregistering(false);
       setShowDeregisterConfirm(false);
     }
   }, [currentUser, deregistering, showToast, t, logout]);
+
+  // Load user preferences
+  useEffect(() => {
+    const loadPreferences = async () => {
+      if (!currentUser) return;
+
+      try {
+        setLoadingPrefs(true);
+        const prefs = await getUserPreferences(currentUser.uid);
+        if (prefs) {
+          setNotificationPrefs(prefs.notifications);
+        }
+      } catch (error) {
+        logger.error('Error loading preferences', error, { component: 'UserProfile' });
+      } finally {
+        setLoadingPrefs(false);
+      }
+    };
+
+    loadPreferences();
+  }, [currentUser]);
+
+  const handleNotificationPrefChange = useCallback(
+    async (key: keyof NotificationPreferences, value: boolean | string) => {
+      if (!currentUser || savingPrefs) return;
+
+      const updatedPrefs = {
+        ...notificationPrefs,
+        [key]: value,
+      };
+
+      setNotificationPrefs(updatedPrefs);
+
+      try {
+        setSavingPrefs(true);
+        await updateNotificationPreferences(currentUser.uid, updatedPrefs);
+      } catch (error) {
+        logger.error('Error saving notification preferences', error, { component: 'UserProfile' });
+        showToast(t('profile.preferencesSaveError', 'Failed to save preferences'), 'error');
+        // Revert on error
+        const prefs = await getUserPreferences(currentUser.uid);
+        if (prefs) {
+          setNotificationPrefs(prefs.notifications);
+        }
+      } finally {
+        setSavingPrefs(false);
+      }
+    },
+    [currentUser, notificationPrefs, savingPrefs, showToast, t]
+  );
+
+  const handleRequestDesktopPermission = useCallback(async () => {
+    const granted = await requestPermission();
+    if (granted) {
+      handleNotificationPrefChange('desktopNotifications', true);
+    }
+  }, [requestPermission, handleNotificationPrefChange]);
 
   const getRoleLabel = (): string => {
     if (isAdmin) return t('roles.admin');
@@ -86,6 +158,135 @@ export default function UserProfile({ onClose }: UserProfileProps) {
             <p className="text-gray-900 dark:text-gray-100">{currentUser.email}</p>
           </div>
         )}
+
+        {/* Notification Preferences */}
+        <div className="border-t border-gray-300 dark:border-gray-600 pt-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            {t('profile.notificationPreferences', 'Notification Preferences')}
+          </h3>
+          
+          {loadingPrefs ? (
+            <p className="text-sm text-gray-600 dark:text-gray-400">{t('common.loading', 'Loading...')}</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {t('profile.notificationsEnabled', 'Enable Notifications')}
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {t('profile.notificationsEnabledDesc', 'Enable all notifications')}
+                  </p>
+                </div>
+                <Checkbox
+                  checked={notificationPrefs.enabled}
+                  onChange={(e) => handleNotificationPrefChange('enabled', e.target.checked)}
+                  disabled={savingPrefs}
+                />
+              </div>
+
+              {notificationPrefs.enabled && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {t('profile.desktopNotifications', 'Desktop Notifications')}
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {t('profile.desktopNotificationsDesc', 'Show browser notifications')}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {permissionState !== 'granted' && (
+                        <button
+                          onClick={handleRequestDesktopPermission}
+                          className="px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
+                        >
+                          {t('profile.enableDesktop', 'Enable')}
+                        </button>
+                      )}
+                      <Checkbox
+                        checked={notificationPrefs.desktopNotifications && permissionState === 'granted'}
+                        onChange={(e) => handleNotificationPrefChange('desktopNotifications', e.target.checked)}
+                        disabled={savingPrefs || permissionState !== 'granted'}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pl-4 border-l-2 border-gray-200 dark:border-gray-700 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {t('profile.dataUpdates', 'Data Updates')}
+                      </label>
+                      <Checkbox
+                        checked={notificationPrefs.dataUpdates}
+                        onChange={(checked) => handleNotificationPrefChange('dataUpdates', checked)}
+                        disabled={savingPrefs}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {t('profile.errors', 'Errors')}
+                      </label>
+                      <Checkbox
+                        checked={notificationPrefs.errors}
+                        onChange={(checked) => handleNotificationPrefChange('errors', checked)}
+                        disabled={savingPrefs}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {t('profile.success', 'Success Messages')}
+                      </label>
+                      <Checkbox
+                        checked={notificationPrefs.success}
+                        onChange={(checked) => handleNotificationPrefChange('success', checked)}
+                        disabled={savingPrefs}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {t('profile.warnings', 'Warnings')}
+                      </label>
+                      <Checkbox
+                        checked={notificationPrefs.warning}
+                        onChange={(checked) => handleNotificationPrefChange('warning', checked)}
+                        disabled={savingPrefs}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {t('profile.soundEnabled', 'Sound Notifications')}
+                    </label>
+                    <Checkbox
+                      checked={notificationPrefs.soundEnabled}
+                      onChange={(e) => handleNotificationPrefChange('soundEnabled', e.target.checked)}
+                      disabled={savingPrefs}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {t('profile.doNotDisturb', 'Do Not Disturb')}
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {t('profile.doNotDisturbDesc', 'Silence notifications during specified hours')}
+                      </p>
+                    </div>
+                    <Checkbox
+                      checked={notificationPrefs.doNotDisturb}
+                      onChange={(e) => handleNotificationPrefChange('doNotDisturb', e.target.checked)}
+                      disabled={savingPrefs}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Deregister Section */}
         <div className="border-t border-gray-300 dark:border-gray-600 pt-4">

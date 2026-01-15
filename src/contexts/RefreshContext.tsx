@@ -1,12 +1,14 @@
-import { createContext, useContext, ReactNode, useCallback } from 'react';
+import { createContext, useContext, ReactNode, useCallback, useMemo } from 'react';
 import { useBenjaminGrahamData } from '../hooks/useBenjaminGrahamData';
 import { useScoreBoardData } from '../hooks/useScoreBoardData';
 import { usePEIndustryData } from '../hooks/usePEIndustryData';
 import { useThresholdIndustryData } from '../hooks/useThresholdIndustryData';
 import { useToast } from './ToastContext';
+import { useNotifications } from './NotificationContext';
 import { useTranslation } from 'react-i18next';
 import { clearCache } from '../services/cacheService';
 import { useLoadingProgress } from './LoadingProgressContext';
+import { logger } from '../utils/logger';
 
 interface RefreshContextType {
   refreshAll: () => Promise<void>;
@@ -31,6 +33,7 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
   // - useLoadingProgress: Requires LoadingProgressProvider (parent in App.tsx)
   const { t } = useTranslation();
   const { showSuccess, showError } = useToast();
+  const { createNotification } = useNotifications();
   const { reset: resetProgress } = useLoadingProgress();
   
   // Use all data hooks (Stock Score is calculated from ScoreBoard data, so no separate hook needed)
@@ -61,12 +64,42 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
       const hasErrors = results.some(result => result.status === 'rejected');
       
       if (hasErrors) {
-        showError(t('toast.refreshError', 'Fel vid uppdatering av data'));
+        const errorMessage = t('toast.refreshError', 'Fel vid uppdatering av data');
+        showError(errorMessage);
+        createNotification(
+          'error',
+          'Data Refresh Failed',
+          errorMessage,
+          {
+            showDesktop: true,
+            persistent: false,
+          }
+        );
       } else {
-        showSuccess(t('toast.refreshSuccess', 'All data har uppdaterats'));
+        const successMessage = t('toast.refreshSuccess', 'All data har uppdaterats');
+        showSuccess(successMessage);
+        createNotification(
+          'success',
+          'Data Refresh Complete',
+          successMessage,
+          {
+            showDesktop: false,
+            persistent: false,
+          }
+        );
       }
-    } catch (error) {
-      showError(t('toast.refreshError', 'Fel vid uppdatering av data'));
+    } catch (error: unknown) {
+      const errorMessage = t('toast.refreshError', 'Fel vid uppdatering av data');
+      showError(errorMessage);
+      createNotification(
+        'error',
+        'Data Refresh Error',
+        errorMessage,
+        {
+          showDesktop: true,
+          persistent: false,
+        }
+      );
     }
   }, [
     benjaminGraham.refetch,
@@ -75,6 +108,7 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
     threshold.refetch,
     showSuccess,
     showError,
+    createNotification,
     t,
     resetProgress,
   ]);
@@ -86,14 +120,19 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
     peIndustry.loading ||
     threshold.loading;
 
-  const value: RefreshContextType = {
+  const refreshBenjaminGraham = useCallback(() => benjaminGraham.refetch(true), [benjaminGraham.refetch]);
+  const refreshScoreBoard = useCallback(() => scoreBoard.refetch(true), [scoreBoard.refetch]);
+  const refreshPEIndustry = useCallback(() => peIndustry.refetch(true), [peIndustry.refetch]);
+  const refreshThresholdIndustry = useCallback(() => threshold.refetch(true), [threshold.refetch]);
+
+  const value: RefreshContextType = useMemo(() => ({
     refreshAll,
     isRefreshing,
-    refreshBenjaminGraham: () => benjaminGraham.refetch(true),
-    refreshScoreBoard: () => scoreBoard.refetch(true),
-    refreshPEIndustry: () => peIndustry.refetch(true),
-    refreshThresholdIndustry: () => threshold.refetch(true),
-  };
+    refreshBenjaminGraham,
+    refreshScoreBoard,
+    refreshPEIndustry,
+    refreshThresholdIndustry,
+  }), [refreshAll, isRefreshing, refreshBenjaminGraham, refreshScoreBoard, refreshPEIndustry, refreshThresholdIndustry]);
 
   // CRITICAL: The Provider MUST wrap children for context to be available
   // AutoRefreshProvider (a child) will use useRefresh() which requires this context
@@ -101,7 +140,7 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
   
   // Debug logging in development mode only
   if (import.meta.env.DEV) {
-    console.log('✅ RefreshProvider: Rendering RefreshContext.Provider with value', {
+    logger.debug('RefreshProvider: Rendering RefreshContext.Provider with value', {
       hasRefreshAll: typeof value.refreshAll === 'function',
       isRefreshing: value.isRefreshing,
       valueKeys: Object.keys(value),

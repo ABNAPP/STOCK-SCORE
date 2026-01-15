@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ViewId, NavigationSection } from '../types/navigation';
 import ConditionsSidebar from './ConditionsSidebar';
 import { useUserRole } from '../hooks/useUserRole';
+import { useSwipeGesture } from '../hooks/useSwipeGesture';
 
 interface SidebarProps {
   activeView: ViewId;
@@ -118,6 +119,16 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
   const isSubmenuExpanded = (itemId: string) => expandedSubmenus.has(itemId);
   const isActive = (viewId: ViewId) => activeView === viewId;
 
+  // Swipe gesture for mobile: close sidebar when swiping left
+  const sidebarRef = useSwipeGesture({
+    onSwipeLeft: () => {
+      // Only close on mobile when sidebar is open
+      if (isOpen && window.innerWidth < 1024) {
+        onClose();
+      }
+    },
+  });
+
   return (
     <>
       {/* Overlay for mobile */}
@@ -131,6 +142,7 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
       
       {/* Sidebar */}
       <nav
+        ref={sidebarRef}
         id="navigation"
         className={`fixed top-0 left-0 h-screen bg-white dark:bg-gray-800 border-r border-gray-300 dark:border-gray-500 overflow-y-auto pt-16 z-50 transition-all duration-300 ease-in-out ${
           isOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'
@@ -147,9 +159,11 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
                 <button
                   onClick={() => toggleSection(section.id)}
                   className="w-full flex items-center justify-between px-3 py-3 sm:py-2.5 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-all duration-200 hover:scale-[1.02] active:scale-95 min-h-[44px] touch-manipulation"
+                  aria-expanded={isSectionExpanded(section.id)}
+                  aria-label={`${section.label}, ${isSectionExpanded(section.id) ? t('aria.closeMenu') : t('aria.openMenu')}`}
                 >
                   <span className="tracking-wide">{section.label}</span>
-                  <span className="text-gray-600 dark:text-gray-300 text-xs">
+                  <span className="text-gray-600 dark:text-gray-300 text-xs" aria-hidden="true">
                     {isSectionExpanded(section.id) ? '▼' : '▶'}
                   </span>
                 </button>
@@ -164,9 +178,11 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
                           <button
                             onClick={() => toggleSubmenu(item.id)}
                             className="w-full flex items-center justify-between px-3 py-3 sm:py-2 text-left text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-all duration-200 hover:scale-[1.02] active:scale-95 min-h-[44px] touch-manipulation"
+                            aria-expanded={isSubmenuExpanded(item.id)}
+                            aria-label={`${item.label}, ${isSubmenuExpanded(item.id) ? t('aria.closeMenu') : t('aria.openMenu')}`}
                           >
                             <span>{item.label}</span>
-                            <span className="text-gray-600 dark:text-gray-300 text-xs">
+                            <span className="text-gray-600 dark:text-gray-300 text-xs" aria-hidden="true">
                               {isSubmenuExpanded(item.id) ? '▼' : '▶'}
                             </span>
                           </button>
@@ -181,6 +197,8 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
                                       ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-medium'
                                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 hover:scale-[1.02] active:scale-95'
                                   }`}
+                                  aria-label={`${t('aria.navigateTo')} ${child.label}`}
+                                  aria-current={isActive(child.id) ? 'page' : undefined}
                                 >
                                   {child.label}
                                 </button>
@@ -200,6 +218,8 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
                             ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-semibold'
                             : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-all duration-200 hover:scale-[1.02] active:scale-95'
                         }`}
+                        aria-label={`${t('aria.navigateTo')} ${item.label}`}
+                        aria-current={isActive(item.id) ? 'page' : undefined}
                       >
                         {item.label}
                       </button>

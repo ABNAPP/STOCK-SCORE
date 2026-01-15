@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EntryExitData } from '../types/stock';
 import BaseTable, { ColumnDefinition, HeaderRenderProps } from './BaseTable';
 import ColumnTooltip from './ColumnTooltip';
@@ -7,6 +8,8 @@ import { FilterConfig } from './AdvancedFilters';
 import { useEntryExitValues } from '../contexts/EntryExitContext';
 import { useUserRole } from '../hooks/useUserRole';
 import { DATE_NEAR_OLD_THRESHOLD_DAYS } from '../config/constants';
+import { isNumber, isString } from '../utils/typeGuards';
+import { validateEntryExitValue } from '../utils/inputValidator';
 
 interface EntryExitTableProps {
   data: EntryExitData[];
@@ -76,8 +79,10 @@ const ENTRY_EXIT_FILTERS: FilterConfig[] = [
 ];
 
 export default function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
+  const { t } = useTranslation();
   const { getEntryExitValue, getFieldValue, setFieldValue, commitField, initializeFromData } = useEntryExitValues();
   const { isEditor } = useUserRole();
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Initialize entry/exit values from data
   useEffect(() => {
@@ -127,6 +132,22 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
   }, [isDateOld]);
 
   const handleEntryExitChange = useCallback((ticker: string, companyName: string, field: 'entry1' | 'entry2' | 'exit1' | 'exit2', value: number) => {
+    // Validate before setting
+    const validation = validateEntryExitValue(field, value);
+    const key = `${ticker}-${companyName}-${field}`;
+    
+    if (!validation.isValid) {
+      setValidationErrors((prev) => ({ ...prev, [key]: validation.error || 'Invalid value' }));
+      // Still allow the change but mark it as invalid
+      // User will see error and can correct it
+    } else {
+      setValidationErrors((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+    
     setFieldValue(ticker, companyName, field, value);
   }, [setFieldValue]);
 
@@ -203,12 +224,20 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
   // Render cell content
   const renderCell = useCallback((item: EntryExitData, column: ColumnDefinition, index: number, globalIndex: number) => {
     // Use getFieldValue for individual fields (supports draft)
-    const entry1 = getFieldValue(item.ticker, item.companyName, 'entry1') as number;
-    const entry2 = getFieldValue(item.ticker, item.companyName, 'entry2') as number;
-    const exit1 = getFieldValue(item.ticker, item.companyName, 'exit1') as number;
-    const exit2 = getFieldValue(item.ticker, item.companyName, 'exit2') as number;
-    const currency = getFieldValue(item.ticker, item.companyName, 'currency') as string;
-    const dateOfUpdate = getFieldValue(item.ticker, item.companyName, 'dateOfUpdate') as string | null;
+    const entry1Value = getFieldValue(item.ticker, item.companyName, 'entry1');
+    const entry2Value = getFieldValue(item.ticker, item.companyName, 'entry2');
+    const exit1Value = getFieldValue(item.ticker, item.companyName, 'exit1');
+    const exit2Value = getFieldValue(item.ticker, item.companyName, 'exit2');
+    const currencyValue = getFieldValue(item.ticker, item.companyName, 'currency');
+    const dateOfUpdateValue = getFieldValue(item.ticker, item.companyName, 'dateOfUpdate');
+    
+    // Validate types with type guards
+    const entry1 = isNumber(entry1Value) ? entry1Value : 0;
+    const entry2 = isNumber(entry2Value) ? entry2Value : 0;
+    const exit1 = isNumber(exit1Value) ? exit1Value : 0;
+    const exit2 = isNumber(exit2Value) ? exit2Value : 0;
+    const currency = isString(currencyValue) ? currencyValue : '';
+    const dateOfUpdate = isString(dateOfUpdateValue) || dateOfUpdateValue === null ? dateOfUpdateValue : null;
     const values = { entry1, entry2, exit1, exit2, currency, dateOfUpdate };
 
     switch (column.key) {
@@ -222,88 +251,208 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
         if (!isEditor) {
           return <span className="text-gray-900 dark:text-gray-100">{values.currency || 'USD'}</span>;
         }
+        const currencyKey = `${item.ticker}-${item.companyName}-currency`;
+        const currencyError = validationErrors[currencyKey];
         return (
-          <select
-            value={values.currency || 'USD'}
-            onChange={(e) => handleCurrencyChange(item.ticker, item.companyName, e.target.value)}
-            onBlur={() => commitField(item.ticker, item.companyName, 'currency')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {CURRENCIES.map((currency) => (
-              <option key={currency} value={currency}>
-                {currency}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col items-center">
+            <select
+              value={values.currency || 'USD'}
+              onChange={(e) => {
+                const validation = validateEntryExitValue('currency', e.target.value);
+                if (validation.isValid) {
+                  handleCurrencyChange(item.ticker, item.companyName, e.target.value);
+                  setValidationErrors((prev) => {
+                    const next = { ...prev };
+                    delete next[currencyKey];
+                    return next;
+                  });
+                } else {
+                  setValidationErrors((prev) => ({ ...prev, [currencyKey]: validation.error || 'Invalid currency' }));
+                }
+              }}
+              onBlur={() => {
+                const validation = validateEntryExitValue('currency', values.currency);
+                if (validation.isValid) {
+                  commitField(item.ticker, item.companyName, 'currency');
+                }
+              }}
+              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:border-transparent ${
+                currencyError
+                  ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+              }`}
+              onClick={(e) => e.stopPropagation()}
+              aria-invalid={!!currencyError}
+            >
+              {CURRENCIES.map((currency) => (
+                <option key={currency} value={currency}>
+                  {currency}
+                </option>
+              ))}
+            </select>
+            {currencyError && (
+              <span className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert">
+                {currencyError}
+              </span>
+            )}
+          </div>
         );
       case 'entry1':
         if (!isEditor) {
           return <span className="text-gray-900 dark:text-gray-100">{values.entry1 || '-'}</span>;
         }
+        const entry1Key = `${item.ticker}-${item.companyName}-entry1`;
+        const entry1Error = validationErrors[entry1Key];
         return (
-          <input
-            type="number"
-            value={values.entry1 || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleEntryExitChange(item.ticker, item.companyName, 'entry1', value);
-            }}
-            onBlur={() => commitField(item.ticker, item.companyName, 'entry1')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="flex flex-col items-center">
+            <input
+              type="number"
+              value={values.entry1 || ''}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || 0;
+                handleEntryExitChange(item.ticker, item.companyName, 'entry1', value);
+              }}
+              onBlur={() => {
+                // Validate before committing
+                const validation = validateEntryExitValue('entry1', values.entry1);
+                if (validation.isValid) {
+                  commitField(item.ticker, item.companyName, 'entry1');
+                }
+              }}
+              min={0}
+              max={1000000}
+              step={0.01}
+              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
+                entry1Error
+                  ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+              }`}
+              onClick={(e) => e.stopPropagation()}
+              aria-invalid={!!entry1Error}
+            />
+            {entry1Error && (
+              <span className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert">
+                {entry1Error}
+              </span>
+            )}
+          </div>
         );
       case 'entry2':
         if (!isEditor) {
           return <span className="text-gray-900 dark:text-gray-100">{values.entry2 || '-'}</span>;
         }
+        const entry2Key = `${item.ticker}-${item.companyName}-entry2`;
+        const entry2Error = validationErrors[entry2Key];
         return (
-          <input
-            type="number"
-            value={values.entry2 || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleEntryExitChange(item.ticker, item.companyName, 'entry2', value);
-            }}
-            onBlur={() => commitField(item.ticker, item.companyName, 'entry2')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="flex flex-col items-center">
+            <input
+              type="number"
+              value={values.entry2 || ''}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || 0;
+                handleEntryExitChange(item.ticker, item.companyName, 'entry2', value);
+              }}
+              onBlur={() => {
+                const validation = validateEntryExitValue('entry2', values.entry2);
+                if (validation.isValid) {
+                  commitField(item.ticker, item.companyName, 'entry2');
+                }
+              }}
+              min={0}
+              max={1000000}
+              step={0.01}
+              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
+                entry2Error
+                  ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+              }`}
+              onClick={(e) => e.stopPropagation()}
+              aria-invalid={!!entry2Error}
+            />
+            {entry2Error && (
+              <span className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert">
+                {entry2Error}
+              </span>
+            )}
+          </div>
         );
       case 'exit1':
         if (!isEditor) {
           return <span className="text-gray-900 dark:text-gray-100">{values.exit1 || '-'}</span>;
         }
+        const exit1Key = `${item.ticker}-${item.companyName}-exit1`;
+        const exit1Error = validationErrors[exit1Key];
         return (
-          <input
-            type="number"
-            value={values.exit1 || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleEntryExitChange(item.ticker, item.companyName, 'exit1', value);
-            }}
-            onBlur={() => commitField(item.ticker, item.companyName, 'exit1')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="flex flex-col items-center">
+            <input
+              type="number"
+              value={values.exit1 || ''}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || 0;
+                handleEntryExitChange(item.ticker, item.companyName, 'exit1', value);
+              }}
+              onBlur={() => {
+                const validation = validateEntryExitValue('exit1', values.exit1);
+                if (validation.isValid) {
+                  commitField(item.ticker, item.companyName, 'exit1');
+                }
+              }}
+              min={0}
+              max={1000000}
+              step={0.01}
+              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
+                exit1Error
+                  ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+              }`}
+              onClick={(e) => e.stopPropagation()}
+              aria-invalid={!!exit1Error}
+            />
+            {exit1Error && (
+              <span className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert">
+                {exit1Error}
+              </span>
+            )}
+          </div>
         );
       case 'exit2':
         if (!isEditor) {
           return <span className="text-gray-900 dark:text-gray-100">{values.exit2 || '-'}</span>;
         }
+        const exit2Key = `${item.ticker}-${item.companyName}-exit2`;
+        const exit2Error = validationErrors[exit2Key];
         return (
-          <input
-            type="number"
-            value={values.exit2 || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleEntryExitChange(item.ticker, item.companyName, 'exit2', value);
-            }}
-            onBlur={() => commitField(item.ticker, item.companyName, 'exit2')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="flex flex-col items-center">
+            <input
+              type="number"
+              value={values.exit2 || ''}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || 0;
+                handleEntryExitChange(item.ticker, item.companyName, 'exit2', value);
+              }}
+              onBlur={() => {
+                const validation = validateEntryExitValue('exit2', values.exit2);
+                if (validation.isValid) {
+                  commitField(item.ticker, item.companyName, 'exit2');
+                }
+              }}
+              min={0}
+              max={1000000}
+              step={0.01}
+              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
+                exit2Error
+                  ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+              }`}
+              onClick={(e) => e.stopPropagation()}
+              aria-invalid={!!exit2Error}
+            />
+            {exit2Error && (
+              <span className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert">
+                {exit2Error}
+              </span>
+            )}
+          </div>
         );
       case 'dateOfUpdate':
         return (
@@ -373,7 +522,7 @@ export default function EntryExitTable({ data, loading, error }: EntryExitTableP
           <button
             onClick={toggleExpand}
             className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-all duration-200 flex-shrink-0"
-            aria-label={isExpanded ? 'Dölj detaljer' : 'Visa detaljer'}
+            aria-label={isExpanded ? t('aria.collapseRow') : t('aria.expandRow')}
             aria-expanded={isExpanded}
           >
             <svg

@@ -6,12 +6,13 @@
  */
 
 import { CACHE_KEYS, getCachedData, getCacheAge } from './cacheService';
+import { logger } from '../utils/logger';
 import { 
   fetchScoreBoardData, 
   fetchPEIndustryData, 
   fetchThresholdIndustryData,
   fetchBenjaminGrahamData 
-} from './sheetsService';
+} from './sheets';
 
 // Cache warming configuration
 const WARMING_DELAY_MS = 2000; // Wait 2 seconds after app starts before warming
@@ -19,7 +20,16 @@ const WARMING_ENABLED = import.meta.env.VITE_CACHE_WARMING_ENABLED !== 'false'; 
 
 /**
  * Warm cache for all data types
- * This is a fire-and-forget operation that runs in the background
+ * 
+ * Preloads cache for all data types in the background to improve performance.
+ * This is a fire-and-forget operation that runs after a short delay to avoid
+ * blocking initial app render. Only warms cache if it doesn't exist or is very old.
+ * 
+ * @example
+ * ```typescript
+ * // Call on app startup
+ * warmCache(); // Runs in background, doesn't block
+ * ```
  */
 export async function warmCache(): Promise<void> {
   if (!WARMING_ENABLED) {
@@ -67,14 +77,23 @@ async function warmCacheForKey(
     await fetchFn();
   } catch (error) {
     // Silently fail - cache warming is not critical
-    if (import.meta.env.DEV) {
-      console.debug(`Cache warming failed for ${cacheKey}:`, error);
-    }
+    logger.debug(`Cache warming failed for ${cacheKey}`, { component: 'cacheWarmingService', operation: 'warmCacheForKey', cacheKey, error });
   }
 }
 
 /**
  * Check if cache warming is enabled
+ * 
+ * Determines if cache warming is enabled based on environment variable.
+ * 
+ * @returns true if cache warming is enabled, false otherwise
+ * 
+ * @example
+ * ```typescript
+ * if (isCacheWarmingEnabled()) {
+ *   await warmCache();
+ * }
+ * ```
  */
 export function isCacheWarmingEnabled(): boolean {
   return WARMING_ENABLED;

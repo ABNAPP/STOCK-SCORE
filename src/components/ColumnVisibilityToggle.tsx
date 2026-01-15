@@ -101,7 +101,7 @@ export default function ColumnVisibilityToggle({
             <div className="flex space-x-2">
               <button
                 onClick={onShowAll}
-                className="text-xs sm:text-xs px-3 py-2 sm:px-2 sm:py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-all duration-200 hover:scale-105 active:scale-95 min-h-[44px] sm:min-h-0 touch-manipulation inline-flex items-center gap-1.5 sm:gap-1"
+                className="text-xs sm:text-xs px-3 py-2 sm:px-2 sm:py-1 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-all duration-200 hover:scale-105 active:scale-95 min-h-[44px] sm:min-h-0 touch-manipulation inline-flex items-center gap-1.5 sm:gap-1"
               >
                 <svg className="w-3.5 h-3.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -146,7 +146,7 @@ export default function ColumnVisibilityToggle({
                     checked={isVisible}
                     onChange={() => onToggleColumn(column.key)}
                     disabled={isRequired}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-110 cursor-pointer"
+                    className="w-4 h-4 text-blue-700 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-110 cursor-pointer"
                   />
                   <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 flex-1">
                     {column.label}

@@ -346,7 +346,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
           <button
             onClick={toggleExpand}
             className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-all duration-200 flex-shrink-0"
-            aria-label={isExpanded ? 'Dölj detaljer' : 'Visa detaljer'}
+            aria-label={isExpanded ? t('aria.collapseRow') : t('aria.expandRow')}
             aria-expanded={isExpanded}
           >
             <svg
@@ -402,16 +402,16 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
   }, [getFieldValue, handleThresholdChange, commitField]);
 
   return (
-    <BaseTable
-      data={data as any}
+    <BaseTable<ThresholdIndustryData>
+      data={data}
       loading={loading}
       error={error}
-      columns={THRESHOLD_INDUSTRY_COLUMNS as any}
+      columns={THRESHOLD_INDUSTRY_COLUMNS}
       filters={thresholdFilters}
       tableId="threshold-industry"
-      renderCell={renderCell as any}
-      renderHeader={renderHeader as any}
-      renderMobileCard={renderMobileCard as any}
+      renderCell={renderCell}
+      renderHeader={renderHeader}
+      renderMobileCard={renderMobileCard}
       enableVirtualScroll={true}
       virtualScrollRowHeight={60}
       virtualScrollOverscan={10}

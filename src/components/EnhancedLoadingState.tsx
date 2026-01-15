@@ -79,7 +79,7 @@ export default function EnhancedLoadingState({ dataSourceNames }: EnhancedLoadin
                 <div className="flex items-center space-x-2 flex-1 min-w-0">
                   {isComplete ? (
                     <svg
-                      className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0"
+                      className="w-4 h-4 text-green-700 dark:text-green-200 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -93,7 +93,7 @@ export default function EnhancedLoadingState({ dataSourceNames }: EnhancedLoadin
                     </svg>
                   ) : isError ? (
                     <svg
-                      className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0"
+                      className="w-4 h-4 text-red-700 dark:text-red-400 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -142,12 +142,12 @@ export default function EnhancedLoadingState({ dataSourceNames }: EnhancedLoadin
                     </span>
                   )}
                   {isComplete && (
-                    <span className="text-xs text-green-600 dark:text-green-400">
+                    <span className="text-xs text-green-700 dark:text-green-200">
                       {t('loading.complete', 'Klar')}
                     </span>
                   )}
                   {isError && (
-                    <span className="text-xs text-red-600 dark:text-red-400">
+                    <span className="text-xs text-red-700 dark:text-red-400">
                       {t('loading.error', 'Fel')}
                     </span>
                   )}

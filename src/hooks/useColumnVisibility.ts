@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '../utils/logger';
 
 export interface ColumnConfig {
   key: string;
@@ -31,7 +32,7 @@ export function useColumnVisibility({ tableId, columns }: UseColumnVisibilityPro
         return visibility;
       }
     } catch (error) {
-      console.error('Error loading column visibility:', error);
+      logger.error('Error loading column visibility', error, { component: 'useColumnVisibility', operation: 'loadVisibility' });
     }
     
     // Default: all columns visible except those explicitly set to defaultVisible: false
@@ -49,7 +50,7 @@ export function useColumnVisibility({ tableId, columns }: UseColumnVisibilityPro
     try {
       localStorage.setItem(storageKey, JSON.stringify(columnVisibility));
     } catch (error) {
-      console.error('Error saving column visibility:', error);
+      logger.error('Error saving column visibility', error, { component: 'useColumnVisibility', operation: 'saveVisibility' });
     }
   }, [storageKey, columnVisibility]);
 

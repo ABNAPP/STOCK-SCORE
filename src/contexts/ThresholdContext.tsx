@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { saveThresholdValues, loadThresholdValues } from '../services/userDataService';
 import { onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { logger } from '../utils/logger';
 
 export interface ThresholdValues {
   irr: number;
@@ -38,8 +39,8 @@ const loadFromStorage = (): Map<string, ThresholdValues> => {
       const parsed = JSON.parse(stored);
       return new Map(Object.entries(parsed));
     }
-  } catch (error) {
-    console.error('Error loading Threshold values from localStorage:', error);
+  } catch (error: unknown) {
+    logger.error('Error loading Threshold values from localStorage', error, { component: 'ThresholdContext', operation: 'loadFromLocalStorage' });
   }
   return new Map();
 };
@@ -49,8 +50,8 @@ const saveToStorage = (values: Map<string, ThresholdValues>) => {
   try {
     const obj = Object.fromEntries(values);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-  } catch (error) {
-    console.error('Error saving Threshold values to localStorage:', error);
+  } catch (error: unknown) {
+    logger.error('Error saving Threshold values to localStorage', error, { component: 'ThresholdContext', operation: 'saveToLocalStorage' });
   }
 };
 
@@ -96,8 +97,8 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
             setServerRows(localData);
           }
         }
-      } catch (error) {
-        console.error('Error loading Threshold values:', error);
+      } catch (error: unknown) {
+        logger.error('Error loading Threshold values', error, { component: 'ThresholdContext', operation: 'loadThresholdValues' });
         // Fallback to localStorage
         const localData = loadFromStorage();
         if (localData.size > 0) {
@@ -184,7 +185,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
         }
       },
       (error) => {
-        console.error('Error listening to Threshold values:', error);
+        logger.error('Error listening to Threshold values', error, { component: 'ThresholdContext', operation: 'listenToThresholdValues' });
       }
     );
 
@@ -231,8 +232,8 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
         // After successful save, release dirty locks + remove draft
         dirtyKeysRef.current.clear();
         setDraft({});
-      } catch (error) {
-        console.error('Error saving Threshold values to Firestore:', error);
+      } catch (error: unknown) {
+        logger.error('Error saving Threshold values to Firestore', error, { component: 'ThresholdContext', operation: 'saveThresholdValues' });
         // On error, keep dirty keys and draft so user's edits aren't lost
       }
     }, 1000); // Wait 1 second after last change
@@ -350,8 +351,8 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
         newRows.set(industry, updated);
         return newRows;
       });
-    } catch (error) {
-      console.error('Error committing field to Firestore:', error);
+    } catch (error: unknown) {
+      logger.error('Error committing field to Firestore', error, { component: 'ThresholdContext', operation: 'commitField' });
     }
   }, [draft, serverRows, currentUser]);
 

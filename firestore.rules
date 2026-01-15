@@ -32,6 +32,39 @@ service cloud.firestore {
       return getUserRole() == 'viewer1' || getUserRole() == 'viewer2' || getUserRole() == 'editor' || isAdmin();
     }
     
+    // Helper function to validate EntryExit value structure
+    function isValidEntryExitValue(value) {
+      return value.keys().hasAll(['entry1', 'entry2', 'exit1', 'exit2', 'currency']) &&
+             value.entry1 is number && value.entry1 >= 0 && value.entry1 <= 1000000 &&
+             value.entry2 is number && value.entry2 >= 0 && value.entry2 <= 1000000 &&
+             value.exit1 is number && value.exit1 >= 0 && value.exit1 <= 1000000 &&
+             value.exit2 is number && value.exit2 >= 0 && value.exit2 <= 1000000 &&
+             value.currency is string && value.currency in ['USD', 'EUR', 'SEK', 'DKK', 'NOK', 'GBP', 'AUD', 'CAD', 'NZD'] &&
+             (value.dateOfUpdate == null || (value.dateOfUpdate is string && value.dateOfUpdate.matches('^\\d{4}-\\d{2}-\\d{2}$')));
+    }
+    
+    // Helper function to validate EntryExit document structure
+    function isValidEntryExitDocument(data) {
+      // Check document size (max 1MB)
+      return data.size() <= 1048576 &&
+             // Validate that values is a map
+             data.values is map &&
+             // Validate that all values in the map are valid EntryExit values
+             // Note: Firestore rules don't support iterating over map values directly,
+             // so we validate on write operations instead
+             true;
+    }
+    
+    // Helper function to validate pending request structure
+    function isValidPendingRequest(data) {
+      return data.keys().hasAll(['userId', 'status', 'createdAt']) &&
+             data.userId is string &&
+             data.status is string && data.status in ['pending', 'approved', 'rejected'] &&
+             data.createdAt is timestamp &&
+             // Validate userId matches authenticated user on create
+             (request.method == 'create' ? data.userId == request.auth.uid : true);
+    }
+    
     // Shared data - read access for all users with role, write access only for editor/admin
     match /sharedData/{document} {
       // Threshold data - only admin can read/write
@@ -39,32 +72,71 @@ service cloud.firestore {
         allow read, write: if isAdmin();
       }
       
+      // EntryExit data - validate structure on write
+      match /entryExit {
+        // Read: All authenticated users with role
+        allow read: if request.auth != null && hasRole();
+        
+        // Write: Only editor and admin, with validation
+        // Validate document structure and size
+        allow write: if request.auth != null && 
+                        isEditor() && 
+                        request.resource.data.size() <= 1048576 &&
+                        request.resource.data.values is map;
+        
+        // Additional validation: Check that values map contains valid EntryExit values
+        // Note: Individual value validation happens client-side, but we validate structure here
+      }
+      
       // All other shared data
       match /{sharedDoc=**} {
         // Read: All authenticated users with role
         allow read: if request.auth != null && hasRole();
         
-        // Write: Only editor and admin
-        allow write: if request.auth != null && isEditor();
+        // Write: Only editor and admin, with size limit
+        allow write: if request.auth != null && 
+                        isEditor() && 
+                        request.resource.data.size() <= 1048576; // 1MB limit
       }
     }
     
     // Pending requests - users can create, admin can read/update
     match /pendingRequests/{requestId} {
-      // Allow authenticated users to create their own request
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // Allow authenticated users to create their own request with validation
+      allow create: if request.auth != null && 
+                       request.resource.data.userId == request.auth.uid &&
+                       isValidPendingRequest(request.resource.data) &&
+                       request.resource.data.size() <= 10240; // 10KB limit for requests
       
       // Allow admin to read all requests
       allow read: if request.auth != null && isAdmin();
       
-      // Allow admin to update request status
-      allow update: if request.auth != null && isAdmin();
+      // Allow admin to update request status (validate status change)
+      allow update: if request.auth != null && 
+                       isAdmin() &&
+                       request.resource.data.status is string &&
+                       request.resource.data.status in ['pending', 'approved', 'rejected'] &&
+                       request.resource.data.size() <= 10240;
       
       // Users can read their own request
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       
       // Users can delete their own pending request
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid && resource.data.status == 'pending';
+      allow delete: if request.auth != null && 
+                       resource.data.userId == request.auth.uid && 
+                       resource.data.status == 'pending';
+    }
+    
+    // User preferences - users can read/write their own preferences
+    match /userPreferences/{userId} {
+      // Users can only access their own preferences
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Validate structure on write
+      allow write: if request.auth != null && 
+                      request.auth.uid == userId &&
+                      request.resource.data.userId == userId &&
+                      request.resource.data.size() <= 10240; // 10KB limit
     }
     
     // Deny all other access by default

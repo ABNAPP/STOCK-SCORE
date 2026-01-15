@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { FilterValues } from '../components/AdvancedFilters';
 import { useDebounce } from './useDebounce';
+import { sanitizeSearchQuery } from '../utils/inputValidator';
 
 interface UseTableSearchOptions<T> {
   data: T[];
@@ -10,6 +11,43 @@ interface UseTableSearchOptions<T> {
   debounceDelay?: number;
 }
 
+/**
+ * Custom hook for table search and filtering
+ * 
+ * Provides search functionality with:
+ * - Text search across multiple fields (with debouncing)
+ * - Advanced filters (number ranges, boolean, text)
+ * - XSS and regex injection protection via sanitization
+ * - Case-insensitive matching
+ * 
+ * **Search Algorithm:**
+ * - Debounced text search (300ms default) to reduce API calls
+ * - Searches across all specified fields or all fields if none specified
+ * - Uses includes() for substring matching (safe after sanitization)
+ * - Advanced filters support: number ranges, exact matches, boolean filters
+ * 
+ * **Security:**
+ * - All search queries are sanitized to prevent XSS and regex injection
+ * - Special characters are escaped before use in string matching
+ * 
+ * @template T - Type of data items being searched
+ * @param options - Search options
+ * @param options.data - Array of data items to search
+ * @param options.searchFields - Optional array of field names to search (defaults to all fields)
+ * @param options.initialSearch - Initial search value (default: '')
+ * @param options.advancedFilters - Advanced filter values (number ranges, etc.)
+ * @param options.debounceDelay - Debounce delay in milliseconds (default: 300)
+ * @returns Object with search value, setter, and filtered data
+ * 
+ * @example
+ * ```typescript
+ * const { searchValue, setSearchValue, filteredData } = useTableSearch({
+ *   data: stockData,
+ *   searchFields: ['companyName', 'ticker'],
+ *   advancedFilters: { score: { min: 50, max: 100 } }
+ * });
+ * ```
+ */
 export function useTableSearch<T extends Record<string, any>>({
   data,
   searchFields,
@@ -25,7 +63,9 @@ export function useTableSearch<T extends Record<string, any>>({
 
     // Apply text search (using debounced value)
     if (debouncedSearchValue.trim()) {
-      const searchLower = debouncedSearchValue.toLowerCase().trim();
+      // Sanitize search query to prevent XSS and regex injection
+      const sanitizedQuery = sanitizeSearchQuery(debouncedSearchValue);
+      const searchLower = sanitizedQuery.toLowerCase().trim();
       const fieldsToSearch = searchFields || (Object.keys(data[0] || {}) as (keyof T)[]);
 
       result = result.filter((item) => {
@@ -34,6 +74,7 @@ export function useTableSearch<T extends Record<string, any>>({
           if (value === null || value === undefined) {
             return false;
           }
+          // Use indexOf for safe string matching (sanitized query is safe)
           return String(value).toLowerCase().includes(searchLower);
         });
       });

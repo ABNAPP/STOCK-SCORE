@@ -6,11 +6,21 @@
  */
 
 import { FilterValues } from '../components/AdvancedFilters';
+import { logger } from '../utils/logger';
 
+/**
+ * Saved filter interface
+ * 
+ * Represents a saved filter combination with metadata.
+ */
 export interface SavedFilter {
+  /** Name of the saved filter */
   name: string;
+  /** Filter values (column filters, search terms, etc.) */
   values: FilterValues;
+  /** Timestamp when filter was created (milliseconds since epoch) */
   createdAt: number;
+  /** ID of the table this filter belongs to */
   tableId: string;
 }
 
@@ -33,6 +43,22 @@ function getTableFiltersKey(tableId: string): string {
 
 /**
  * Save a filter with a name for a specific table
+ * 
+ * Saves a filter combination to localStorage with a name for easy retrieval.
+ * If a filter with the same name already exists, it will be updated.
+ * 
+ * @param tableId - ID of the table this filter belongs to
+ * @param name - Name to save the filter under
+ * @param values - Filter values to save
+ * @throws {Error} If tableId or name is missing, or localStorage quota is exceeded
+ * 
+ * @example
+ * ```typescript
+ * saveFilter('scoreBoard', 'High Score Stocks', {
+ *   searchTerm: '',
+ *   columnFilters: { score: { min: 80 } }
+ * });
+ * ```
  */
 export function saveFilter(tableId: string, name: string, values: FilterValues): void {
   try {
@@ -66,9 +92,9 @@ export function saveFilter(tableId: string, name: string, values: FilterValues):
     const listKey = getTableFiltersKey(tableId);
     localStorage.setItem(listKey, JSON.stringify(savedFilters.map(f => f.name)));
 
-    console.log(`Filter "${name}" saved for table "${tableId}"`);
+    logger.debug(`Filter "${name}" saved for table "${tableId}"`, { component: 'filterStorageService', operation: 'saveFilter', tableId, name });
   } catch (error) {
-    console.error(`Error saving filter "${name}" for table "${tableId}":`, error);
+    logger.error(`Error saving filter "${name}" for table "${tableId}"`, error, { component: 'filterStorageService', operation: 'saveFilter', tableId, name });
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
       throw new Error('LocalStorage quota exceeded. Please clear some saved filters.');
     }
@@ -78,6 +104,20 @@ export function saveFilter(tableId: string, name: string, values: FilterValues):
 
 /**
  * Load a saved filter by name for a specific table
+ * 
+ * Retrieves a saved filter from localStorage by name.
+ * 
+ * @param tableId - ID of the table the filter belongs to
+ * @param name - Name of the filter to load
+ * @returns Filter values if found, null otherwise
+ * 
+ * @example
+ * ```typescript
+ * const filter = loadFilter('scoreBoard', 'High Score Stocks');
+ * if (filter) {
+ *   applyFilters(filter);
+ * }
+ * ```
  */
 export function loadFilter(tableId: string, name: string): FilterValues | null {
   try {
@@ -96,19 +136,33 @@ export function loadFilter(tableId: string, name: string): FilterValues | null {
     
     // Verify it's for the correct table
     if (savedFilter.tableId !== tableId) {
-      console.warn(`Filter "${name}" belongs to different table. Expected "${tableId}", got "${savedFilter.tableId}"`);
+      logger.warn(`Filter "${name}" belongs to different table. Expected "${tableId}", got "${savedFilter.tableId}"`, { component: 'filterStorageService', operation: 'loadFilter', tableId, name, expectedTableId: savedFilter.tableId });
       return null;
     }
 
     return savedFilter.values;
   } catch (error) {
-    console.error(`Error loading filter "${name}" for table "${tableId}":`, error);
+    logger.error(`Error loading filter "${name}" for table "${tableId}"`, error, { component: 'filterStorageService', operation: 'loadFilter', tableId, name });
     return null;
   }
 }
 
 /**
  * Get all saved filters for a specific table
+ * 
+ * Retrieves all saved filters for a specific table, sorted by creation date
+ * (newest first).
+ * 
+ * @param tableId - ID of the table to get filters for
+ * @returns Array of saved filters, sorted by creation date (newest first)
+ * 
+ * @example
+ * ```typescript
+ * const filters = getSavedFilters('scoreBoard');
+ * filters.forEach(filter => {
+ *   console.log(filter.name, filter.createdAt);
+ * });
+ * ```
  */
 export function getSavedFilters(tableId: string): SavedFilter[] {
   try {
@@ -138,7 +192,7 @@ export function getSavedFilters(tableId: string): SavedFilter[] {
             savedFilters.push(savedFilter);
           }
         } catch (error) {
-          console.error(`Error parsing filter "${name}":`, error);
+          logger.error(`Error parsing filter "${name}"`, error, { component: 'filterStorageService', operation: 'getSavedFilters', tableId, name });
           // Remove corrupted filter from list
           deleteFilter(tableId, name);
         }
@@ -148,13 +202,23 @@ export function getSavedFilters(tableId: string): SavedFilter[] {
     // Sort by creation date (newest first)
     return savedFilters.sort((a, b) => b.createdAt - a.createdAt);
   } catch (error) {
-    console.error(`Error getting saved filters for table "${tableId}":`, error);
+    logger.error(`Error getting saved filters for table "${tableId}"`, error, { component: 'filterStorageService', operation: 'getSavedFilters', tableId });
     return [];
   }
 }
 
 /**
  * Delete a saved filter
+ * 
+ * Removes a saved filter from localStorage.
+ * 
+ * @param tableId - ID of the table the filter belongs to
+ * @param name - Name of the filter to delete
+ * 
+ * @example
+ * ```typescript
+ * deleteFilter('scoreBoard', 'High Score Stocks');
+ * ```
  */
 export function deleteFilter(tableId: string, name: string): void {
   try {
@@ -180,14 +244,23 @@ export function deleteFilter(tableId: string, name: string): void {
       }
     }
 
-    console.log(`Filter "${name}" deleted for table "${tableId}"`);
+    logger.debug(`Filter "${name}" deleted for table "${tableId}"`, { component: 'filterStorageService', operation: 'deleteFilter', tableId, name });
   } catch (error) {
-    console.error(`Error deleting filter "${name}" for table "${tableId}":`, error);
+    logger.error(`Error deleting filter "${name}" for table "${tableId}"`, error, { component: 'filterStorageService', operation: 'deleteFilter', tableId, name });
   }
 }
 
 /**
  * Clear all saved filters for a specific table
+ * 
+ * Removes all saved filters for a specific table from localStorage.
+ * 
+ * @param tableId - ID of the table to clear filters for
+ * 
+ * @example
+ * ```typescript
+ * clearAllFilters('scoreBoard');
+ * ```
  */
 export function clearAllFilters(tableId: string): void {
   try {
@@ -204,9 +277,9 @@ export function clearAllFilters(tableId: string): void {
     const listKey = getTableFiltersKey(tableId);
     localStorage.removeItem(listKey);
 
-    console.log(`All filters cleared for table "${tableId}"`);
+    logger.debug(`All filters cleared for table "${tableId}"`, { component: 'filterStorageService', operation: 'clearAllFilters', tableId });
   } catch (error) {
-    console.error(`Error clearing filters for table "${tableId}":`, error);
+    logger.error(`Error clearing filters for table "${tableId}"`, error, { component: 'filterStorageService', operation: 'clearAllFilters', tableId });
   }
 }
 

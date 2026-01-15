@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useGlobalSearch, SearchResult } from '../hooks/useGlobalSearch';
 import { ViewId } from '../types/navigation';
 import { useDebounce } from '../hooks/useDebounce';
+import { sanitizeSearchQuery } from '../utils/inputValidator';
 
 interface GlobalSearchProps {
   onNavigate: (viewId: ViewId) => void;
@@ -24,7 +25,9 @@ export default function GlobalSearch({ onNavigate }: GlobalSearchProps) {
   // Perform search when debounced query changes
   useEffect(() => {
     if (debouncedQuery.trim().length > 0) {
-      const searchResults = search(debouncedQuery);
+      // Sanitize the search query before using it
+      const sanitizedQuery = sanitizeSearchQuery(debouncedQuery);
+      const searchResults = search(sanitizedQuery);
       setResults(searchResults);
       setIsOpen(searchResults.length > 0);
       setSelectedIndex(-1);
@@ -120,7 +123,11 @@ export default function GlobalSearch({ onNavigate }: GlobalSearchProps) {
           ref={inputRef}
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            // Sanitize input as user types
+            const sanitized = sanitizeSearchQuery(e.target.value);
+            setQuery(sanitized);
+          }}
           onKeyDown={handleKeyDown}
           onFocus={() => {
             if (results.length > 0) {
@@ -128,6 +135,7 @@ export default function GlobalSearch({ onNavigate }: GlobalSearchProps) {
             }
           }}
           placeholder={t('globalSearch.placeholder', 'Sök i alla tabeller...')}
+          maxLength={200}
           className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-500 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-600 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm"
         />
         {query && (
@@ -162,7 +170,7 @@ export default function GlobalSearch({ onNavigate }: GlobalSearchProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                      <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">
                         {getTypeLabel(result.type)}
                       </span>
                     </div>

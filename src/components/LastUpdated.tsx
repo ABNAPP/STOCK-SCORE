@@ -33,13 +33,15 @@ export default function LastUpdated({ lastUpdated, onRefresh, loading }: LastUpd
       <button
         onClick={onRefresh}
         disabled={loading}
-        className="ml-2 py-2 px-2 -mx-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold underline disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 min-h-[44px] touch-manipulation inline-flex items-center gap-1.5"
+        className="ml-2 py-2 px-2 -mx-2 text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold underline disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 min-h-[44px] touch-manipulation inline-flex items-center gap-1.5"
+        aria-label={t('aria.refreshButton')}
       >
         <svg
           className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
+          aria-hidden="true"
         >
           <path
             strokeLinecap="round"

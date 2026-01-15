@@ -1,4 +1,4 @@
-import React, { ReactNode, useRef, useEffect, useState, useMemo } from 'react';
+import React, { ReactNode, useRef, useEffect, useState, useMemo, useCallback } from 'react';
 
 interface VirtualTableBodyProps<T> {
   data: T[];
@@ -19,6 +19,22 @@ export default function VirtualTableBody<T>({
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(600);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const pendingScrollTopRef = useRef<number>(0);
+
+  // Debounced scroll handler using requestAnimationFrame
+  const handleScroll = useCallback(() => {
+    if (scrollContainerRef.current) {
+      pendingScrollTopRef.current = scrollContainerRef.current.scrollTop;
+      
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(() => {
+          setScrollTop(pendingScrollTopRef.current);
+          rafRef.current = null;
+        });
+      }
+    }
+  }, []);
 
   // Find scroll container and measure dimensions
   useEffect(() => {
@@ -44,28 +60,25 @@ export default function VirtualTableBody<T>({
       }
     };
 
-    const handleScroll = () => {
-      if (scrollContainerRef.current) {
-        setScrollTop(scrollContainerRef.current.scrollTop);
-      }
-    };
-
     if (scrollContainerRef.current) {
       updateDimensions();
       scrollContainerRef.current.addEventListener('scroll', handleScroll, { passive: true });
       window.addEventListener('resize', updateDimensions);
 
       return () => {
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+        }
         if (scrollContainerRef.current) {
           scrollContainerRef.current.removeEventListener('scroll', handleScroll);
         }
         window.removeEventListener('resize', updateDimensions);
       };
     }
-  }, []);
+  }, [handleScroll]);
 
-  // Calculate visible range
-  const { startIndex, endIndex, offsetY, totalHeight } = useMemo(() => {
+  // Calculate visible range - memoized for performance
+  const visibleRange = useMemo(() => {
     // Subtract approximate header height (48px)
     const availableHeight = Math.max(200, containerHeight - 48);
     const start = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
@@ -82,9 +95,17 @@ export default function VirtualTableBody<T>({
     };
   }, [scrollTop, rowHeight, containerHeight, data.length, overscan]);
 
+  const { startIndex, endIndex, offsetY, totalHeight } = visibleRange;
+
+  // Memoize visible items slice for performance
   const visibleItems = useMemo(() => {
     return data.slice(startIndex, endIndex);
   }, [data, startIndex, endIndex]);
+
+  // Memoize renderRow callback to prevent unnecessary re-renders
+  const memoizedRenderRow = useCallback((item: T, index: number, globalIndex: number) => {
+    return renderRow(item, index, globalIndex);
+  }, [renderRow]);
 
   if (data.length === 0) {
     return (
@@ -123,7 +144,7 @@ export default function VirtualTableBody<T>({
         const globalIndex = startIndex + relativeIndex;
         return (
           <React.Fragment key={globalIndex}>
-            {renderRow(item, relativeIndex, globalIndex)}
+            {memoizedRenderRow(item, relativeIndex, globalIndex)}
           </React.Fragment>
         );
       })}

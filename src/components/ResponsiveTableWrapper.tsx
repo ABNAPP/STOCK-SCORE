@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ResponsiveTableWrapperProps, ExpandedRowState } from '../types/responsiveTable';
 
 export default function ResponsiveTableWrapper<T extends Record<string, unknown>>({
@@ -13,6 +14,7 @@ export default function ResponsiveTableWrapper<T extends Record<string, unknown>
   emptyMessage = 'Inga data tillgängliga.',
   isLoading = false,
 }: ResponsiveTableWrapperProps<T>) {
+  const { t } = useTranslation();
   const [expandedRows, setExpandedRows] = useState<ExpandedRowState>({});
 
   const toggleRow = (index: number) => {
@@ -131,7 +133,7 @@ export default function ResponsiveTableWrapper<T extends Record<string, unknown>
                       toggleRow(index);
                     }}
                     className="ml-4 p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-all duration-200 flex-shrink-0"
-                    aria-label={isExpanded ? 'Dölj detaljer' : 'Visa detaljer'}
+                    aria-label={isExpanded ? t('aria.collapseRow') : t('aria.expandRow')}
                     aria-expanded={isExpanded}
                   >
                     <svg
@@ -139,6 +141,7 @@ export default function ResponsiveTableWrapper<T extends Record<string, unknown>
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
+                      aria-hidden="true"
                     >
                       <path
                         strokeLinecap="round"

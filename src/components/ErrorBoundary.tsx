@@ -1,4 +1,6 @@
 import { Component, ReactNode } from 'react';
+import i18n from '../i18n/config';
+import { formatError, logError } from '../utils/errorHandler';
 
 interface Props {
   children: ReactNode;
@@ -20,12 +22,19 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    logError(error, {
+      component: 'ErrorBoundary',
+      operation: 'render component',
+      additionalInfo: {
+        componentStack: errorInfo.componentStack,
+        errorBoundary: true,
+      },
+    });
   }
 
   render() {
     if (this.state.hasError && this.state.error) {
-      const errorMessage = this.state.error.message || 'An unknown error occurred';
+      const errorMessage = this.state.error.message || i18n.t('errorBoundary.unknownError');
       
       // Check if it's a Firebase configuration error
       const isFirebaseError = errorMessage.includes('Firebase') || errorMessage.includes('environment variables');
@@ -48,7 +57,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 />
               </svg>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Configuration Error
+                {i18n.t('errorBoundary.configurationError')}
               </h2>
             </div>
             
@@ -61,22 +70,23 @@ export class ErrorBoundary extends Component<Props, State> {
             {isFirebaseError && (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4 mb-4">
                 <h3 className="text-blue-900 dark:text-blue-200 font-semibold mb-2">
-                  How to fix:
+                  {i18n.t('errorBoundary.firebaseError.howToFix')}
                 </h3>
                 <ol className="list-decimal list-inside text-blue-800 dark:text-blue-200 space-y-2 text-sm">
-                  <li>Go to <strong>Vercel Dashboard</strong> → Your Project → <strong>Settings</strong> → <strong>Environment Variables</strong></li>
-                  <li>Add all 6 Firebase environment variables:
+                  <li>{i18n.t('errorBoundary.firebaseError.step1')}</li>
+                  <li>
+                    {i18n.t('errorBoundary.firebaseError.step2')}
                     <ul className="list-disc list-inside ml-4 mt-1">
-                      <li>VITE_FIREBASE_API_KEY</li>
-                      <li>VITE_FIREBASE_AUTH_DOMAIN</li>
-                      <li>VITE_FIREBASE_PROJECT_ID</li>
-                      <li>VITE_FIREBASE_STORAGE_BUCKET</li>
-                      <li>VITE_FIREBASE_MESSAGING_SENDER_ID</li>
-                      <li>VITE_FIREBASE_APP_ID</li>
+                      <li>{i18n.t('errorBoundary.firebaseError.varApiKey')}</li>
+                      <li>{i18n.t('errorBoundary.firebaseError.varAuthDomain')}</li>
+                      <li>{i18n.t('errorBoundary.firebaseError.varProjectId')}</li>
+                      <li>{i18n.t('errorBoundary.firebaseError.varStorageBucket')}</li>
+                      <li>{i18n.t('errorBoundary.firebaseError.varMessagingSenderId')}</li>
+                      <li>{i18n.t('errorBoundary.firebaseError.varAppId')}</li>
                     </ul>
                   </li>
-                  <li>Make sure to select all environments: <strong>Production</strong>, <strong>Preview</strong>, and <strong>Development</strong></li>
-                  <li>After adding variables, click <strong>"Redeploy"</strong> on your latest deployment</li>
+                  <li>{i18n.t('errorBoundary.firebaseError.step3')}</li>
+                  <li>{i18n.t('errorBoundary.firebaseError.step4')}</li>
                 </ol>
               </div>
             )}
@@ -84,14 +94,15 @@ export class ErrorBoundary extends Component<Props, State> {
             {errorMessage.includes('useRefresh must be used within a RefreshProvider') && (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4 mb-4">
                 <h3 className="text-blue-900 dark:text-blue-200 font-semibold mb-2">
-                  Provider Context Error - How to fix:
+                  {i18n.t('errorBoundary.providerError.howToFix')}
                 </h3>
                 <p className="text-blue-800 dark:text-blue-200 text-sm mb-2">
-                  This error indicates that <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">RefreshProvider</code> is not properly wrapping <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">AutoRefreshProvider</code>.
+                  {i18n.t('errorBoundary.providerError.description')}
                 </p>
                 <ol className="list-decimal list-inside text-blue-800 dark:text-blue-200 space-y-2 text-sm">
-                  <li>Check <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">src/App.tsx</code></li>
-                  <li>Verify the provider order is:
+                  <li>{i18n.t('errorBoundary.providerError.step1')}</li>
+                  <li>
+                    {i18n.t('errorBoundary.providerError.step2')}
                     <pre className="bg-blue-100 dark:bg-blue-900 p-2 rounded mt-2 text-xs overflow-x-auto">
 {`<LoadingProgressProvider>
   <RefreshProvider>
@@ -102,8 +113,8 @@ export class ErrorBoundary extends Component<Props, State> {
 </LoadingProgressProvider>`}
                     </pre>
                   </li>
-                  <li>Ensure <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">RefreshProvider</code> is a direct parent of <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">AutoRefreshProvider</code></li>
-                  <li>Check that <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">RefreshProvider</code> is not conditionally rendered</li>
+                  <li>{i18n.t('errorBoundary.providerError.step3')}</li>
+                  <li>{i18n.t('errorBoundary.providerError.step4')}</li>
                 </ol>
               </div>
             )}
@@ -113,7 +124,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 onClick={() => window.location.reload()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
-                Reload Page
+                {i18n.t('errorBoundary.reloadPage')}
               </button>
             </div>
           </div>

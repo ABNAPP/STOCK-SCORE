@@ -1,4 +1,5 @@
 import { createContext, useContext, ReactNode, useState, useCallback, useMemo, useEffect } from 'react';
+import { logger } from '../utils/logger';
 
 export interface DataSourceProgress {
   name: string;
@@ -41,7 +42,7 @@ function getHistoricalTime(source: string): number | null {
       return parseFloat(stored);
     }
   } catch (error) {
-    console.error(`Error loading historical time for ${source}:`, error);
+    logger.error(`Error loading historical time for ${source}`, error, { component: 'LoadingProgressContext', operation: 'loadHistoricalTime', source });
   }
   return null;
 }
@@ -52,7 +53,7 @@ function saveHistoricalTime(source: string, time: number): void {
     const key = `loadTime:${source}`;
     localStorage.setItem(key, String(time));
   } catch (error) {
-    console.error(`Error saving historical time for ${source}:`, error);
+    logger.error(`Error saving historical time for ${source}`, error, { component: 'LoadingProgressContext', operation: 'saveHistoricalTime', source });
   }
 }
 

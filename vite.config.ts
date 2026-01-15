@@ -1,9 +1,27 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  server: {
+    port: 5173, // Default Vite port
+    strictPort: false, // If port is in use, try next available port
+  },
+  plugins: [
+    react(),
+    // Only enable visualizer during build, not in dev mode
+    ...(process.env.ANALYZE === 'true' 
+      ? [visualizer({
+          filename: './dist/stats.html',
+          open: false,
+          gzipSize: true,
+          brotliSize: true,
+          template: 'treemap', // treemap, sunburst, network
+        })]
+      : []
+    ),
+  ],
   build: {
     chunkSizeWarningLimit: 1000, // Increase warning limit to 1000KB (1MB)
     rollupOptions: {
@@ -24,6 +42,33 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html', 'lcov'],
+      exclude: [
+        'node_modules/',
+        'src/test/',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/dist/',
+        '**/build/',
+        '**/*.test.{ts,tsx}',
+        '**/*.spec.{ts,tsx}',
+        '**/__tests__/',
+        '**/__mocks__/',
+        'e2e/',
+      ],
+      include: [
+        'src/**/*.{ts,tsx}',
+      ],
+      thresholds: {
+        lines: 70,
+        functions: 70,
+        branches: 65,
+        statements: 70,
+      },
+      all: true,
+    },
   },
 })
 

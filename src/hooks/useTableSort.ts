@@ -6,8 +6,17 @@ export type SortConfig<T> = {
   direction: SortDirection;
 };
 
-// Helper function to check if a value represents N/A
-function isNAValue(value: any, key: string | number | symbol): boolean {
+/**
+ * Helper function to check if a value represents N/A
+ * 
+ * **Why this logic?**
+ * - Business requirement: N/A values should be sorted to the end
+ * - String 'N/A' explicitly means missing data
+ * - Numeric 0 can mean N/A for most fields (e.g., price=0 means no price data)
+ * - Exception: score=0 is valid (a stock can legitimately have 0 score)
+ * - This distinction allows proper handling of missing vs zero values
+ */
+function isNAValue(value: unknown, key: string | number | symbol): boolean {
   if (value == null) return true;
   
   // String values: 'N/A' means N/A
@@ -24,6 +33,45 @@ function isNAValue(value: any, key: string | number | symbol): boolean {
   return false;
 }
 
+/**
+ * Custom hook for table sorting with N/A value handling
+ * 
+ * Provides sorting functionality that:
+ * - Separates N/A values and places them at the end
+ * - Handles different data types (numbers, strings)
+ * - Supports ascending/descending sort with toggle
+ * - Uses different N/A detection logic for ThresholdIndustryData vs other types
+ * 
+ * **N/A Handling Strategy:**
+ * - **ThresholdIndustryData**: Only checks the sorted column for N/A
+ * - **Other types**: Checks all numeric columns (except score and industry)
+ * - N/A items are always sorted to the end, then sorted by company name
+ * 
+ * **Why N/A values go last?**
+ * - Business requirement: Missing data should not interfere with meaningful comparisons
+ * - Ensures data quality by highlighting incomplete records
+ * - Provides consistent user experience across all table views
+ * 
+ * @template T - Type of data items being sorted
+ * @param data - Array of data items to sort
+ * @param defaultSortKey - Default column to sort by
+ * @param defaultDirection - Default sort direction ('asc' or 'desc')
+ * @returns Object with sorted data, sort configuration, and sort handler
+ * 
+ * @example
+ * ```typescript
+ * const { sortedData, sortConfig, handleSort } = useTableSort(
+ *   stockData,
+ *   'score',
+ *   'desc'
+ * );
+ * 
+ * // In component:
+ * <button onClick={() => handleSort('price')}>
+ *   Sort by Price {sortConfig.key === 'price' && sortConfig.direction}
+ * </button>
+ * ```
+ */
 export function useTableSort<T>(
   data: T[],
   defaultSortKey: keyof T,
@@ -62,7 +110,8 @@ export function useTableSort<T>(
     // For other types: check all numeric columns except score and industry
     const hasNAInAnyColumn = (item: T): boolean => {
       // Get all keys from the item
-      const keys = Object.keys(item) as Array<keyof T>;
+      // Use type guard: T must be object for Object.keys
+      const keys = Object.keys(item as object) as Array<keyof T>;
       
       for (const key of keys) {
         // Skip companyName, ticker, company, ticket, and industry as they can't be N/A (filtered out already or always valid)
@@ -87,7 +136,8 @@ export function useTableSort<T>(
     const naItems: T[] = [];
 
     // Check if this is ThresholdIndustryData by checking if 'industry' key exists
-    const isThresholdIndustryData = data.length > 0 && 'industry' in data[0];
+    // Type guard: ensure data[0] is an object before checking for 'industry'
+    const isThresholdIndustryData = data.length > 0 && typeof data[0] === 'object' && data[0] !== null && 'industry' in data[0];
     
     data.forEach((item) => {
       // For ThresholdIndustryData, only check the sorted column
@@ -104,9 +154,11 @@ export function useTableSort<T>(
     });
 
     // Sort regular items
+    // At this point, sortConfig.key is guaranteed to be non-null (checked at line 38)
+    const sortKey = sortConfig.key;
     const sortedRegular = [...regularItems].sort((a, b) => {
-      const aValue = a[sortConfig.key!];
-      const bValue = b[sortConfig.key!];
+      const aValue = a[sortKey];
+      const bValue = b[sortKey];
 
       // Handle null/undefined (should not happen after N/A check, but safety)
       if (aValue == null && bValue == null) return 0;
@@ -157,6 +209,9 @@ export function useTableSort<T>(
       return 0;
     });
 
+    // Edge case: All values are N/A
+    // If all items have N/A values, they're all sorted by company name
+    // This ensures consistent sorting even when no valid data exists
     // N/A items always go at the end, sorted by Company Name
     return [...finalSorted, ...sortedNAItems];
   }, [data, sortConfig, defaultSortKey]);

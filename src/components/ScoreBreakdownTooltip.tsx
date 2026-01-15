@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
 import { ScoreBreakdown } from '../utils/calculateScoreDetailed';
 
 interface ScoreBreakdownTooltipProps {
@@ -11,6 +11,7 @@ export default function ScoreBreakdownTooltip({ breakdown, children }: ScoreBrea
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const tooltipRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const tooltipId = useId();
 
   useEffect(() => {
     if (isVisible && triggerRef.current) {
@@ -82,12 +83,15 @@ export default function ScoreBreakdownTooltip({ breakdown, children }: ScoreBrea
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className="relative cursor-help"
+        aria-describedby={isVisible ? tooltipId : undefined}
       >
         {children}
       </div>
       {isVisible && (
         <div
           ref={tooltipRef}
+          id={tooltipId}
+          role="tooltip"
           className="fixed z-50 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 rounded-lg shadow-xl p-4 max-w-md border border-gray-700"
           style={{
             top: `${position.top}px`,

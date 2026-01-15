@@ -22,12 +22,12 @@ interface ScoreBoardTableProps {
   thresholdData?: ThresholdIndustryData[];
 }
 
-// Color constants
+// Color constants - WCAG AA compliant (4.5:1 contrast ratio)
 const COLORS = {
   red: 'text-red-700 dark:text-red-400',
-  green: 'text-green-600 dark:text-green-300',
+  green: 'text-green-700 dark:text-green-200',
   blue: 'text-blue-700 dark:text-blue-400',
-  yellow: 'text-yellow-600 dark:text-yellow-400',
+  yellow: 'text-yellow-700 dark:text-yellow-300',
 } as const;
 
 // Configuration interface for threshold-based color logic
@@ -503,7 +503,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
               ? 'text-red-700 dark:text-red-400'
               : item.mungerQualityScore >= MUNGER_QUALITY_SCORE_RED_THRESHOLD && item.mungerQualityScore <= MUNGER_QUALITY_SCORE_GREEN_THRESHOLD
               ? 'text-blue-700 dark:text-blue-400'
-              : 'text-green-600 dark:text-green-300'
+              : 'text-green-700 dark:text-green-200'
           }>
             {item.mungerQualityScore !== null ? item.mungerQualityScore.toLocaleString() : 'N/A'}
           </span>
@@ -515,7 +515,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
               ? 'text-gray-900 dark:text-gray-100'
               : item.valueCreation < 0
               ? 'text-red-700 dark:text-red-400'
-              : 'text-green-600 dark:text-green-300'
+              : 'text-green-700 dark:text-green-200'
           }>
             {item.valueCreation !== null ? `${item.valueCreation.toFixed(2)}%` : 'N/A'}
           </span>
@@ -563,7 +563,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
               ? 'text-gray-900 dark:text-gray-100'
               : item.pe1Industry > 0
               ? 'text-red-700 dark:text-red-400'
-              : 'text-green-600 dark:text-green-300'
+              : 'text-green-700 dark:text-green-200'
           }>
             {item.pe1Industry !== null ? `${item.pe1Industry.toFixed(1)}%` : 'N/A'}
           </span>
@@ -575,7 +575,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
               ? 'text-gray-900 dark:text-gray-100'
               : item.pe2Industry > 0
               ? 'text-red-700 dark:text-red-400'
-              : 'text-green-600 dark:text-green-300'
+              : 'text-green-700 dark:text-green-200'
           }>
             {item.pe2Industry !== null ? `${item.pe2Industry.toFixed(1)}%` : 'N/A'}
           </span>
@@ -598,7 +598,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
             item.smaCross && item.smaCross.toUpperCase().includes('GOLDEN')
               ? 'text-red-700 dark:text-red-400'
               : item.smaCross && item.smaCross.toUpperCase().includes('DEATH')
-              ? 'text-green-600 dark:text-green-400'
+              ? 'text-green-700 dark:text-green-200'
               : 'text-gray-900 dark:text-gray-100'
           }>
             {item.smaCross || 'N/A'}
@@ -608,7 +608,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         return (
           <span className={
             isTheoEntryGreen(item.ticker, item.companyName)
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-300'
+              ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-200'
               : ''
           }>
             {isTheoEntryGreen(item.ticker, item.companyName) ? 'B' : ''}
@@ -645,7 +645,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
           <button
             onClick={toggleExpand}
             className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-all duration-200 flex-shrink-0"
-            aria-label={isExpanded ? 'Dölj detaljer' : 'Visa detaljer'}
+            aria-label={isExpanded ? t('aria.collapseRow') : t('aria.expandRow')}
             aria-expanded={isExpanded}
           >
             <svg
@@ -702,6 +702,10 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
       ariaLabel={t('navigation.scoreBoard')}
       minTableWidth="800px"
       getRowKey={(item, index) => `${item.ticker}-${item.companyName}-${index}`}
+      enableExport={true}
+      enablePrint={true}
+      enableShareableLink={true}
+      viewId="score-board"
     />
   );
 }

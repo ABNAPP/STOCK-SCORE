@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchThresholdIndustryData, ProgressCallback } from '../services/sheetsService';
+import { fetchThresholdIndustryData, ProgressCallback } from '../services/sheets';
 import { ThresholdIndustryData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
-import { getCachedData, CACHE_KEYS, isCacheFresh, isCacheStale } from '../services/cacheService';
+import { getCachedData, CACHE_KEYS, isCacheFresh, isCacheStale, FRESH_THRESHOLD_MS } from '../services/cacheService';
 import { usePageVisibility } from './usePageVisibility';
+import { formatError, logError, createErrorHandler } from '../utils/errorHandler';
+import { useNotifications } from '../contexts/NotificationContext';
+import { detectDataChanges, formatChangeSummary } from '../utils/dataChangeDetector';
 
 const CACHE_KEY = CACHE_KEYS.THRESHOLD_INDUSTRY;
-const FRESH_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
 export function useThresholdIndustryData() {
   // Check cache synchronously on mount to avoid unnecessary loading state
@@ -22,6 +24,8 @@ export function useThresholdIndustryData() {
   const { updateProgress } = useLoadingProgress();
   const isPageVisible = usePageVisibility();
   const backgroundUpdateRef = useRef<Promise<void> | null>(null);
+  const { createNotification } = useNotifications();
+  const previousDataRef = useRef<ThresholdIndustryData[]>(cachedData || []);
 
   const fetchData = useCallback(async (forceRefresh: boolean = false, isBackground: boolean = false) => {
     try {
@@ -50,8 +54,32 @@ export function useThresholdIndustryData() {
       }
       
       const fetchedData = await fetchThresholdIndustryData(forceRefresh, progressCallback);
+      
+      // Detect data changes
+      const changes = detectDataChanges(
+        previousDataRef.current,
+        fetchedData,
+        (item) => item.industry,
+        0.05 // 5% threshold
+      );
+      
       setData(fetchedData);
+      previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
+      
+      // Show notification if significant changes detected
+      if (changes.hasSignificantChanges && !isBackground) {
+        const changeMessage = formatChangeSummary(changes);
+        createNotification(
+          'data-update',
+          'Threshold Industry Data Updated',
+          `Total: ${changes.total} items. ${changeMessage}`,
+          {
+            showDesktop: true,
+            data: { changes, dataType: 'threshold-industry' },
+          }
+        );
+      }
       
       if (!isBackground) {
         updateProgress('threshold-industry', {
@@ -59,13 +87,19 @@ export function useThresholdIndustryData() {
           progress: 100,
         });
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch Threshold Industry data');
+    } catch (err: unknown) {
+      const errorHandler = createErrorHandler({
+        operation: 'fetch Threshold Industry data',
+        component: 'useThresholdIndustryData',
+        additionalInfo: { forceRefresh, isBackground },
+      });
+      const formatted = errorHandler(err);
+      setError(formatted.userMessage);
       if (!isBackground) {
-        console.error('Error fetching Threshold Industry data:', err);
         updateProgress('threshold-industry', {
           status: 'error',
           progress: 0,
+          message: formatted.userMessage,
         });
       }
     } finally {

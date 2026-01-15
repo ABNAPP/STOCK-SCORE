@@ -9,6 +9,7 @@ import {
   getIdTokenResult
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { logger } from '../utils/logger';
 
 export type UserRole = 'viewer1' | 'viewer2' | 'editor' | 'admin' | null;
 
@@ -22,12 +23,53 @@ interface AuthContextType {
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({} as AuthContextType);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function useAuth() {
-  return useContext(AuthContext);
+/**
+ * Hook to access authentication context
+ * 
+ * Provides access to current user, user role, and authentication methods.
+ * Must be used within an AuthProvider component.
+ * 
+ * @returns AuthContextType with currentUser, userRole, login, signup, logout, refreshUserRole, and loading
+ * @throws {Error} If used outside of AuthProvider
+ * 
+ * @example
+ * ```typescript
+ * function MyComponent() {
+ *   const { currentUser, userRole, logout } = useAuth();
+ *   
+ *   if (!currentUser) {
+ *     return <Login />;
+ *   }
+ *   
+ *   return <div>Welcome, {currentUser.email}</div>;
+ * }
+ * ```
+ */
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }
 
+/**
+ * Authentication context provider
+ * 
+ * Provides authentication state and methods to all child components.
+ * Manages user authentication, role retrieval, and auth state changes.
+ * 
+ * @param children - React children components that need access to auth context
+ * 
+ * @example
+ * ```typescript
+ * <AuthProvider>
+ *   <App />
+ * </AuthProvider>
+ * ```
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<UserRole>(null);
@@ -47,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       return null;
     } catch (error) {
-      console.error('Error getting user role:', error);
+      logger.error('Error getting user role', error, { component: 'AuthContext', operation: 'getUserRole' });
       return null;
     }
   }, []);

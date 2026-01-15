@@ -127,7 +127,33 @@
     "valueGood": "Bra värde",
     "valueWarning": "Varning",
     "valueNeutral": "Neutralt värde",
-    "valueBad": "Dåligt värde"
+    "valueBad": "Dåligt värde",
+    "refreshMenu": "Uppdateringsmeny",
+    "refreshNowButton": "Uppdatera data nu",
+    "autoRefreshOff": "Stäng av automatisk uppdatering",
+    "autoRefresh30Min": "Sätt automatisk uppdatering till 30 minuter",
+    "autoRefresh60Min": "Sätt automatisk uppdatering till 60 minuter",
+    "themeMenu": "Temameny",
+    "lightTheme": "Växla till ljust tema",
+    "darkTheme": "Växla till mörkt tema",
+    "systemTheme": "Använd systemtema",
+    "languageMenu": "Språkmeny",
+    "englishLanguage": "Växla till engelska",
+    "swedishLanguage": "Växla till svenska",
+    "logoutButton": "Logga ut",
+    "userProfileButton": "Öppna användarprofil",
+    "expandRow": "Expandera raddetaljer",
+    "collapseRow": "Dölj raddetaljer",
+    "filterButton": "Öppna filter",
+    "closeFilters": "Stäng filter",
+    "applyFilters": "Tillämpa filter",
+    "clearFilters": "Rensa alla filter",
+    "saveFilter": "Spara aktuellt filter",
+    "loadFilter": "Ladda sparat filter",
+    "deleteFilter": "Ta bort sparat filter",
+    "closeModal": "Stäng modal",
+    "refreshButton": "Uppdatera data",
+    "showColumnInfo": "Visa kolumninformation"
   },
   "loading": {
     "loadingData": "Laddar data...",
@@ -248,6 +274,121 @@
     "deregisterSuccess": "Ditt konto har tagits bort",
     "deregisterError": "Kunde inte ta bort kontot",
     "deregistering": "Tar bort..."
+  },
+  "errorBoundary": {
+    "configurationError": "Konfigurationsfel",
+    "unknownError": "Ett okänt fel uppstod",
+    "reloadPage": "Ladda om sidan",
+    "firebaseError": {
+      "howToFix": "Så här fixar du:",
+      "step1": "Gå till Vercel Dashboard → Ditt Projekt → Inställningar → Miljövariabler",
+      "step2": "Lägg till alla 6 Firebase-miljövariabler:",
+      "step3": "Se till att välja alla miljöer: Production, Preview och Development",
+      "step4": "Efter att ha lagt till variabler, klicka på \"Redeploy\" på din senaste deployment",
+      "varApiKey": "VITE_FIREBASE_API_KEY",
+      "varAuthDomain": "VITE_FIREBASE_AUTH_DOMAIN",
+      "varProjectId": "VITE_FIREBASE_PROJECT_ID",
+      "varStorageBucket": "VITE_FIREBASE_STORAGE_BUCKET",
+      "varMessagingSenderId": "VITE_FIREBASE_MESSAGING_SENDER_ID",
+      "varAppId": "VITE_FIREBASE_APP_ID"
+    },
+    "providerError": {
+      "howToFix": "Provider-kontextfel - Så här fixar du:",
+      "description": "Detta fel indikerar att RefreshProvider inte korrekt omsluter AutoRefreshProvider.",
+      "step1": "Kontrollera src/App.tsx",
+      "step2": "Verifiera att provider-ordningen är:",
+      "step3": "Se till att RefreshProvider är direkt förälder till AutoRefreshProvider",
+      "step4": "Kontrollera att RefreshProvider inte renderas villkorligt"
+    }
+  },
+  "offline": {
+    "indicator": "Offline - Visar cachad data"
+  },
+  "pullToRefresh": {
+    "pull": "Dra för att uppdatera",
+    "release": "Släpp för att uppdatera",
+    "refreshing": "Uppdaterar..."
+  },
+  "notifications": {
+    "title": "Notifikationer",
+    "justNow": "Just nu",
+    "minutesAgo": "{{count}} min sedan",
+    "hoursAgo": "{{count}} tim sedan",
+    "daysAgo": "{{count}} dagar sedan",
+    "enableDesktop": "Aktivera desktop",
+    "markAllRead": "Markera alla som lästa",
+    "clearAll": "Rensa alla",
+    "noNotifications": "Inga notifikationer",
+    "noNotificationsDesc": "Du är alltid uppdaterad!",
+    "remove": "Ta bort notifikation",
+    "all": "Alla",
+    "dataUpdates": "Datauppdateringar",
+    "errors": "Fel",
+    "success": "Framgång"
+  },
+  "quickFilters": {
+    "title": "Snabbfilter",
+    "highScore": "Hög score (>80)",
+    "mediumScore": "Medel score (50-80)",
+    "lowScore": "Låg score (<50)",
+    "lowPE": "Låg P/E (<10)",
+    "mediumPE": "Medel P/E (10-20)",
+    "highPE": "Hög P/E (>20)",
+    "lowPrice": "Lågt pris (<50)"
+  },
+  "filters": {
+    "templates": "Filter Templates",
+    "saveFilter": "Spara filter",
+    "save": "Spara",
+    "saveAsTemplate": "Spara som Template",
+    "loadTemplate": "Ladda template",
+    "filterSaved": "Filter sparades!"
+  },
+  "shareableLinks": {
+    "title": "Skapa Delbar Länk",
+    "linkName": "Länknamn (valfritt)",
+    "linkNamePlaceholder": "t.ex. Hög Score Aktier",
+    "description": "Beskrivning (valfritt)",
+    "descriptionPlaceholder": "Lägg till en beskrivning...",
+    "expiresIn": "Går ut om (dagar)",
+    "create": "Skapa Länk",
+    "saving": "Sparar...",
+    "linkCreated": "Länk skapad!",
+    "copy": "Kopiera",
+    "share": "Dela",
+    "myLinks": "Mina Delbara Länkar",
+    "noLinks": "Inga delbara länkar ännu",
+    "invalidLink": "Ogiltig länk",
+    "linkNotFound": "Länk hittades inte eller har gått ut",
+    "loadError": "Kunde inte ladda länk",
+    "error": "Fel",
+    "goHome": "Gå till Hem",
+    "linkLoaded": "Delbar länk laddad",
+    "confirmDelete": "Är du säker på att du vill ta bort denna länk?",
+    "delete": "Ta bort"
+  },
+  "export": {
+    "csv": "Exportera till CSV",
+    "excel": "Exportera till Excel"
+  },
+  "print": {
+    "print": "Skriv ut"
+  },
+  "profile": {
+    "notificationPreferences": "Notifikationsinställningar",
+    "notificationsEnabled": "Aktivera Notifikationer",
+    "notificationsEnabledDesc": "Aktivera alla notifikationer",
+    "desktopNotifications": "Desktop Notifikationer",
+    "desktopNotificationsDesc": "Visa webbläsarnotifikationer",
+    "enableDesktop": "Aktivera",
+    "dataUpdates": "Datauppdateringar",
+    "errors": "Fel",
+    "success": "Framgångsmeddelanden",
+    "warnings": "Varningar",
+    "soundEnabled": "Ljudnotifikationer",
+    "doNotDisturb": "Stör Ej",
+    "doNotDisturbDesc": "Tysta notifikationer under angivna timmar",
+    "preferencesSaveError": "Kunde inte spara inställningar"
   }
 }
 

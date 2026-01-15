@@ -12,7 +12,7 @@ import { calculateDetailedScore } from '../../utils/calculateScoreDetailed';
 // Lazy load table component
 const ScoreTable = lazy(() => import('../ScoreTable'));
 
-export interface ScoreData {
+export interface ScoreData extends Record<string, unknown> {
   companyName: string;
   ticker: string;
   score: number;

@@ -5,8 +5,8 @@ import {
   getValue,
   isValidValue,
   parseNumericValueNullable
-} from '../services/sheetsService';
-import type { DataRow } from '../services/sheetsService';
+} from '../services/sheets';
+import type { DataRow } from '../services/sheets';
 import { 
   initSync, 
   pollChanges, 
@@ -17,18 +17,30 @@ import {
   snapshotToTransformerFormat,
   type DeltaSyncConfig
 } from '../services/deltaSyncService';
-import { setDeltaCacheEntry, getDeltaCacheEntry, getCachedData, CACHE_KEYS, isCacheFresh, isCacheStale } from '../services/cacheService';
+import { setDeltaCacheEntry, getDeltaCacheEntry, getCachedData, CACHE_KEYS, isCacheFresh, isCacheStale, FRESH_THRESHOLD_MS } from '../services/cacheService';
 import { BenjaminGrahamData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
 import { usePageVisibility } from './usePageVisibility';
+import { formatError, logError, createErrorHandler } from '../utils/errorHandler';
+import { isDataRowArray } from '../utils/typeGuards';
+import { logger } from '../utils/logger';
+import { useNotifications } from '../contexts/NotificationContext';
+import { detectDataChanges, formatChangeSummary } from '../utils/dataChangeDetector';
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
 const SHEET_NAME = 'DashBoard';
 const CACHE_KEY = CACHE_KEYS.BENJAMIN_GRAHAM;
-const FRESH_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
 // Transformer function for Benjamin Graham data
 function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields: string[] | null } }): BenjaminGrahamData[] {
+  if (!isDataRowArray(results.data)) {
+    const errorHandler = createErrorHandler({
+      operation: 'transform Benjamin Graham data',
+      component: 'useBenjaminGrahamData',
+    });
+    throw new Error('Invalid data format: expected array of DataRow');
+  }
+  
   const benjaminGrahamData = results.data
     .map((row: DataRow) => {
       const companyName = getValue(['Company Name', 'Company', 'company'], row);
@@ -75,6 +87,43 @@ function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields:
   return benjaminGrahamData;
 }
 
+/**
+ * Custom hook for fetching and managing Benjamin Graham data with delta sync
+ * 
+ * Implements delta sync for efficient data updates:
+ * - **Delta Sync (enabled)**: Uses version-based incremental updates
+ *   - Initial load: Full snapshot
+ *   - Subsequent updates: Only changed rows (polling every 15 minutes)
+ *   - Automatic polling when page is visible
+ * - **Fallback (disabled)**: Uses regular fetch with stale-while-revalidate
+ * 
+ * **Delta Sync Strategy:**
+ * - Polls for changes every 15 minutes (configurable)
+ * - Only polls when page is visible (saves resources)
+ * - Falls back to regular fetch if delta sync fails
+ * - Uses version numbers to track changes efficiently
+ * 
+ * **Cache Strategy:**
+ * - Delta cache: Version-based with lastUpdated timestamp
+ * - Regular cache: TTL-based (20 minutes)
+ * - Shows cached data immediately, updates in background
+ * 
+ * **Edge Cases:**
+ * - Missing threshold data: Returns BLANK for industry-dependent metrics
+ * - Version mismatch: Triggers full snapshot reload
+ * - Polling failures: Silent (doesn't show errors to user)
+ * 
+ * @returns Object with data, loading state, error, lastUpdated timestamp, and refetch function
+ * 
+ * @example
+ * ```typescript
+ * const { data, loading, error, refetch } = useBenjaminGrahamData();
+ * 
+ * // Data automatically updates via delta sync if enabled
+ * // Or manually refresh:
+ * refetch(true);
+ * ```
+ */
 export function useBenjaminGrahamData() {
   // Check cache synchronously on mount to avoid unnecessary loading state
   // Try delta cache first, then fallback to regular cache
@@ -103,6 +152,8 @@ export function useBenjaminGrahamData() {
   const currentVersionRef = useRef<number>(deltaCacheEntry?.version || 0);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const backgroundUpdateRef = useRef<Promise<void> | null>(null);
+  const { createNotification } = useNotifications();
+  const previousDataRef = useRef<BenjaminGrahamData[]>(cachedData || []);
 
   // Load data using delta-sync or fallback to regular fetch
   const loadData = useCallback(async (forceRefresh: boolean = false, isBackground: boolean = false) => {
@@ -135,9 +186,32 @@ export function useBenjaminGrahamData() {
             transformBenjaminGrahamData
           );
 
+          // Detect data changes
+          const changes = detectDataChanges(
+            previousDataRef.current,
+            result.data,
+            (item) => `${item.ticker}-${item.companyName}`,
+            0.05 // 5% threshold
+          );
+          
           setData(result.data);
+          previousDataRef.current = result.data;
           currentVersionRef.current = result.version;
           setLastUpdated(new Date());
+          
+          // Show notification if significant changes detected
+          if (changes.hasSignificantChanges && !isBackground) {
+            const changeMessage = formatChangeSummary(changes);
+            createNotification(
+              'data-update',
+              'Benjamin Graham Data Updated',
+              `Total: ${changes.total} items. ${changeMessage}`,
+              {
+                showDesktop: true,
+                data: { changes, dataType: 'benjamin-graham' },
+              }
+            );
+          }
           
           if (!isBackground) {
             updateProgress('benjamin-graham', {
@@ -153,7 +227,21 @@ export function useBenjaminGrahamData() {
           return;
         } catch (deltaSyncError) {
           // Delta sync failed, fallback to regular fetch
-          console.warn('Delta sync failed, falling back to regular fetch:', deltaSyncError);
+          const errorMessage = deltaSyncError instanceof Error ? deltaSyncError.message : String(deltaSyncError);
+          
+          // Only log warning if it's not a timeout (timeouts are expected and will fallback)
+          if (!errorMessage.includes('timeout') && !errorMessage.includes('Request timeout')) {
+            logger.warn(
+              `Delta sync failed for ${SHEET_NAME}, falling back to regular fetch: ${errorMessage}`,
+              { component: 'useBenjaminGrahamData', operation: 'initialize delta sync', sheetName: SHEET_NAME, error: deltaSyncError }
+            );
+          } else {
+            logger.debug(
+              `Delta sync timed out for ${SHEET_NAME}, using regular fetch instead`,
+              { component: 'useBenjaminGrahamData', operation: 'initialize delta sync', sheetName: SHEET_NAME }
+            );
+          }
+          // Don't throw - fallback to regular fetch
         }
       }
 
@@ -171,8 +259,32 @@ export function useBenjaminGrahamData() {
       };
       
       const fetchedData = await fetchBenjaminGrahamData(forceRefresh, progressCallback);
+      
+      // Detect data changes
+      const changes = detectDataChanges(
+        previousDataRef.current,
+        fetchedData,
+        (item) => `${item.ticker}-${item.companyName}`,
+        0.05 // 5% threshold
+      );
+      
       setData(fetchedData);
+      previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
+      
+      // Show notification if significant changes detected
+      if (changes.hasSignificantChanges && !isBackground) {
+        const changeMessage = formatChangeSummary(changes);
+        createNotification(
+          'data-update',
+          'Benjamin Graham Data Updated',
+          `Total: ${changes.total} items. ${changeMessage}`,
+          {
+            showDesktop: true,
+            data: { changes, dataType: 'benjamin-graham' },
+          }
+        );
+      }
       
       if (!isBackground) {
         updateProgress('benjamin-graham', {
@@ -180,13 +292,19 @@ export function useBenjaminGrahamData() {
           progress: 100,
         });
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch Benjamin Graham data');
+    } catch (err: unknown) {
+      const errorHandler = createErrorHandler({
+        operation: 'fetch Benjamin Graham data',
+        component: 'useBenjaminGrahamData',
+        additionalInfo: { forceRefresh, isBackground },
+      });
+      const formatted = errorHandler(err);
+      setError(formatted.userMessage);
       if (!isBackground) {
-        console.error('Error fetching Benjamin Graham data:', err);
         updateProgress('benjamin-graham', {
           status: 'error',
           progress: 0,
+          message: formatted.userMessage,
         });
       }
     } finally {
@@ -243,9 +361,32 @@ export function useBenjaminGrahamData() {
         const transformedData = transformBenjaminGrahamData(transformerFormat);
         setDeltaCacheEntry(CACHE_KEY, transformedData, snapshot.version, true);
         
+        // Detect data changes
+        const changes = detectDataChanges(
+          previousDataRef.current,
+          transformedData,
+          (item) => `${item.ticker}-${item.companyName}`,
+          0.05 // 5% threshold
+        );
+        
         setData(transformedData);
+        previousDataRef.current = transformedData;
         currentVersionRef.current = snapshot.version;
         setLastUpdated(new Date());
+        
+        // Show notification if significant changes detected
+        if (changes.hasSignificantChanges) {
+          const changeMessage = formatChangeSummary(changes);
+          createNotification(
+            'data-update',
+            'Benjamin Graham Data Updated',
+            `Total: ${changes.total} items. ${changeMessage}`,
+            {
+              showDesktop: true,
+              data: { changes, dataType: 'benjamin-graham' },
+            }
+          );
+        }
       } else if (cacheResult.data) {
         // No changes, use cached data
         setData(cacheResult.data);
@@ -253,7 +394,13 @@ export function useBenjaminGrahamData() {
       }
     } catch (pollError) {
       // Silently fail polling - don't show errors to user
-      console.warn('Polling for changes failed:', pollError);
+      const errorHandler = createErrorHandler({
+        operation: 'poll for changes',
+        component: 'useBenjaminGrahamData',
+        additionalInfo: { version: currentVersionRef.current },
+      });
+      logError(pollError, errorHandler({}).context);
+      // Don't set error state - polling failures should be silent
     }
   }, [isPageVisible]);
 

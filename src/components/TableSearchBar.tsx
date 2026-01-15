@@ -1,3 +1,5 @@
+import { sanitizeSearchQuery } from '../utils/inputValidator';
+
 interface TableSearchBarProps {
   searchValue: string;
   onSearchChange: (value: string) => void;
@@ -36,8 +38,13 @@ export default function TableSearchBar({
           <input
             type="text"
             value={searchValue}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={(e) => {
+              // Sanitize input as user types
+              const sanitized = sanitizeSearchQuery(e.target.value);
+              onSearchChange(sanitized);
+            }}
             placeholder={placeholder}
+            maxLength={200}
             className="block w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-500 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 focus:shadow-sm"
           />
           {searchValue && (

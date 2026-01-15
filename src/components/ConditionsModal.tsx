@@ -34,11 +34,11 @@ export default function ConditionsModal({ isOpen, onClose, metadata, pageName }:
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 dark:bg-opacity-70 animate-fade-in transition-opacity duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 dark:bg-opacity-70 animate-fade-in transition-opacity duration-normal"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col animate-scale-in transition-all duration-300"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col animate-scale-in transition-all duration-normal"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -47,9 +47,9 @@ export default function ConditionsModal({ isOpen, onClose, metadata, pageName }:
           <button
             onClick={onClose}
             className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 hover:scale-110 active:scale-95 p-3 sm:p-2 min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center"
-            aria-label="Close"
+            aria-label={t('aria.closeModal')}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -71,10 +71,10 @@ export default function ConditionsModal({ isOpen, onClose, metadata, pageName }:
                 <div className="space-y-3">
                   <div className="transition-all duration-200 hover:translate-x-1">
                     <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-blue-700 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      <span className="font-semibold text-blue-600 dark:text-blue-400 transition-colors duration-200 hover:text-blue-700 dark:hover:text-blue-300">
+                      <span className="font-semibold text-blue-700 dark:text-blue-400 transition-colors duration-200 hover:text-blue-700 dark:hover:text-blue-300">
                         {t('conditions.dataSource')}:
                       </span>
                     </div>
@@ -84,10 +84,10 @@ export default function ConditionsModal({ isOpen, onClose, metadata, pageName }:
                   {column.formula && (
                     <div className="transition-all duration-200 hover:translate-x-1">
                       <div className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-green-700 dark:text-green-200 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
-                        <span className="font-semibold text-green-600 dark:text-green-400 transition-colors duration-200 hover:text-green-700 dark:hover:text-green-300">
+                        <span className="font-semibold text-green-700 dark:text-green-200 transition-colors duration-200 hover:text-green-700 dark:hover:text-green-300">
                           {t('conditions.formula')}:
                         </span>
                       </div>
@@ -100,10 +100,10 @@ export default function ConditionsModal({ isOpen, onClose, metadata, pageName }:
                   {column.conditions && column.conditions.length > 0 && (
                     <div className="transition-all duration-200 hover:translate-x-1">
                       <div className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-yellow-700 dark:text-yellow-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                         </svg>
-                        <span className="font-semibold text-yellow-600 dark:text-yellow-400 transition-colors duration-200 hover:text-yellow-700 dark:hover:text-yellow-300">
+                        <span className="font-semibold text-yellow-700 dark:text-yellow-300 transition-colors duration-200 hover:text-yellow-700 dark:hover:text-yellow-300">
                           {t('conditions.conditions')}:
                         </span>
                       </div>

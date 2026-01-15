@@ -48,8 +48,8 @@ export default function Signup({ onSwitchToLogin }: SignupProps) {
       await refreshUserRole();
       
       showToast(t('auth.signupSuccess'), 'success');
-    } catch (err: any) {
-      const errorMessage = err.message || t('auth.signupFailed');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : t('auth.signupFailed');
       setError(errorMessage);
       showToast(errorMessage, 'error');
     } finally {
@@ -131,7 +131,7 @@ export default function Signup({ onSwitchToLogin }: SignupProps) {
         <div className="mt-6 text-center">
           <button
             onClick={onSwitchToLogin}
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium"
+            className="text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium"
           >
             {t('auth.alreadyHaveAccount')}
           </button>

@@ -15,11 +15,14 @@ import {
   getDocs,
   updateDoc,
   deleteDoc,
-  serverTimestamp
+  serverTimestamp,
+  Timestamp,
+  FieldValue
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../config/firebase';
 import { User } from 'firebase/auth';
+import { logger } from '../utils/logger';
 
 // Firestore collection name
 const COLLECTION_NAME = 'pendingRequests';
@@ -33,7 +36,11 @@ export type RequestStatus = 'pending' | 'approved' | 'denied';
 // Request roles
 export type RequestedRole = 'viewer1' | 'viewer2' | 'editor';
 
-// Pending Request interface
+/**
+ * Pending Request interface
+ * 
+ * Represents a user's request for registration or role upgrade.
+ */
 export interface PendingRequest {
   userId: string;
   email: string;
@@ -41,16 +48,30 @@ export interface PendingRequest {
   requestedRole: RequestedRole;
   requestType: RequestType;
   status: RequestStatus;
-  timestamp: any; // Firestore Timestamp or Date
+  timestamp: Timestamp | Date | FieldValue;
   approvedRole?: RequestedRole | 'admin' | 'viewer1' | 'viewer2';
-  approvedAt?: any;
+  approvedAt?: Timestamp | Date | FieldValue | undefined;
   approvedBy?: string;
-  deniedAt?: any;
+  deniedAt?: Timestamp | Date | FieldValue | undefined;
   deniedBy?: string;
 }
 
 /**
  * Create a new pending request
+ * 
+ * Creates a new pending request for user registration or role upgrade.
+ * If a pending request already exists, throws an error. If a previous
+ * request was denied, updates it to create a new pending request.
+ * 
+ * @param user - Firebase user object
+ * @param requestedRole - Role the user is requesting
+ * @param requestType - Type of request (initial_registration or upgrade_request)
+ * @throws {Error} If a pending request already exists or creation fails
+ * 
+ * @example
+ * ```typescript
+ * await createPendingRequest(user, 'editor', 'upgrade_request');
+ * ```
  */
 export async function createPendingRequest(
   user: User,
@@ -99,14 +120,27 @@ export async function createPendingRequest(
     };
     
     await setDoc(doc(db, COLLECTION_NAME, requestId), request);
-  } catch (error) {
-    console.error('Error creating pending request:', error);
+  } catch (error: unknown) {
+    logger.error('Error creating pending request', error, { component: 'pendingRequestService', operation: 'createPendingRequest' });
     throw error;
   }
 }
 
 /**
  * Get pending request for a user
+ * 
+ * Retrieves the pending request for a specific user by their user ID.
+ * 
+ * @param userId - Firebase user ID
+ * @returns Pending request if found, null otherwise
+ * 
+ * @example
+ * ```typescript
+ * const request = await getPendingRequest(user.uid);
+ * if (request && request.status === 'pending') {
+ *   // Show waiting message
+ * }
+ * ```
  */
 export async function getPendingRequest(userId: string): Promise<PendingRequest | null> {
   try {
@@ -118,14 +152,27 @@ export async function getPendingRequest(userId: string): Promise<PendingRequest 
     }
     
     return null;
-  } catch (error) {
-    console.error('Error getting pending request:', error);
+  } catch (error: unknown) {
+    logger.error('Error getting pending request', error, { component: 'pendingRequestService', operation: 'getPendingRequest' });
     return null;
   }
 }
 
 /**
  * Get all pending requests (for admin)
+ * 
+ * Retrieves all pending requests from Firestore, sorted by timestamp
+ * (newest first). Only returns requests with status 'pending'.
+ * 
+ * @returns Array of pending requests, sorted by timestamp (newest first)
+ * 
+ * @example
+ * ```typescript
+ * const requests = await getAllPendingRequests();
+ * requests.forEach(request => {
+ *   console.log(request.email, request.requestedRole);
+ * });
+ * ```
  */
 export async function getAllPendingRequests(): Promise<PendingRequest[]> {
   try {
@@ -143,21 +190,44 @@ export async function getAllPendingRequests(): Promise<PendingRequest[]> {
     
     // Sort by timestamp (newest first)
     requests.sort((a, b) => {
-      const aTime = a.timestamp?.toMillis?.() || 0;
-      const bTime = b.timestamp?.toMillis?.() || 0;
+      const getTime = (ts: Timestamp | Date | FieldValue): number => {
+        if (ts instanceof Date) {
+          return ts.getTime();
+        }
+        if (ts && typeof ts === 'object' && 'toMillis' in ts && typeof (ts as Timestamp).toMillis === 'function') {
+          return (ts as Timestamp).toMillis();
+        }
+        return 0;
+      };
+      const aTime = a.timestamp ? getTime(a.timestamp) : 0;
+      const bTime = b.timestamp ? getTime(b.timestamp) : 0;
       return bTime - aTime;
     });
     
     return requests;
-  } catch (error) {
-    console.error('Error getting all pending requests:', error);
+  } catch (error: unknown) {
+    logger.error('Error getting all pending requests', error, { component: 'pendingRequestService', operation: 'getAllPendingRequests' });
     return [];
   }
 }
 
 /**
  * Update request status (for admin - via Cloud Function)
- * This is typically called from a Cloud Function, not directly from client
+ * 
+ * Updates the status of a pending request (approve or deny).
+ * This is typically called from a Cloud Function with admin privileges,
+ * not directly from the client.
+ * 
+ * @param requestId - User ID of the request to update
+ * @param status - New status ('approved' or 'denied')
+ * @param approvedRole - Role to assign if approved (optional)
+ * @param processedBy - User ID of the admin processing the request (optional)
+ * @throws {Error} If update fails
+ * 
+ * @example
+ * ```typescript
+ * await updateRequestStatus(userId, 'approved', 'editor', adminUserId);
+ * ```
  */
 export async function updateRequestStatus(
   requestId: string,
@@ -183,15 +253,25 @@ export async function updateRequestStatus(
     };
     
     await updateDoc(docRef, updateData);
-  } catch (error) {
-    console.error('Error updating request status:', error);
+  } catch (error: unknown) {
+    logger.error('Error updating request status', error, { component: 'pendingRequestService', operation: 'updateRequestStatus' });
     throw error;
   }
 }
 
 /**
  * Delete a pending request (for user to withdraw their request)
- * Only allowed if the request is still pending
+ * 
+ * Allows a user to withdraw their pending request. Only allowed if
+ * the request is still pending and belongs to the user.
+ * 
+ * @param userId - User ID of the request to delete
+ * @throws {Error} If request not found, not pending, or doesn't belong to user
+ * 
+ * @example
+ * ```typescript
+ * await deletePendingRequest(user.uid);
+ * ```
  */
 export async function deletePendingRequest(userId: string): Promise<void> {
   try {
@@ -215,16 +295,26 @@ export async function deletePendingRequest(userId: string): Promise<void> {
     }
     
     await deleteDoc(docRef);
-  } catch (error) {
-    console.error('Error deleting pending request:', error);
+  } catch (error: unknown) {
+    logger.error('Error deleting pending request', error, { component: 'pendingRequestService', operation: 'deletePendingRequest' });
     throw error;
   }
 }
 
 /**
  * Automatically approve viewer2 request for new registrations
- * This sets the viewer2 role via Cloud Function and updates the request status
- * The Cloud Function handles both setting the role and updating Firestore (with admin privileges)
+ * 
+ * Automatically approves a viewer2 role request for new user registrations.
+ * This calls a Cloud Function that handles both setting the role and updating
+ * Firestore with admin privileges.
+ * 
+ * @param userId - User ID to auto-approve
+ * @throws {Error} If Cloud Function call fails
+ * 
+ * @example
+ * ```typescript
+ * await autoApproveViewer2Request(newUser.uid);
+ * ```
  */
 export async function autoApproveViewer2Request(userId: string): Promise<void> {
   try {
@@ -232,8 +322,8 @@ export async function autoApproveViewer2Request(userId: string): Promise<void> {
     // The Cloud Function has admin privileges and can update Firestore
     const autoApproveViewer2 = httpsCallable(functions, 'autoApproveViewer2');
     await autoApproveViewer2({ userId });
-  } catch (error) {
-    console.error('Error auto-approving viewer2 request:', error);
+  } catch (error: unknown) {
+    logger.error('Error auto-approving viewer2 request', error, { component: 'pendingRequestService', operation: 'autoApproveViewer2Request' });
     throw error;
   }
 }

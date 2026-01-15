@@ -42,9 +42,10 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
     });
 
     return { success: true, message: 'Role set successfully' };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Error setting user role:', error);
-    throw new functions.https.HttpsError('internal', error.message);
+    throw new functions.https.HttpsError('internal', errorMessage);
   }
 });
 
@@ -68,9 +69,10 @@ export const denyRequest = functions.https.onCall(async (data, context) => {
     });
 
     return { success: true, message: 'Request denied' };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Error denying request:', error);
-    throw new functions.https.HttpsError('internal', error.message);
+    throw new functions.https.HttpsError('internal', errorMessage);
   }
 });
 
@@ -132,11 +134,12 @@ export const autoApproveViewer2 = functions.https.onCall(async (data, context) =
     await admin.auth().setCustomUserClaims(userId, { role: 'viewer2' });
 
     return { success: true, message: 'Viewer2 role set successfully' };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error setting viewer2 role:', error);
     if (error instanceof functions.https.HttpsError) {
       throw error;
     }
-    throw new functions.https.HttpsError('internal', error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new functions.https.HttpsError('internal', errorMessage);
   }
 });

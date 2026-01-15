@@ -29,7 +29,7 @@ export default function ToastComponent({ toast, onClose }: ToastProps) {
   }, [toast.id, toast.duration, onClose]);
 
   const getToastStyles = () => {
-    const baseStyles = 'flex items-center justify-between p-4 rounded-lg shadow-lg border min-w-[300px] max-w-md transition-all duration-300 ease-in-out animate-fade-in-up';
+    const baseStyles = 'flex items-center justify-between p-4 rounded-lg shadow-lg border min-w-[300px] max-w-md transition-all duration-normal ease-in-out animate-fade-in-up animate-slide-in-right';
     
     switch (toast.type) {
       case 'success':
@@ -87,7 +87,7 @@ export default function ToastComponent({ toast, onClose }: ToastProps) {
         className="ml-4 flex-shrink-0 text-current opacity-70 hover:opacity-100 transition-opacity duration-200 hover:scale-110 active:scale-95 p-2 -m-2 min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center"
         aria-label={t('toast.close', 'Stäng')}
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
