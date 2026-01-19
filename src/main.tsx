@@ -37,6 +37,17 @@ function isBrowserExtensionError(error: ErrorEvent | PromiseRejectionEvent | Err
       if (errorString) {
         errorMessage += ' ' + errorString;
       }
+    } else if (reason && typeof reason === 'object') {
+      // Handle fetch errors or other error-like objects
+      errorMessage = (reason as any).message || String(reason);
+      errorStack = (reason as any).stack || '';
+      // Check for network error codes
+      if ((reason as any).code) {
+        errorMessage += ' ' + String((reason as any).code);
+      }
+      if ((reason as any).name) {
+        errorMessage += ' ' + String((reason as any).name);
+      }
     } else {
       errorMessage = String(reason);
     }
@@ -66,7 +77,28 @@ function isBrowserExtensionError(error: ErrorEvent | PromiseRejectionEvent | Err
     'identifiable element',
   ];
   
-  return extensionPatterns.some(pattern => combinedText.includes(pattern));
+  // Vite HMR connection errors (when dev server isn't running or viewing built version)
+  // Only suppress these in production mode or when they're clearly HMR-related
+  const viteHmrPatterns = [
+    'net::err_connection_refused',
+    'err_connection_refused',
+    'failed to fetch',
+    'localhost:5173',
+    'vite client',
+    'waitforsuccessfulping',
+    'ping @ client',
+    '@ client:',
+  ];
+  
+  const isExtensionError = extensionPatterns.some(pattern => combinedText.includes(pattern));
+  
+  // Check for Vite HMR errors - these occur when:
+  // 1. Dev server is not running but HMR client code is still present
+  // 2. Viewing a built/preview version with HMR client code
+  const isViteHmrError = viteHmrPatterns.some(pattern => combinedText.includes(pattern)) &&
+                         (combinedText.includes('client:') || combinedText.includes('vite'));
+  
+  return isExtensionError || isViteHmrError;
 }
 
 // Set up global error handlers to filter out browser extension errors
