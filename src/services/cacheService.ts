@@ -58,8 +58,8 @@ export const CACHE_KEYS = {
   THRESHOLD_INDUSTRY: 'cache:thresholdIndustry',
 } as const;
 
-// Default TTL: Configurable via environment variable, default 20 minutes
-const DEFAULT_TTL_MINUTES = parseInt(import.meta.env.VITE_CACHE_DEFAULT_TTL_MINUTES || '20', 10);
+// Default TTL: Configurable via environment variable, default 180 minutes (3 hours)
+const DEFAULT_TTL_MINUTES = parseInt(import.meta.env.VITE_CACHE_DEFAULT_TTL_MINUTES || '180', 10);
 export const DEFAULT_TTL = DEFAULT_TTL_MINUTES * 60 * 1000;
 
 // Fresh threshold: Configurable via environment variable, default 5 minutes

@@ -139,6 +139,21 @@ service cloud.firestore {
                       request.resource.data.size() <= 10240; // 10KB limit
     }
     
+    // App cache - shared cache for all authenticated users
+    match /appCache/{cacheKey} {
+      // Read: All authenticated users with role
+      allow read: if request.auth != null && hasRole();
+      
+      // Write: Only editor and admin, with validation
+      // Validate document structure: must have data, timestamp, and ttl
+      allow write: if request.auth != null && 
+                      isEditor() &&
+                      request.resource.data.size() <= 10485760 && // 10MB limit
+                      request.resource.data.data != null &&
+                      request.resource.data.timestamp is number &&
+                      request.resource.data.ttl is number;
+    }
+    
     // Deny all other access by default
     match /{document=**} {
       allow read, write: if false;

@@ -6,11 +6,12 @@
  */
 
 import Papa from 'papaparse';
-import { getCachedData, setCachedData, DEFAULT_TTL } from '../cacheService';
+import { getCachedData, setCachedData, DEFAULT_TTL } from '../firestoreCacheService';
 import { formatError, logError, createErrorHandler, isNetworkError } from '../../utils/errorHandler';
 import { is2DArray, isDataRowArray } from '../../utils/typeGuards';
 import { logger } from '../../utils/logger';
 import { checkRateLimit } from '../../utils/rateLimiter';
+import { transformInWorker, getTransformerId } from '../workerService';
 import type { DataRow, ProgressCallback } from './types';
 
 // Apps Script Web App URL - Replace with your deployed Apps Script URL
@@ -198,11 +199,12 @@ export async function fetchJSONData<T>(
   cacheKey?: string,
   forceRefresh: boolean = false,
   ttl: number = DEFAULT_TTL,
-  progressCallback?: ProgressCallback
+  progressCallback?: ProgressCallback,
+  additionalData?: Record<string, unknown>
 ): Promise<T[]> {
   // Check cache first if cacheKey is provided and not forcing refresh
   if (cacheKey && !forceRefresh) {
-    const cachedData = getCachedData<T[]>(cacheKey);
+    const cachedData = await getCachedData<T[]>(cacheKey);
     if (cachedData !== null) {
       logger.debug(`Using cached ${dataTypeName} data`, { component: 'fetchService', dataTypeName });
       progressCallback?.({
@@ -382,7 +384,32 @@ export async function fetchJSONData<T>(
       totalRows: dataRows.length,
     });
 
-    const transformedData = transformer(mockResults);
+    // Try to use Web Worker for transformation, fallback to main thread
+    let transformedData: T[];
+    const transformerId = getTransformerId(dataTypeName, sheetName);
+    
+    if (transformerId) {
+      try {
+        transformedData = await transformInWorker<T>(
+          transformerId,
+          dataRows,
+          mockResults.meta,
+          progressCallback,
+          additionalData, // additionalData (used for ScoreBoard)
+          transformer // fallback transformer
+        );
+      } catch (workerError) {
+        // Fallback to main thread transformation
+        logger.debug(
+          `Worker transformation failed for ${dataTypeName}, using main thread`,
+          { component: 'fetchService', dataTypeName, error: workerError }
+        );
+        transformedData = transformer(mockResults);
+      }
+    } else {
+      // No transformer ID found, use main thread
+      transformedData = transformer(mockResults);
+    }
 
     if (transformedData.length === 0) {
       const fields = dataRows.length > 0 ? Object.keys(dataRows[0]) : [];
@@ -404,7 +431,7 @@ export async function fetchJSONData<T>(
 
     // Cache the data if cacheKey is provided
     if (cacheKey) {
-      setCachedData(cacheKey, transformedData, ttl);
+      await setCachedData(cacheKey, transformedData, ttl);
     }
 
     // Report complete
@@ -487,11 +514,12 @@ export async function fetchCSVData<T>(
   cacheKey?: string,
   forceRefresh: boolean = false,
   ttl: number = DEFAULT_TTL,
-  progressCallback?: ProgressCallback
+  progressCallback?: ProgressCallback,
+  additionalData?: Record<string, unknown>
 ): Promise<T[]> {
   // Check cache first if cacheKey is provided and not forcing refresh
   if (cacheKey && !forceRefresh) {
-    const cachedData = getCachedData<T[]>(cacheKey);
+    const cachedData = await getCachedData<T[]>(cacheKey);
     if (cachedData !== null) {
       logger.debug(`Using cached ${dataTypeName} data`, { component: 'fetchService', dataTypeName });
       progressCallback?.({
@@ -566,6 +594,18 @@ export async function fetchCSVData<T>(
           });
           throw new Error(`Request timeout after ${FETCH_TIMEOUT_SECONDS} seconds`);
         }
+        // Check for CORS errors specifically
+        if (fetchError instanceof TypeError) {
+          const errorMessage = fetchError.message.toLowerCase();
+          if (errorMessage.includes('cors') || 
+              errorMessage.includes('cross-origin') || 
+              errorMessage.includes('access-control-allow-origin') ||
+              errorMessage.includes('networkerror') ||
+              errorMessage.includes('failed to fetch')) {
+            // CORS error - try next proxy immediately
+            throw new Error('CORS policy blocked');
+          }
+        }
         throw fetchError;
       }
       
@@ -611,7 +651,7 @@ export async function fetchCSVData<T>(
           transformHeader: (header: string) => {
             return header.trim();
           },
-          complete: (results) => {
+          complete: async (results) => {
             try {
               // Debug: Log first few rows
               if (results.data.length > 0) {
@@ -633,7 +673,33 @@ export async function fetchCSVData<T>(
                 data: results.data as DataRow[],
                 meta: { fields: results.meta.fields || null },
               };
-              const transformedData = transformer(compatibleResults);
+              
+              // Try to use Web Worker for transformation, fallback to main thread
+              let transformedData: T[];
+              const transformerId = getTransformerId(dataTypeName);
+              
+              if (transformerId) {
+                try {
+                  transformedData = await transformInWorker<T>(
+                    transformerId,
+                    compatibleResults.data,
+                    compatibleResults.meta,
+                    progressCallback,
+                    additionalData, // additionalData (used for ScoreBoard)
+                    transformer // fallback transformer
+                  );
+                } catch (workerError) {
+                  // Fallback to main thread transformation
+                  logger.debug(
+                    `Worker transformation failed for ${dataTypeName}, using main thread`,
+                    { component: 'fetchService', dataTypeName, error: workerError }
+                  );
+                  transformedData = transformer(compatibleResults);
+                }
+              } else {
+                // No transformer ID found, use main thread
+                transformedData = transformer(compatibleResults);
+              }
               
               if (transformedData.length === 0) {
                 logger.error(
@@ -667,7 +733,7 @@ export async function fetchCSVData<T>(
               
               // Cache the data if cacheKey is provided
               if (cacheKey) {
-                setCachedData(cacheKey, transformedData, ttl);
+                await setCachedData(cacheKey, transformedData, ttl);
               }
               
               // Report complete
@@ -715,7 +781,9 @@ export async function fetchCSVData<T>(
       const isCorsError = isNetworkError(error) || 
                          formatted.message.includes('CORS') || 
                          formatted.message.includes('cross-origin') ||
-                         formatted.message.includes('Access-Control-Allow-Origin');
+                         formatted.message.includes('Access-Control-Allow-Origin') ||
+                         formatted.message.includes('CORS policy blocked') ||
+                         (error instanceof TypeError && error.message.toLowerCase().includes('cors'));
       const isTimeoutError = formatted.message.includes('timeout') || 
                             formatted.message.includes('408') ||
                             formatted.message.includes('Request timeout');
@@ -732,6 +800,12 @@ export async function fetchCSVData<T>(
                formatted.message.substring(0, 50)
       });
       
+      // For CORS errors, don't wait before trying next proxy (try immediately)
+      if (isCorsError && i < CORS_PROXIES.length - 1) {
+        // Try next proxy immediately for CORS errors
+        continue;
+      }
+      
       // Only log detailed error if this is the last proxy attempt
       if (i === CORS_PROXIES.length - 1) {
         logger.warn(
@@ -740,8 +814,9 @@ export async function fetchCSVData<T>(
         );
       }
       
-      // Add a small delay before trying next proxy (except for last attempt)
-      if (i < CORS_PROXIES.length - 1) {
+      // Add a small delay before trying next proxy (except for CORS errors and last attempt)
+      // CORS errors skip delay to try next proxy immediately
+      if (i < CORS_PROXIES.length - 1 && !isCorsError) {
         await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
       }
       continue;
@@ -800,6 +875,7 @@ export interface FetchWithFallbackConfig<T> {
   ttl?: number;
   progressCallback?: ProgressCallback;
   csvUrl: string;
+  additionalData?: Record<string, unknown>; // Additional data for worker (e.g., ScoreBoard maps)
 }
 
 export async function fetchWithFallback<T>(
@@ -815,6 +891,7 @@ export async function fetchWithFallback<T>(
     ttl = DEFAULT_TTL,
     progressCallback,
     csvUrl,
+    additionalData,
   } = config;
 
   // Try Apps Script first (fast method)
@@ -827,7 +904,8 @@ export async function fetchWithFallback<T>(
       cacheKey,
       forceRefresh,
       ttl,
-      progressCallback
+      progressCallback,
+      additionalData
     );
   } catch (error: unknown) {
     // Fallback to CSV if Apps Script fails
@@ -844,7 +922,8 @@ export async function fetchWithFallback<T>(
       cacheKey,
       forceRefresh,
       ttl,
-      progressCallback
+      progressCallback,
+      additionalData
     );
   }
 }

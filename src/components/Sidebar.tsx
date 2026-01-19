@@ -4,6 +4,17 @@ import { ViewId, NavigationSection } from '../types/navigation';
 import ConditionsSidebar from './ConditionsSidebar';
 import { useUserRole } from '../hooks/useUserRole';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
+import { useAuth } from '../contexts/AuthContext';
+import { 
+  TrophyIcon, 
+  ChartBarIcon, 
+  CursorArrowRaysIcon, 
+  ChartPieIcon,
+  BuildingOfficeIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  UserIcon
+} from '@heroicons/react/24/outline';
 
 interface SidebarProps {
   activeView: ViewId;
@@ -11,6 +22,9 @@ interface SidebarProps {
   onOpenConditionsModal: (viewId: ViewId) => void;
   isOpen: boolean;
   onClose: () => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+  onOpenUserProfile?: () => void;
 }
 
 const getAllNavigationSections = (t: (key: string) => string): NavigationSection[] => [
@@ -39,12 +53,6 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
     collapsible: false,
   },
   {
-    id: 'entry-exit-entry1',
-    label: t('navigation.tachart'),
-    items: [{ id: 'entry-exit-entry1', label: t('navigation.tachart') }],
-    collapsible: false,
-  },
-  {
     id: 'threshold-industry',
     label: t('navigation.thresholdIndustry'),
     items: [{ id: 'threshold-industry', label: t('navigation.thresholdIndustry') }],
@@ -52,9 +60,28 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
   },
 ];
 
-export default function Sidebar({ activeView, onViewChange, onOpenConditionsModal, isOpen, onClose }: SidebarProps) {
+// Icon mapping for each view
+const getViewIcon = (viewId: ViewId) => {
+  switch (viewId) {
+    case 'score':
+      return TrophyIcon;
+    case 'score-board':
+      return ChartBarIcon;
+    case 'entry-exit-benjamin-graham':
+      return CursorArrowRaysIcon;
+    case 'fundamental-pe-industry':
+      return ChartPieIcon;
+    case 'threshold-industry':
+      return BuildingOfficeIcon;
+    default:
+      return null;
+  }
+};
+
+export default function Sidebar({ activeView, onViewChange, onOpenConditionsModal, isOpen, onClose, isCollapsed, onToggleCollapse, onOpenUserProfile }: SidebarProps) {
   const { t } = useTranslation();
   const { isAdmin, isEditor, isViewer1, userRole } = useUserRole();
+  const { currentUser } = useAuth();
   
   // Filter navigation sections based on user role
   const navigationSections = useMemo(() => {
@@ -144,15 +171,36 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
       <nav
         ref={sidebarRef}
         id="navigation"
-        className={`fixed top-0 left-0 h-screen bg-white dark:bg-gray-800 border-r border-gray-300 dark:border-gray-500 overflow-y-auto pt-16 z-50 transition-all duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 h-screen bg-white dark:bg-gray-800 border-r border-gray-300 dark:border-gray-500 overflow-y-auto pt-6 z-50 transition-all duration-300 ease-in-out flex flex-col ${
           isOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'
-        } lg:translate-x-0 lg:opacity-100 w-64`}
+        } lg:translate-x-0 lg:opacity-100 ${isCollapsed ? 'w-16' : 'w-64'}`}
         aria-label={t('navigation.title')}
       >
-        <div className="p-4">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 tracking-tight">{t('navigation.title')}</h2>
+        <div className={`${isCollapsed ? 'px-2' : 'px-4'} pb-4 pt-0 flex flex-col flex-1`}>
+          {/* Toggle button */}
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-end'} mb-4`}>
+            <button
+              onClick={onToggleCollapse}
+              className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center"
+              aria-label={isCollapsed ? t('aria.expandSidebar') : t('aria.collapseSidebar')}
+              title={isCollapsed ? t('aria.expandSidebar') : t('aria.collapseSidebar')}
+            >
+              {isCollapsed ? (
+                <ChevronRightIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              ) : (
+                <ChevronLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              )}
+            </button>
+          </div>
+          
+          {/* Title */}
+          {!isCollapsed && (
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 tracking-tight">
+              {t('navigation.title')}
+            </h2>
+          )}
         
-        <nav className="space-y-2">
+        <nav className="space-y-2 flex-1 overflow-y-auto">
           {navigationSections.map((section) => (
             <div key={section.id}>
               {section.collapsible && (
@@ -209,19 +257,24 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
                       );
                     }
 
+                    const IconComponent = getViewIcon(item.id);
                     return (
                       <button
                         key={item.id}
                         onClick={() => handleItemClick(item.id)}
-                        className={`w-full px-3 py-3 sm:py-2.5 text-left text-sm rounded-md transition-colors min-h-[44px] touch-manipulation ${
+                        className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-3'} py-3 sm:py-2.5 ${isCollapsed ? '' : 'text-left'} text-sm rounded-md transition-colors min-h-[44px] touch-manipulation flex items-center gap-3 ${
                           isActive(item.id)
                             ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-semibold'
                             : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-all duration-200 hover:scale-[1.02] active:scale-95'
                         }`}
                         aria-label={`${t('aria.navigateTo')} ${item.label}`}
                         aria-current={isActive(item.id) ? 'page' : undefined}
+                        title={isCollapsed ? item.label : undefined}
                       >
-                        {item.label}
+                        {IconComponent && (
+                          <IconComponent className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5'} flex-shrink-0`} />
+                        )}
+                        {!isCollapsed && <span>{item.label}</span>}
                       </button>
                     );
                   })}
@@ -231,10 +284,33 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
           ))}
           
           {/* Conditions Section */}
-          <div className="mt-4 pt-4 border-t border-gray-300 dark:border-gray-500">
-            <ConditionsSidebar onOpenModal={onOpenConditionsModal} />
-          </div>
+          {!isCollapsed && (
+            <div className="mt-4 pt-4 border-t border-gray-300 dark:border-gray-500">
+              <ConditionsSidebar onOpenModal={onOpenConditionsModal} />
+            </div>
+          )}
         </nav>
+        
+        {/* Profile Button - at bottom */}
+        {currentUser && onOpenUserProfile && (
+          <div className="mt-auto pt-4 border-t border-gray-300 dark:border-gray-500">
+            <button
+              onClick={() => {
+                onOpenUserProfile();
+                // Close sidebar on mobile when profile is clicked
+                if (window.innerWidth < 1024) {
+                  onClose();
+                }
+              }}
+              className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-3'} py-3 sm:py-2.5 ${isCollapsed ? '' : 'text-left'} text-sm rounded-md transition-colors min-h-[44px] touch-manipulation flex items-center gap-3 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-all duration-200 hover:scale-[1.02] active:scale-95`}
+              title={isCollapsed ? t('profile.title') : undefined}
+              aria-label={t('aria.userProfileButton')}
+            >
+              <UserIcon className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5'} flex-shrink-0`} />
+              {!isCollapsed && <span>{t('profile.title')}</span>}
+            </button>
+          </div>
+        )}
       </div>
       </nav>
     </>

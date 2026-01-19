@@ -22,9 +22,6 @@ import { useColumnReorder } from '../hooks/useColumnReorder';
 import { SortableTableHeader } from './SortableTableHeader';
 import { printTable } from '../utils/printUtils';
 
-// Lazy load help components
-const HelpButton = lazy(() => import('./HelpButton'));
-const OnboardingHelp = lazy(() => import('./OnboardingHelp'));
 
 export interface ColumnDefinition<T = unknown> extends ColumnConfig {
   sortable?: boolean;
@@ -65,6 +62,7 @@ export interface BaseTableProps<T> {
   enableVirtualScroll?: boolean;
   enableHelp?: boolean;
   enableMobileExpand?: boolean;
+  enableQuickFilters?: boolean;
   itemsPerPage?: number;
   virtualScrollRowHeight?: number;
   virtualScrollOverscan?: number;
@@ -127,6 +125,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
   enableVirtualScroll = false,
   enableHelp = false,
   enableMobileExpand = false,
+  enableQuickFilters = true,
   itemsPerPage = 50,
   virtualScrollRowHeight = 60,
   virtualScrollOverscan = 10,
@@ -157,7 +156,6 @@ export default function BaseTable<T extends Record<string, unknown>>({
   const { currentUser } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [shareableLinkModalOpen, setShareableLinkModalOpen] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
   const [expandedRows, setExpandedRows] = useState<{ [key: string]: boolean }>({});
   const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
@@ -637,18 +635,15 @@ export default function BaseTable<T extends Record<string, unknown>>({
 
   return (
     <>
-      {showHelp && enableHelp && (
-        <Suspense fallback={null}>
-          <OnboardingHelp tableId={tableId} />
-        </Suspense>
-      )}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden h-full flex flex-col transition-all duration-normal ease-in-out">
-        <QuickFilters
-          filters={filters}
-          values={filterValues}
-          onChange={handleFilterChange}
-          tableId={tableId}
-        />
+        {enableQuickFilters && (
+          <QuickFilters
+            filters={filters}
+            values={filterValues}
+            onChange={handleFilterChange}
+            tableId={tableId}
+          />
+        )}
         <div className="bg-white dark:bg-gray-800 border-b border-gray-300 dark:border-gray-500 px-4 py-3 flex items-center justify-between gap-4 flex-shrink-0">
           <div className="flex-1">
             <TableSearchBar
@@ -660,11 +655,6 @@ export default function BaseTable<T extends Record<string, unknown>>({
             />
           </div>
           <div className="flex items-center gap-2">
-            {enableHelp && (
-              <Suspense fallback={null}>
-                <HelpButton onOpenHelp={() => setShowHelp(true)} />
-              </Suspense>
-            )}
             <AdvancedFilters
               filters={filters}
               values={filterValues}

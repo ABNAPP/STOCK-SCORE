@@ -3,29 +3,40 @@ import { useTranslation } from 'react-i18next';
 
 interface OnboardingHelpProps {
   tableId?: string;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export default function OnboardingHelp({ tableId }: OnboardingHelpProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function OnboardingHelp({ tableId, isOpen: externalIsOpen, onClose: externalOnClose }: OnboardingHelpProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const { t, i18n } = useTranslation();
   const language = i18n.language;
 
-  // Check if user has completed onboarding
+  // Use external control if provided, otherwise use internal state
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+
+  // Check if user has completed onboarding (only for auto-open behavior when not externally controlled)
   useEffect(() => {
-    const onboardingCompleted = localStorage.getItem('stockScoreOnboardingCompleted');
-    if (!onboardingCompleted) {
-      // Show onboarding for first-time users after a short delay
-      const timer = setTimeout(() => {
-        setIsOpen(true);
-      }, 1000);
-      return () => clearTimeout(timer);
+    if (externalIsOpen === undefined) {
+      const onboardingCompleted = localStorage.getItem('stockScoreOnboardingCompleted');
+      if (!onboardingCompleted) {
+        // Show onboarding for first-time users after a short delay
+        const timer = setTimeout(() => {
+          setInternalIsOpen(true);
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, []);
+  }, [externalIsOpen]);
 
   const markCompleted = () => {
     localStorage.setItem('stockScoreOnboardingCompleted', 'true');
-    setIsOpen(false);
+    if (externalOnClose) {
+      externalOnClose();
+    } else {
+      setInternalIsOpen(false);
+    }
   };
 
   const onboardingSteps = language === 'sv' ? [
@@ -93,7 +104,11 @@ export default function OnboardingHelp({ tableId }: OnboardingHelpProps) {
   ];
 
   const handleClose = () => {
-    setIsOpen(false);
+    if (externalOnClose) {
+      externalOnClose();
+    } else {
+      setInternalIsOpen(false);
+    }
   };
 
   const handleNext = () => {

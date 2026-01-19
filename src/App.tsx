@@ -1,6 +1,5 @@
 import { useState, Suspense, lazy, useEffect, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { warmCache } from './services/cacheWarmingService';
 import { logger } from './utils/logger';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -47,6 +46,7 @@ function App() {
   const [conditionsModalOpen, setConditionsModalOpen] = useState(false);
   const [selectedViewForModal, setSelectedViewForModal] = useState<ViewId | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [userProfileOpen, setUserProfileOpen] = useState(false);
   const [loadedShareableLink, setLoadedShareableLink] = useState<ShareableLink | null>(null);
 
@@ -62,18 +62,7 @@ function App() {
     }
   }, [activeView, userRole, showToast, t]);
 
-  // Cache warming: Preload cache data in background when user is authenticated
-  useEffect(() => {
-    if (currentUser) {
-      // Warm cache in background (fire-and-forget)
-      warmCache().catch(error => {
-        // Silently fail - cache warming is not critical
-        if (import.meta.env.DEV) {
-          logger.debug('Cache warming failed', { component: 'App', operation: 'warmCache', error });
-        }
-      });
-    }
-  }, [currentUser]);
+  // Background sync and cache warming disabled - using Firestore cache instead
 
   // IMPORTANT: All hooks (including useCallback, useMemo) must be called BEFORE any early returns
   // This ensures hooks are always called in the same order on every render
@@ -122,7 +111,6 @@ function App() {
     if (viewId === 'score-board') return 'score-board';
     if (viewId === 'score') return 'score';
     if (viewId === 'entry-exit-benjamin-graham') return 'benjamin-graham';
-    if (viewId === 'entry-exit-entry1') return 'entry-exit-entry1';
     if (viewId === 'fundamental-pe-industry') return 'pe-industry';
     if (viewId === 'threshold-industry') return 'threshold-industry';
     return null;
@@ -133,7 +121,6 @@ function App() {
       'score-board': t('navigation.scoreBoard'),
       'score': t('navigation.score'),
       'entry-exit-benjamin-graham': t('navigation.benjaminGraham'),
-      'entry-exit-entry1': t('navigation.tachart'),
       'fundamental-pe-industry': t('navigation.peIndustry'),
       'threshold-industry': t('navigation.thresholdIndustry'),
     };
@@ -223,6 +210,8 @@ function App() {
                   setActiveView={handleViewChange}
                   sidebarOpen={sidebarOpen}
                   setSidebarOpen={setSidebarOpen}
+                  sidebarCollapsed={sidebarCollapsed}
+                  setSidebarCollapsed={setSidebarCollapsed}
                   conditionsModalOpen={conditionsModalOpen}
                   handleOpenConditionsModal={handleOpenConditionsModal}
                   handleCloseConditionsModal={handleCloseConditionsModal}
@@ -248,6 +237,8 @@ function AppContent({
   setActiveView,
   sidebarOpen,
   setSidebarOpen,
+  sidebarCollapsed,
+  setSidebarCollapsed,
   conditionsModalOpen,
   handleOpenConditionsModal,
   handleCloseConditionsModal,
@@ -263,6 +254,8 @@ function AppContent({
   setActiveView: (view: ViewId) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
   conditionsModalOpen: boolean;
   handleOpenConditionsModal: (viewId: ViewId) => void;
   handleCloseConditionsModal: () => void;
@@ -294,7 +287,7 @@ function AppContent({
         onMenuToggle={() => setSidebarOpen(!sidebarOpen)} 
         isMenuOpen={sidebarOpen}
         onNavigate={setActiveView}
-        onOpenUserProfile={() => setUserProfileOpen(true)}
+        activeView={activeView}
       />
       <Sidebar 
         activeView={activeView} 
@@ -302,11 +295,14 @@ function AppContent({
         onOpenConditionsModal={handleOpenConditionsModal}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onOpenUserProfile={() => setUserProfileOpen(true)}
       />
       <main 
         ref={containerRef as React.RefObject<HTMLElement>}
         id="main-content" 
-        className="flex-1 lg:ml-64 mt-16 overflow-y-auto overflow-x-hidden flex flex-col w-full relative" 
+        className={`flex-1 mt-16 overflow-y-auto overflow-x-hidden flex flex-col w-full relative ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}
         role="main" 
         aria-label={t('aria.mainContent', 'Huvudinnehåll')}
         style={{

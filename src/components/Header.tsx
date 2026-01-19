@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 import { useRefresh } from '../contexts/RefreshContext';
@@ -12,14 +12,17 @@ import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
 import { ViewId } from '../types/navigation';
 
+// Lazy load help components
+const OnboardingHelp = lazy(() => import('./OnboardingHelp'));
+
 interface HeaderProps {
   onMenuToggle: () => void;
   isMenuOpen: boolean;
   onNavigate?: (viewId: ViewId) => void;
-  onOpenUserProfile?: () => void;
+  activeView?: ViewId;
 }
 
-export default function Header({ onMenuToggle, isMenuOpen, onNavigate, onOpenUserProfile }: HeaderProps) {
+export default function Header({ onMenuToggle, isMenuOpen, onNavigate, activeView }: HeaderProps) {
   const { i18n, t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const { refreshAll, isRefreshing } = useRefresh();
@@ -34,6 +37,17 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, onOpenUse
   const [refreshMenuOpen, setRefreshMenuOpen] = useState(false);
   const refreshMenuRef = useRef<HTMLDivElement>(null);
   const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+
+  // Determine if help button should be shown (only for score and score-board views)
+  const shouldShowHelp = activeView === 'score' || activeView === 'score-board';
+
+  // Get tableId based on activeView
+  const getTableId = (): string | undefined => {
+    if (activeView === 'score') return 'score';
+    if (activeView === 'score-board') return 'score-board';
+    return undefined;
+  };
 
   const handleLogout = async () => {
     try {
@@ -56,8 +70,8 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, onOpenUse
     // Ensure interval matches one of the valid intervals (MIN_15 removed from UI)
     const validIntervals = [
       AUTO_REFRESH_INTERVALS.OFF,
-      AUTO_REFRESH_INTERVALS.MIN_30,
-      AUTO_REFRESH_INTERVALS.MIN_60,
+      AUTO_REFRESH_INTERVALS.HOUR_1,
+      AUTO_REFRESH_INTERVALS.HOUR_3,
     ];
     if (!validIntervals.includes(interval)) {
       return AUTO_REFRESH_INTERVALS.OFF.toString();
@@ -73,7 +87,7 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, onOpenUse
   const handleRefreshAutoRefreshChange = (intervalValue: number) => {
     if (intervalValue === AUTO_REFRESH_INTERVALS.OFF) {
       setEnabled(false);
-      setIntervalValue(AUTO_REFRESH_INTERVALS.MIN_30); // Keep interval even when disabled
+      setIntervalValue(AUTO_REFRESH_INTERVALS.HOUR_1); // Keep interval even when disabled
     } else {
       setEnabled(true);
       setIntervalValue(intervalValue);
@@ -159,6 +173,59 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, onOpenUse
 
       {/* Right side controls */}
       <div className="flex items-center space-x-2 sm:space-x-3">
+        {/* Help Button - only shown for score and score-board views */}
+        {shouldShowHelp && (
+          <button
+            onClick={() => setShowHelp(true)}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] min-w-[44px] touch-manipulation"
+            title={i18n.language === 'sv' ? 'Hjälp och onboarding' : 'Help and onboarding'}
+            aria-label={i18n.language === 'sv' ? 'Öppna hjälp' : 'Open help'}
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </button>
+        )}
+        {/* Notification Button */}
+        {currentUser && (
+          <button
+            onClick={() => setNotificationCenterOpen(true)}
+            className="relative w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] min-w-[44px] touch-manipulation"
+            title={t('notifications.title', 'Notifications')}
+            aria-label={t('notifications.title', 'Notifications')}
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+              />
+            </svg>
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 w-5 h-5 bg-red-600 dark:bg-red-500 text-white text-xs font-semibold rounded-full flex items-center justify-center border-2 border-white dark:border-gray-800">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+        )}
         {/* Combined Refresh Button with Dropdown */}
         <div className="relative" ref={refreshMenuRef}>
           <button
@@ -233,29 +300,29 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, onOpenUse
                 </span>
               </button>
               <button
-                onClick={() => handleRefreshAutoRefreshChange(AUTO_REFRESH_INTERVALS.MIN_30)}
+                onClick={() => handleRefreshAutoRefreshChange(AUTO_REFRESH_INTERVALS.HOUR_1)}
                 className={`w-full px-4 py-3 text-left flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                  enabled && interval === AUTO_REFRESH_INTERVALS.MIN_30 ? 'bg-gray-100 dark:bg-gray-700' : ''
+                  enabled && interval === AUTO_REFRESH_INTERVALS.HOUR_1 ? 'bg-gray-100 dark:bg-gray-700' : ''
                 }`}
                 role="menuitem"
-                aria-label={t('aria.autoRefresh30Min')}
-                aria-checked={enabled && interval === AUTO_REFRESH_INTERVALS.MIN_30}
+                aria-label={t('aria.autoRefresh1Hour')}
+                aria-checked={enabled && interval === AUTO_REFRESH_INTERVALS.HOUR_1}
               >
                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {t('refresh.autoRefresh30Min')}
+                  {t('refresh.autoRefresh1Hour', '1 timme')}
                 </span>
               </button>
               <button
-                onClick={() => handleRefreshAutoRefreshChange(AUTO_REFRESH_INTERVALS.MIN_60)}
+                onClick={() => handleRefreshAutoRefreshChange(AUTO_REFRESH_INTERVALS.HOUR_3)}
                 className={`w-full px-4 py-3 text-left flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                  enabled && interval === AUTO_REFRESH_INTERVALS.MIN_60 ? 'bg-gray-100 dark:bg-gray-700' : ''
+                  enabled && interval === AUTO_REFRESH_INTERVALS.HOUR_3 ? 'bg-gray-100 dark:bg-gray-700' : ''
                 }`}
                 role="menuitem"
-                aria-label={t('aria.autoRefresh60Min')}
-                aria-checked={enabled && interval === AUTO_REFRESH_INTERVALS.MIN_60}
+                aria-label={t('aria.autoRefresh3Hours')}
+                aria-checked={enabled && interval === AUTO_REFRESH_INTERVALS.HOUR_3}
               >
                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {t('refresh.autoRefresh60Min')}
+                  {t('refresh.autoRefresh3Hours', '3 timmar')}
                 </span>
               </button>
             </div>
@@ -352,20 +419,6 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, onOpenUse
                 </svg>
                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Dark Theme</span>
               </button>
-              <button
-                onClick={() => handleThemeChange('system')}
-                className={`w-full px-4 py-3 text-left flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                  theme === 'system' ? 'bg-gray-100 dark:bg-gray-700' : ''
-                }`}
-                role="menuitem"
-                aria-label={t('aria.systemTheme')}
-                aria-checked={theme === 'system'}
-              >
-                <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Device Default</span>
-              </button>
             </div>
           )}
         </div>
@@ -392,63 +445,17 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, onOpenUse
             </svg>
           </button>
         )}
-        {currentUser && (
-          <button
-            onClick={() => setNotificationCenterOpen(true)}
-            className="relative w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] min-w-[44px] touch-manipulation"
-            title={t('notifications.title', 'Notifications')}
-            aria-label={t('notifications.title', 'Notifications')}
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-              />
-            </svg>
-            {unreadCount > 0 && (
-              <span className="absolute top-0 right-0 w-5 h-5 bg-red-600 dark:bg-red-500 text-white text-xs font-semibold rounded-full flex items-center justify-center border-2 border-white dark:border-gray-800">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </button>
-        )}
-        {currentUser && onOpenUserProfile && (
-          <button
-            onClick={onOpenUserProfile}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] min-w-[44px] touch-manipulation"
-            title={t('profile.title')}
-            aria-label={t('aria.userProfileButton')}
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
-          </button>
-        )}
       </div>
       {currentUser && (
         <NotificationCenter
           isOpen={notificationCenterOpen}
           onClose={() => setNotificationCenterOpen(false)}
         />
+      )}
+      {shouldShowHelp && (
+        <Suspense fallback={null}>
+          <OnboardingHelp tableId={getTableId()} isOpen={showHelp} onClose={() => setShowHelp(false)} />
+        </Suspense>
       )}
     </div>
   );

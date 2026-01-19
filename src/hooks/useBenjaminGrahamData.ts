@@ -17,7 +17,7 @@ import {
   snapshotToTransformerFormat,
   type DeltaSyncConfig
 } from '../services/deltaSyncService';
-import { setDeltaCacheEntry, getDeltaCacheEntry, getCachedData, CACHE_KEYS, isCacheFresh, isCacheStale, FRESH_THRESHOLD_MS } from '../services/cacheService';
+import { setDeltaCacheEntry, getDeltaCacheEntry, getCachedData, CACHE_KEYS } from '../services/firestoreCacheService';
 import { BenjaminGrahamData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
 import { usePageVisibility } from './usePageVisibility';
@@ -125,35 +125,17 @@ function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields:
  * ```
  */
 export function useBenjaminGrahamData() {
-  // Check cache synchronously on mount to avoid unnecessary loading state
-  // Try delta cache first, then fallback to regular cache
-  const deltaCacheEntry = getDeltaCacheEntry<BenjaminGrahamData[]>(CACHE_KEY);
-  const regularCache = getCachedData<BenjaminGrahamData[]>(CACHE_KEY);
-  const cachedData = deltaCacheEntry?.data || regularCache;
-  const hasInitialData = cachedData !== null && cachedData.length > 0;
-  // For delta cache, check if it's fresh/stale using lastUpdated timestamp
-  // For regular cache, use cache service functions
-  const cacheAge = deltaCacheEntry?.lastUpdated 
-    ? Date.now() - deltaCacheEntry.lastUpdated
-    : null;
-  const isFresh = hasInitialData && (deltaCacheEntry 
-    ? (cacheAge !== null && cacheAge < FRESH_THRESHOLD_MS)
-    : isCacheFresh(CACHE_KEY, FRESH_THRESHOLD_MS));
-  const isStale = hasInitialData && !isFresh && (deltaCacheEntry
-    ? (cacheAge !== null && cacheAge >= FRESH_THRESHOLD_MS)
-    : isCacheStale(CACHE_KEY, FRESH_THRESHOLD_MS));
-  
-  const [data, setData] = useState<BenjaminGrahamData[]>(cachedData || []);
-  const [loading, setLoading] = useState(!hasInitialData); // Only show loading if no cache
+  const [data, setData] = useState<BenjaminGrahamData[]>([]);
+  const [loading, setLoading] = useState(true); // Start with loading state
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { updateProgress } = useLoadingProgress();
   const isPageVisible = usePageVisibility();
-  const currentVersionRef = useRef<number>(deltaCacheEntry?.version || 0);
+  const currentVersionRef = useRef<number>(0);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const backgroundUpdateRef = useRef<Promise<void> | null>(null);
   const { createNotification } = useNotifications();
-  const previousDataRef = useRef<BenjaminGrahamData[]>(cachedData || []);
+  const previousDataRef = useRef<BenjaminGrahamData[]>([]);
+  const cacheLoadedRef = useRef<boolean>(false);
 
   // Load data using delta-sync or fallback to regular fetch
   const loadData = useCallback(async (forceRefresh: boolean = false, isBackground: boolean = false) => {
@@ -312,27 +294,7 @@ export function useBenjaminGrahamData() {
         setLoading(false);
       }
     }
-  }, [updateProgress]);
-
-  // Background revalidate (stale-while-revalidate pattern for non-delta-sync)
-  const revalidateInBackground = useCallback(async () => {
-    // Only revalidate if page is visible and not already updating
-    if (!isPageVisible || backgroundUpdateRef.current) {
-      return;
-    }
-
-    // Only revalidate if cache is stale (5-20 minutes old) and delta-sync is not enabled
-    if (!isStale || isDeltaSyncEnabled()) {
-      return; // Delta-sync handles updates automatically
-    }
-
-    backgroundUpdateRef.current = loadData(false, true);
-    try {
-      await backgroundUpdateRef.current;
-    } finally {
-      backgroundUpdateRef.current = null;
-    }
-  }, [isPageVisible, isStale, loadData]);
+  }, [updateProgress, createNotification]);
 
   // Poll for changes using delta-sync
   const pollForChanges = useCallback(async () => {
@@ -404,16 +366,42 @@ export function useBenjaminGrahamData() {
     }
   }, [isPageVisible]);
 
-  // Initial fetch - only if we don't have cache or cache is expired
+  // Load cache on mount - check Firestore cache first
   useEffect(() => {
-    if (!hasInitialData) {
-      loadData();
-    } else if (isStale && isPageVisible && !isDeltaSyncEnabled()) {
-      // Stale-while-revalidate: show cache immediately, update in background (only for non-delta-sync)
-      revalidateInBackground();
-    }
-    // If cache is fresh or delta-sync is enabled, no need to fetch or revalidate
-  }, [loadData, hasInitialData, isStale, isPageVisible, revalidateInBackground]);
+    const loadCache = async () => {
+      if (cacheLoadedRef.current) return;
+      cacheLoadedRef.current = true;
+      
+      try {
+        // Try delta cache first, then fallback to regular cache
+        const deltaCacheEntry = await getDeltaCacheEntry<BenjaminGrahamData[]>(CACHE_KEY);
+        const regularCache = deltaCacheEntry ? null : await getCachedData<BenjaminGrahamData[]>(CACHE_KEY);
+        const cachedData = deltaCacheEntry?.data || regularCache;
+        
+        if (cachedData && cachedData.length > 0) {
+          setData(cachedData);
+          previousDataRef.current = cachedData;
+          currentVersionRef.current = deltaCacheEntry?.version || 0;
+          setLoading(false);
+          // Don't fetch if we have valid cache - hard cache, no background updates
+          return;
+        }
+        // No cache, fetch fresh data
+      } catch (err) {
+        // If cache load fails, log and continue to fetch fresh data
+        logger.warn('Failed to load cache, fetching fresh data', { 
+          component: 'useBenjaminGrahamData', 
+          error: err 
+        });
+      }
+      
+      // If no cache or cache load failed, fetch fresh data
+      loadData(false, false);
+    };
+    
+    loadCache();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Set up polling for changes (delta-sync only)
   useEffect(() => {

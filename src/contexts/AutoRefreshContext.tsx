@@ -19,14 +19,13 @@ const STORAGE_KEY_INTERVAL = 'autoRefreshInterval';
 
 // Default values
 const DEFAULT_ENABLED = true;
-const DEFAULT_INTERVAL = 30 * 60 * 1000; // 30 minutes in milliseconds
+const DEFAULT_INTERVAL = 1 * 60 * 60 * 1000; // 1 hour in milliseconds
 
 // Valid intervals (in milliseconds)
 export const AUTO_REFRESH_INTERVALS = {
   OFF: 0,
-  MIN_15: 15 * 60 * 1000, // 15 minutes
-  MIN_30: 30 * 60 * 1000, // 30 minutes
-  MIN_60: 60 * 60 * 1000, // 60 minutes
+  HOUR_1: 1 * 60 * 60 * 1000, // 1 hour
+  HOUR_3: 3 * 60 * 60 * 1000, // 3 hours
 } as const;
 
 interface AutoRefreshProviderProps {
@@ -77,12 +76,19 @@ export function AutoRefreshProvider({ children }: AutoRefreshProviderProps) {
       const saved = localStorage.getItem(STORAGE_KEY_INTERVAL);
       if (saved !== null) {
         const parsed = parseInt(saved, 10);
-        // Validate that parsed value is a valid interval (MIN_15 removed from UI)
+        // Validate that parsed value is a valid interval
+        // Also handle migration from old MIN_30/MIN_60 values to new HOUR_1/HOUR_3
         const validIntervals = [
           AUTO_REFRESH_INTERVALS.OFF,
-          AUTO_REFRESH_INTERVALS.MIN_30,
-          AUTO_REFRESH_INTERVALS.MIN_60,
+          AUTO_REFRESH_INTERVALS.HOUR_1,
+          AUTO_REFRESH_INTERVALS.HOUR_3,
         ];
+        // Legacy migration: MIN_30 (30 min) → HOUR_1, MIN_60 (60 min) → HOUR_1
+        const legacyMin30 = 30 * 60 * 1000;
+        const legacyMin60 = 60 * 60 * 1000;
+        if (parsed === legacyMin30 || parsed === legacyMin60) {
+          return AUTO_REFRESH_INTERVALS.HOUR_1;
+        }
         if (!isNaN(parsed) && validIntervals.includes(parsed)) {
           return parsed;
         }

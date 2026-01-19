@@ -55,8 +55,8 @@ export function getValue(possibleNames: string[], row: DataRow): string {
 /**
  * Helper function to validate values (filter out #N/A, etc.)
  * 
- * Checks if a value is valid by filtering out common Excel error values
- * and empty strings.
+ * Checks if a value is valid by filtering out common Excel error values,
+ * "Loading..." text, and empty strings.
  * 
  * @param value - The value to validate
  * @returns True if the value is valid, false otherwise
@@ -64,7 +64,7 @@ export function getValue(possibleNames: string[], row: DataRow): string {
 export function isValidValue(value: string): boolean {
   if (!value) return false;
   const normalized = value.trim().toUpperCase();
-  return normalized !== '#N/A' && normalized !== 'N/A' && normalized !== '#NUM!' && normalized !== '#VALUE!' && normalized !== '#DIV/0!' && normalized !== '#REF!';
+  return normalized !== '#N/A' && normalized !== 'N/A' && normalized !== '#NUM!' && normalized !== '#VALUE!' && normalized !== '#DIV/0!' && normalized !== '#REF!' && normalized !== 'LOADING...';
 }
 
 /**

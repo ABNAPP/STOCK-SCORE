@@ -2,11 +2,11 @@ import { createContext, useContext, ReactNode, useCallback, useMemo } from 'reac
 import { useBenjaminGrahamData } from '../hooks/useBenjaminGrahamData';
 import { useScoreBoardData } from '../hooks/useScoreBoardData';
 import { usePEIndustryData } from '../hooks/usePEIndustryData';
-import { useThresholdIndustryData } from '../hooks/useThresholdIndustryData';
+// Note: Threshold industry data is now static and not synced from external sources
 import { useToast } from './ToastContext';
 import { useNotifications } from './NotificationContext';
 import { useTranslation } from 'react-i18next';
-import { clearCache } from '../services/cacheService';
+import { clearCache } from '../services/firestoreCacheService';
 import { useLoadingProgress } from './LoadingProgressContext';
 import { logger } from '../utils/logger';
 
@@ -17,7 +17,7 @@ interface RefreshContextType {
   refreshBenjaminGraham: () => Promise<void>;
   refreshScoreBoard: () => Promise<void>;
   refreshPEIndustry: () => Promise<void>;
-  refreshThresholdIndustry: () => Promise<void>;
+  // Note: refreshThresholdIndustry removed - threshold data is now static
 }
 
 const RefreshContext = createContext<RefreshContextType | undefined>(undefined);
@@ -38,27 +38,27 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
   
   // Use all data hooks (Stock Score is calculated from ScoreBoard data, so no separate hook needed)
   // SMA data is fetched internally by fetchScoreBoardData, so no separate hook needed
+  // Threshold industry data is now static and not synced from external sources
   // These hooks use useLoadingProgress which requires LoadingProgressProvider as parent
   const benjaminGraham = useBenjaminGrahamData();
   const scoreBoard = useScoreBoardData();
   const peIndustry = usePEIndustryData();
-  const threshold = useThresholdIndustryData();
 
   // Refresh all data in parallel
   const refreshAll = useCallback(async () => {
     try {
-      // Clear cache before refreshing to force fresh data
-      clearCache();
+      // Clear cache before refreshing to force fresh data (invalidate Firestore cache)
+      await clearCache();
       // Reset progress tracking
       resetProgress();
       
       // Check if any failed
       // Note: SMA data is fetched internally by fetchScoreBoardData, so no separate refresh needed
+      // Note: Threshold industry data is now static and not included in refresh
       const results = await Promise.allSettled([
         benjaminGraham.refetch(true),
         scoreBoard.refetch(true),
         peIndustry.refetch(true),
-        threshold.refetch(true),
       ]);
       
       const hasErrors = results.some(result => result.status === 'rejected');
@@ -105,7 +105,6 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
     benjaminGraham.refetch,
     scoreBoard.refetch,
     peIndustry.refetch,
-    threshold.refetch,
     showSuccess,
     showError,
     createNotification,
@@ -114,16 +113,15 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
   ]);
 
   // Check if any refresh is in progress
+  // Note: Threshold industry loading is not included since it's now static
   const isRefreshing =
     benjaminGraham.loading ||
     scoreBoard.loading ||
-    peIndustry.loading ||
-    threshold.loading;
+    peIndustry.loading;
 
   const refreshBenjaminGraham = useCallback(() => benjaminGraham.refetch(true), [benjaminGraham.refetch]);
   const refreshScoreBoard = useCallback(() => scoreBoard.refetch(true), [scoreBoard.refetch]);
   const refreshPEIndustry = useCallback(() => peIndustry.refetch(true), [peIndustry.refetch]);
-  const refreshThresholdIndustry = useCallback(() => threshold.refetch(true), [threshold.refetch]);
 
   const value: RefreshContextType = useMemo(() => ({
     refreshAll,
@@ -131,8 +129,7 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
     refreshBenjaminGraham,
     refreshScoreBoard,
     refreshPEIndustry,
-    refreshThresholdIndustry,
-  }), [refreshAll, isRefreshing, refreshBenjaminGraham, refreshScoreBoard, refreshPEIndustry, refreshThresholdIndustry]);
+  }), [refreshAll, isRefreshing, refreshBenjaminGraham, refreshScoreBoard, refreshPEIndustry]);
 
   // CRITICAL: The Provider MUST wrap children for context to be available
   // AutoRefreshProvider (a child) will use useRefresh() which requires this context

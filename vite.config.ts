@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     port: 5173, // Default Vite port
     strictPort: false, // If port is in use, try next available port
+    open: true, // Automatically open browser when dev server starts
   },
   plugins: [
     react(),
@@ -38,6 +39,7 @@ export default defineConfig({
       },
     },
   },
+  // Worker configuration - Vite handles workers automatically with new URL() syntax
   test: {
     globals: true,
     environment: 'jsdom',

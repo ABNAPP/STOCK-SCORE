@@ -12,23 +12,14 @@ export type SortConfig<T> = {
  * **Why this logic?**
  * - Business requirement: N/A values should be sorted to the end
  * - String 'N/A' explicitly means missing data
- * - Numeric 0 can mean N/A for most fields (e.g., price=0 means no price data)
- * - Exception: score=0 is valid (a stock can legitimately have 0 score)
- * - This distinction allows proper handling of missing vs zero values
+ * - Null/undefined values mean missing data
+ * - Numeric 0 is a valid value and should be displayed as "0", not N/A
  */
 function isNAValue(value: unknown, key: string | number | symbol): boolean {
   if (value == null) return true;
   
   // String values: 'N/A' means N/A
   if (typeof value === 'string' && value.trim().toUpperCase() === 'N/A') return true;
-  
-  // For numeric values where 0 means N/A (except 'score' which can be 0)
-  // This is a heuristic: we'll treat 0 as N/A for numeric columns except 'score'
-  // For BenjaminGrahamData: price and benjaminGraham can have 0 = N/A
-  // For Stock: score 0 is valid, so we exclude it
-  if (typeof value === 'number' && value === 0 && String(key) !== 'score') {
-    return true;
-  }
   
   return false;
 }

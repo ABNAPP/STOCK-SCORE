@@ -2,7 +2,6 @@ export type ViewId =
   | 'score'
   | 'score-board'
   | 'entry-exit-benjamin-graham'
-  | 'entry-exit-entry1'
   | 'entry-exit-entry2'
   | 'entry-exit-exit1'
   | 'entry-exit-exit2'

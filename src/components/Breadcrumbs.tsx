@@ -61,18 +61,9 @@ export default function Breadcrumbs({ activeView, onViewChange }: BreadcrumbsPro
       return breadcrumbs;
     }
 
-    if (activeView === 'entry-exit-entry1') {
-      breadcrumbs.push({
-        id: 'entry-exit-entry1',
-        label: t('navigation.tachart'),
-      });
-      return breadcrumbs;
-    }
-
     // Handle other entry-exit views
     if (activeView.startsWith('entry-exit-')) {
       const viewLabels: Partial<Record<ViewId, string>> = {
-        'entry-exit-entry1': t('navigation.tachart'),
         'entry-exit-entry2': t('navigation.entry2'),
         'entry-exit-exit1': t('navigation.exit1'),
         'entry-exit-exit2': t('navigation.exit2'),

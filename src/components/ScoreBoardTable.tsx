@@ -491,7 +491,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
       case 'irr':
         return (
           <span className={getIRRColor(item.irr, item.industry, thresholdData) || 'text-gray-900 dark:text-gray-100'}>
-            {item.irr !== null ? `${item.irr.toFixed(0)}%` : 'N/A'}
+            {item.irr !== null ? `${item.irr.toFixed(2)}%` : 'N/A'}
           </span>
         );
       case 'mungerQualityScore':
@@ -529,13 +529,13 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
       case 'ro40F1':
         return (
           <span className={getRo40Color(item.ro40F1, item.industry, thresholdData) || 'text-gray-900 dark:text-gray-100'}>
-            {item.ro40F1 !== null ? `${item.ro40F1.toFixed(1)}%` : 'N/A'}
+            {item.ro40F1 !== null ? `${item.ro40F1.toFixed(2)}%` : 'N/A'}
           </span>
         );
       case 'ro40F2':
         return (
           <span className={getRo40Color(item.ro40F2, item.industry, thresholdData) || 'text-gray-900 dark:text-gray-100'}>
-            {item.ro40F2 !== null ? `${item.ro40F2.toFixed(1)}%` : 'N/A'}
+            {item.ro40F2 !== null ? `${item.ro40F2.toFixed(2)}%` : 'N/A'}
           </span>
         );
       case 'currentRatio':
@@ -692,7 +692,6 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
       enableVirtualScroll={true}
       virtualScrollRowHeight={60}
       virtualScrollOverscan={10}
-      enableHelp={true}
       enableMobileExpand={true}
       searchFields={['companyName', 'ticker', 'industry']}
       searchPlaceholder="Sök efter företag, ticker eller bransch..."

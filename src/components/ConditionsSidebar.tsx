@@ -33,12 +33,6 @@ const getNavigationSections = (t: (key: string) => string): NavigationSection[] 
     collapsible: false,
   },
   {
-    id: 'entry-exit-entry1',
-    label: t('navigation.tachart'),
-    items: [{ id: 'entry-exit-entry1', label: t('navigation.tachart') }],
-    collapsible: false,
-  },
-  {
     id: 'threshold-industry',
     label: t('navigation.thresholdIndustry'),
     items: [{ id: 'threshold-industry', label: t('navigation.thresholdIndustry') }],
@@ -88,7 +82,6 @@ export default function ConditionsSidebar({ onOpenModal }: ConditionsSidebarProp
     if (viewId === 'score-board') return 'score-board';
     if (viewId === 'entry-exit-benjamin-graham') return 'benjamin-graham';
     if (viewId === 'fundamental-pe-industry') return 'pe-industry';
-    if (viewId === 'entry-exit-entry1') return 'entry-exit-entry1';
     if (viewId === 'threshold-industry') return 'threshold-industry';
     return null;
   };

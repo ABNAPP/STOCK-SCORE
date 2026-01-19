@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchScoreBoardData, ProgressCallback } from '../services/sheets';
 import { ScoreBoardData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
-import { getCachedData, CACHE_KEYS, isCacheFresh, isCacheStale, DEFAULT_TTL, FRESH_THRESHOLD_MS } from '../services/cacheService';
-import { usePageVisibility } from './usePageVisibility';
-import { formatError, logError, createErrorHandler } from '../utils/errorHandler';
+import { getCachedData, CACHE_KEYS, DEFAULT_TTL } from '../services/firestoreCacheService';
+import { createErrorHandler } from '../utils/errorHandler';
 import { useNotifications } from '../contexts/NotificationContext';
 import { detectDataChanges, formatChangeSummary } from '../utils/dataChangeDetector';
+import { logger } from '../utils/logger';
 
 const CACHE_KEY = CACHE_KEYS.SCORE_BOARD;
 
@@ -43,21 +43,14 @@ const CACHE_KEY = CACHE_KEYS.SCORE_BOARD;
  * ```
  */
 export function useScoreBoardData() {
-  // Check cache synchronously on mount to avoid unnecessary loading state
-  const cachedData = getCachedData<ScoreBoardData[]>(CACHE_KEY);
-  const hasInitialData = cachedData !== null && cachedData.length > 0;
-  const isFresh = hasInitialData && isCacheFresh(CACHE_KEY, FRESH_THRESHOLD_MS);
-  const isStale = hasInitialData && isCacheStale(CACHE_KEY, FRESH_THRESHOLD_MS);
-  
-  const [data, setData] = useState<ScoreBoardData[]>(cachedData || []);
-  const [loading, setLoading] = useState(!hasInitialData); // Only show loading if no cache
+  const [data, setData] = useState<ScoreBoardData[]>([]);
+  const [loading, setLoading] = useState(true); // Start with loading state
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { updateProgress } = useLoadingProgress();
-  const isPageVisible = usePageVisibility();
-  const backgroundUpdateRef = useRef<Promise<void> | null>(null);
   const { createNotification } = useNotifications();
-  const previousDataRef = useRef<ScoreBoardData[]>(cachedData || []);
+  const previousDataRef = useRef<ScoreBoardData[]>([]);
+  const cacheLoadedRef = useRef<boolean>(false);
 
   const fetchData = useCallback(async (forceRefresh: boolean = false, isBackground: boolean = false) => {
     try {
@@ -140,38 +133,39 @@ export function useScoreBoardData() {
         setLoading(false);
       }
     }
-  }, [updateProgress]);
+  }, [updateProgress, createNotification]);
 
-  // Background revalidate (stale-while-revalidate pattern)
-  const revalidateInBackground = useCallback(async () => {
-    // Only revalidate if page is visible and not already updating
-    if (!isPageVisible || backgroundUpdateRef.current) {
-      return;
-    }
-
-    // Only revalidate if cache is stale (5-20 minutes old)
-    if (!isStale) {
-      return;
-    }
-
-    backgroundUpdateRef.current = fetchData(false, true);
-    try {
-      await backgroundUpdateRef.current;
-    } finally {
-      backgroundUpdateRef.current = null;
-    }
-  }, [isPageVisible, isStale, fetchData]);
-
-  // Initial fetch - only if we don't have cache or cache is expired
+  // Load cache on mount - check Firestore cache first
   useEffect(() => {
-    if (!hasInitialData) {
-      fetchData();
-    } else if (isStale && isPageVisible) {
-      // Stale-while-revalidate: show cache immediately, update in background
-      revalidateInBackground();
-    }
-    // If cache is fresh, no need to fetch or revalidate
-  }, [fetchData, hasInitialData, isStale, isPageVisible, revalidateInBackground]);
+    const loadCache = async () => {
+      if (cacheLoadedRef.current) return;
+      cacheLoadedRef.current = true;
+      
+      try {
+        const cachedData = await getCachedData<ScoreBoardData[]>(CACHE_KEY);
+        if (cachedData && cachedData.length > 0) {
+          setData(cachedData);
+          previousDataRef.current = cachedData;
+          setLoading(false);
+          // Don't fetch if we have valid cache - hard cache, no background updates
+          return;
+        }
+        // No cache, fetch fresh data
+      } catch (err) {
+        // If cache load fails, log and continue to fetch fresh data
+        logger.warn('Failed to load cache, fetching fresh data', { 
+          component: 'useScoreBoardData', 
+          error: err 
+        });
+      }
+      
+      // If no cache or cache load failed, fetch fresh data
+      fetchData(false, false);
+    };
+    
+    loadCache();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   return {
     data,

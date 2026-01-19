@@ -21,6 +21,65 @@ export const tableMetadata: TableMetadata[] = [
         ]
       },
       {
+        columnKey: 'currency',
+        dataSource: 'Manuell inmatning via dropdown',
+        conditions: [
+          'Användaren väljer valuta från dropdown-lista',
+          'Standardvärde är USD',
+          'Tillgängliga valutor: USD, EUR, SEK, DKK, NOK, GBP, AUD, CAD, NZD'
+        ]
+      },
+      {
+        columnKey: 'entry1',
+        dataSource: 'Manuell inmatning',
+        conditions: [
+          'Användaren fyller i värdet manuellt',
+          'Värdet är numeriskt',
+          'Date of Update uppdateras automatiskt när värdet ändras',
+          'Används för beräkning av RR1: (Exit1 - Entry1) / Entry1 * 100'
+        ]
+      },
+      {
+        columnKey: 'entry2',
+        dataSource: 'Manuell inmatning',
+        conditions: [
+          'Användaren fyller i värdet manuellt',
+          'Värdet är numeriskt',
+          'Date of Update uppdateras automatiskt när värdet ändras',
+          'Används för beräkning av RR2: (Exit2 - Entry2) / Entry2 * 100'
+        ]
+      },
+      {
+        columnKey: 'exit1',
+        dataSource: 'Manuell inmatning',
+        conditions: [
+          'Användaren fyller i värdet manuellt',
+          'Värdet är numeriskt',
+          'Date of Update uppdateras automatiskt när värdet ändras',
+          'Används för beräkning av RR1: (Exit1 - Entry1) / Entry1 * 100'
+        ]
+      },
+      {
+        columnKey: 'exit2',
+        dataSource: 'Manuell inmatning',
+        conditions: [
+          'Användaren fyller i värdet manuellt',
+          'Värdet är numeriskt',
+          'Date of Update uppdateras automatiskt när värdet ändras',
+          'Används för beräkning av RR2: (Exit2 - Entry2) / Entry2 * 100'
+        ]
+      },
+      {
+        columnKey: 'dateOfUpdate',
+        dataSource: 'Automatiskt beräknat',
+        conditions: [
+          'Uppdateras automatiskt när ENTRY1, ENTRY2, EXIT1 eller EXIT2 ändras',
+          'Raderas om alla manuella fält (ENTRY1, ENTRY2, EXIT1, EXIT2) är tomma',
+          'Visas i rött om datumet är äldre än idag och det finns värden i fälten',
+          'Format: YYYY-MM-DD (endast datum, ingen tid)'
+        ]
+      },
+      {
         columnKey: 'price',
         dataSource: 'Dashboard sheet, kolumn "Price"',
         conditions: [
@@ -50,10 +109,25 @@ export const tableMetadata: TableMetadata[] = [
       },
       {
         columnKey: 'irr1',
-        dataSource: 'Dashboard sheet, kolumn "IRR1"',
+        dataSource: 'Beräknat från Entry/Exit-värden',
+        formula: 'RR1 = (Exit1 - Entry1) / Entry1 * 100',
         conditions: [
-          'Visa N/A om värdet är null eller ogiltigt',
+          'Beräknas från Entry1 och Exit1 värden',
+          'Visa N/A om Entry1 eller Exit1 saknas eller är 0',
           'Formateras som procent med %-tecken och noll decimaler',
+          'Grön färg om RR1 >= 60% OCH Price <= Entry1 * 1.05',
+          'Filtrera bort rader där Company Name eller Ticker är N/A'
+        ]
+      },
+      {
+        columnKey: 'rr2',
+        dataSource: 'Beräknat från Entry/Exit-värden',
+        formula: 'RR2 = (Exit2 - Entry2) / Entry2 * 100',
+        conditions: [
+          'Beräknas från Entry2 och Exit2 värden',
+          'Visa N/A om Entry2 eller Exit2 saknas eller är 0',
+          'Formateras som procent med %-tecken och noll decimaler',
+          'Grön färg om RR2 >= 90% OCH Price <= Entry2 * 1.05',
           'Filtrera bort rader där Company Name eller Ticker är N/A'
         ]
       }
@@ -78,7 +152,7 @@ export const tableMetadata: TableMetadata[] = [
         conditions: [
           'Filtrera bort N/A och ogiltiga värden',
           'Beräkna median för alla P/E-värden per industry',
-          'Visa N/A om median är 0 eller inga giltiga värden finns',
+          'Visa N/A om inga giltiga värden finns (0-värden visas som "0.00")',
           'Filtrera bort rader där Industry, Company Name eller Ticker är N/A'
         ]
       },
@@ -89,7 +163,7 @@ export const tableMetadata: TableMetadata[] = [
         conditions: [
           'Filtrera bort N/A och ogiltiga värden',
           'Beräkna median för alla P/E1-värden per industry',
-          'Visa N/A om median är 0 eller inga giltiga värden finns',
+          'Visa N/A om inga giltiga värden finns (0-värden visas som "0.00")',
           'Filtrera bort rader där Industry, Company Name eller Ticker är N/A'
         ]
       },
@@ -100,7 +174,7 @@ export const tableMetadata: TableMetadata[] = [
         conditions: [
           'Filtrera bort N/A och ogiltiga värden',
           'Beräkna median för alla P/E2-värden per industry',
-          'Visa N/A om median är 0 eller inga giltiga värden finns',
+          'Visa N/A om inga giltiga värden finns (0-värden visas som "0.00")',
           'Filtrera bort rader där Industry, Company Name eller Ticker är N/A'
         ]
       },
@@ -515,7 +589,7 @@ export const tableMetadata: TableMetadata[] = [
         columnKey: 'sma100',
         dataSource: 'SMA sheet (gid=1413104083), kolumn "SMA(100)"',
         conditions: [
-          'Visa N/A om värdet är 0',
+          'Visa faktiska 0-värden som "0.00"',
           'Filtrera bort rader där Company Name eller Ticker är N/A'
         ]
       },
@@ -523,7 +597,7 @@ export const tableMetadata: TableMetadata[] = [
         columnKey: 'sma200',
         dataSource: 'SMA sheet (gid=1413104083), kolumn "SMA(200)"',
         conditions: [
-          'Visa N/A om värdet är 0',
+          'Visa faktiska 0-värden som "0.00"',
           'Filtrera bort rader där Company Name eller Ticker är N/A'
         ]
       },
@@ -534,82 +608,6 @@ export const tableMetadata: TableMetadata[] = [
           'Kolumnen innehåller text, inte nummer',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
           'Visa tom sträng om värdet är N/A eller tomt'
-        ]
-      }
-    ]
-  },
-  {
-    tableId: 'entry-exit-entry1',
-    columns: [
-      {
-        columnKey: 'companyName',
-        dataSource: 'Dashboard sheet, kolumn "Company Name"',
-        conditions: [
-          'Filtrera bort rader där Company Name är N/A eller tomt',
-          'Filtrera bort rader där Ticker är N/A (Dashboard regel)'
-        ]
-      },
-      {
-        columnKey: 'ticker',
-        dataSource: 'Dashboard sheet, kolumn "Ticker"',
-        conditions: [
-          'Filtrera bort rader där Ticker är N/A (Dashboard regel)',
-          'Filtrera bort rader där Company Name är N/A'
-        ]
-      },
-      {
-        columnKey: 'currency',
-        dataSource: 'Manuell inmatning via dropdown',
-        conditions: [
-          'Användaren väljer valuta från dropdown-lista',
-          'Standardvärde är USD',
-          'Tillgängliga valutor: USD, EUR, SEK, DKK, NOK, GBP, AUD, CAD, NZD'
-        ]
-      },
-      {
-        columnKey: 'entry1',
-        dataSource: 'Manuell inmatning',
-        conditions: [
-          'Användaren fyller i värdet manuellt',
-          'Värdet är numeriskt',
-          'Date of Update uppdateras automatiskt när värdet ändras'
-        ]
-      },
-      {
-        columnKey: 'entry2',
-        dataSource: 'Manuell inmatning',
-        conditions: [
-          'Användaren fyller i värdet manuellt',
-          'Värdet är numeriskt',
-          'Date of Update uppdateras automatiskt när värdet ändras'
-        ]
-      },
-      {
-        columnKey: 'exit1',
-        dataSource: 'Manuell inmatning',
-        conditions: [
-          'Användaren fyller i värdet manuellt',
-          'Värdet är numeriskt',
-          'Date of Update uppdateras automatiskt när värdet ändras'
-        ]
-      },
-      {
-        columnKey: 'exit2',
-        dataSource: 'Manuell inmatning',
-        conditions: [
-          'Användaren fyller i värdet manuellt',
-          'Värdet är numeriskt',
-          'Date of Update uppdateras automatiskt när värdet ändras'
-        ]
-      },
-      {
-        columnKey: 'dateOfUpdate',
-        dataSource: 'Automatiskt beräknat',
-        conditions: [
-          'Uppdateras automatiskt när ENTRY1, ENTRY2, EXIT1 eller EXIT2 ändras',
-          'Raderas om alla manuella fält (ENTRY1, ENTRY2, EXIT1, EXIT2) är tomma',
-          'Visas i rött om datumet är äldre än idag och det finns värden i fälten',
-          'Format: YYYY-MM-DD (endast datum, ingen tid)'
         ]
       }
     ]

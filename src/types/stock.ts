@@ -69,3 +69,4 @@ export interface EntryExitData extends Record<string, unknown> {
   exit2: number;
   dateOfUpdate: string | null;
 }
+

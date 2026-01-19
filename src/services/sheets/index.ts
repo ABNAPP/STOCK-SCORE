@@ -38,4 +38,4 @@ export { fetchBenjaminGrahamData } from './benjaminGrahamService';
 export { fetchSMAData } from './smaService';
 export { fetchPEIndustryData } from './peIndustryService';
 export { fetchScoreBoardData } from './scoreBoardService';
-export { fetchThresholdIndustryData } from './thresholdIndustryService';
+// Note: fetchThresholdIndustryData removed - threshold data is now static (see src/config/thresholdIndustryData.ts)

@@ -41,6 +41,8 @@ vi.mock('../../hooks/useThresholdIndustryData', () => ({
     data: [],
     loading: false,
     error: null,
+    lastUpdated: new Date(),
+    refetch: vi.fn(),
   }),
 }));
 

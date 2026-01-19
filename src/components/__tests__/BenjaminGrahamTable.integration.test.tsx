@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import BenjaminGrahamTable from '../BenjaminGrahamTable';
+import EntryExitTable from '../EntryExitTable';
 import { ThemeProvider } from '../../contexts/ThemeContext';
 import { EntryExitProvider } from '../../contexts/EntryExitContext';
 import {
@@ -42,11 +42,11 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-describe('BenjaminGrahamTable Integration Tests', () => {
+describe('EntryExitTable Integration Tests', () => {
   describe('Rendering', () => {
     it('should render with empty data', () => {
       render(
-        <BenjaminGrahamTable
+        <EntryExitTable
           data={[]}
           loading={false}
           error={null}
@@ -68,7 +68,7 @@ describe('BenjaminGrahamTable Integration Tests', () => {
       ];
 
       render(
-        <BenjaminGrahamTable
+        <EntryExitTable
           data={data}
           loading={false}
           error={null}
@@ -84,7 +84,7 @@ describe('BenjaminGrahamTable Integration Tests', () => {
       const data = generateLargeBenjaminGrahamDataSet(150);
 
       render(
-        <BenjaminGrahamTable
+        <EntryExitTable
           data={data}
           loading={false}
           error={null}
@@ -106,7 +106,7 @@ describe('BenjaminGrahamTable Integration Tests', () => {
       ];
 
       render(
-        <BenjaminGrahamTable
+        <EntryExitTable
           data={data}
           loading={false}
           error={null}
@@ -147,7 +147,7 @@ describe('BenjaminGrahamTable Integration Tests', () => {
       ];
 
       render(
-        <BenjaminGrahamTable
+        <EntryExitTable
           data={data}
           loading={false}
           error={null}
@@ -187,7 +187,7 @@ describe('BenjaminGrahamTable Integration Tests', () => {
       ];
 
       render(
-        <BenjaminGrahamTable
+        <EntryExitTable
           data={data}
           loading={false}
           error={null}
@@ -218,7 +218,7 @@ describe('BenjaminGrahamTable Integration Tests', () => {
       ];
 
       render(
-        <BenjaminGrahamTable
+        <EntryExitTable
           data={data}
           loading={false}
           error={null}
@@ -234,7 +234,7 @@ describe('BenjaminGrahamTable Integration Tests', () => {
   describe('Loading and error states', () => {
     it('should show loading state', () => {
       render(
-        <BenjaminGrahamTable
+        <EntryExitTable
           data={[]}
           loading={true}
           error={null}
@@ -248,7 +248,7 @@ describe('BenjaminGrahamTable Integration Tests', () => {
 
     it('should show error state', () => {
       render(
-        <BenjaminGrahamTable
+        <EntryExitTable
           data={[]}
           loading={false}
           error="Failed to load data"

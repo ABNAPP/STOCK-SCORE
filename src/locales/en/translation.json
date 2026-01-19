@@ -153,7 +153,9 @@
     "deleteFilter": "Delete saved filter",
     "closeModal": "Close modal",
     "refreshButton": "Refresh data",
-    "showColumnInfo": "Show column information"
+    "showColumnInfo": "Show column information",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar"
   },
   "loading": {
     "loadingData": "Loading data...",

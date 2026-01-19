@@ -8,9 +8,10 @@
  * - Retry logic with exponential backoff
  */
 
-import { getDeltaCacheEntry, setDeltaCacheEntry, getLastVersion } from './cacheService';
+import { getDeltaCacheEntry, setDeltaCacheEntry, getLastVersion } from './firestoreCacheService';
 import { logger } from '../utils/logger';
 import { isArray, isString } from '../utils/typeGuards';
+import { transformInWorker, getTransformerId } from './workerService';
 import type { DataRow } from './sheets';
 
 // Configuration
@@ -20,7 +21,8 @@ const POLL_INTERVAL_MINUTES = parseInt(import.meta.env.VITE_DELTA_SYNC_POLL_MINU
 const API_TOKEN = import.meta.env.VITE_APPS_SCRIPT_TOKEN || ''; // Optional token
 // Request timeout: Configurable via environment variable
 // Delta sync uses a longer timeout since it may need to fetch large snapshots
-const DELTA_SYNC_TIMEOUT_SECONDS = parseInt(import.meta.env.VITE_DELTA_SYNC_TIMEOUT_SECONDS || '60', 10); // Default: 60 seconds for delta sync
+// Reduced default from 60s to 30s to fail faster and fallback to CSV method sooner
+const DELTA_SYNC_TIMEOUT_SECONDS = parseInt(import.meta.env.VITE_DELTA_SYNC_TIMEOUT_SECONDS || '30', 10); // Default: 30 seconds for delta sync
 const DELTA_SYNC_TIMEOUT = DELTA_SYNC_TIMEOUT_SECONDS * 1000;
 // Regular fetch timeout (used by fetchService) - shorter for faster feedback
 const FETCH_TIMEOUT_SECONDS = parseInt(import.meta.env.VITE_FETCH_TIMEOUT_SECONDS || '30', 10);
@@ -242,7 +244,32 @@ export async function initSync<T>(
     throw new Error(`Failed to transform snapshot data for sheet "${config.sheetName}": ${errorMessage}. Snapshot version: ${snapshot.version}, Headers: ${snapshot.headers?.length || 0}, Rows: ${snapshot.rows?.length || 0}`);
   }
   
-  const transformedData = transformer(transformerFormat);
+  // Try to use Web Worker for transformation, fallback to main thread
+  let transformedData: T[];
+  const transformerId = getTransformerId(config.sheetName, config.sheetName);
+  
+  if (transformerId) {
+    try {
+      transformedData = await transformInWorker<T>(
+        transformerId,
+        transformerFormat.data,
+        transformerFormat.meta,
+        undefined, // progressCallback (delta sync doesn't use progress callbacks)
+        undefined, // additionalData
+        transformer // fallback transformer
+      );
+    } catch (workerError) {
+      // Fallback to main thread transformation
+      logger.debug(
+        `Worker transformation failed for ${config.sheetName}, using main thread`,
+        { component: 'deltaSyncService', sheetName: config.sheetName, error: workerError }
+      );
+      transformedData = transformer(transformerFormat);
+    }
+  } else {
+    // No transformer ID found, use main thread
+    transformedData = transformer(transformerFormat);
+  }
   
   // Cache the snapshot
   setDeltaCacheEntry(cacheKey, transformedData, snapshot.version, true);
@@ -275,7 +302,7 @@ export async function loadSnapshot(config: DeltaSyncConfig): Promise<SnapshotRes
   const url = buildSnapshotUrl(config);
   
   try {
-    // Use longer timeout for delta sync snapshot requests (60 seconds default)
+    // Use longer timeout for delta sync snapshot requests (30 seconds default, configurable via VITE_DELTA_SYNC_TIMEOUT_SECONDS)
     const rawResponse = await fetchWithRetry<unknown>(
       url,
       {

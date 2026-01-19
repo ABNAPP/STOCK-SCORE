@@ -5,7 +5,7 @@
  */
 
 import { BenjaminGrahamData } from '../../types/stock';
-import { CACHE_KEYS, DEFAULT_TTL } from '../cacheService';
+import { CACHE_KEYS, DEFAULT_TTL } from '../firestoreCacheService';
 import { fetchWithFallback } from './fetchService';
 import { getValue, isValidValue, parseNumericValueNullable } from './dataTransformers';
 import { isBenjaminGrahamData } from '../../utils/typeGuards';

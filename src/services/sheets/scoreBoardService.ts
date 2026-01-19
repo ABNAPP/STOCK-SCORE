@@ -6,7 +6,7 @@
  */
 
 import { ScoreBoardData, PEIndustryData } from '../../types/stock';
-import { CACHE_KEYS, DEFAULT_TTL } from '../cacheService';
+import { CACHE_KEYS, DEFAULT_TTL } from '../firestoreCacheService';
 import { fetchWithFallback } from './fetchService';
 import { getValueAllowZero, isValidValue, parseNumericValueNullable, parsePercentageValueNullable } from './dataTransformers';
 import { fetchPEIndustryData } from './peIndustryService';
@@ -74,6 +74,8 @@ function createScoreBoardTransformer(
         const leverageF2 = parseNumericValueNullable(leverageF2Str);
         const currentRatio = parseNumericValueNullable(currentRatioStr);
         const cashSdebt = parseNumericValueNullable(cashSdebtStr);
+        // Om #DIV/0! detekteras, sätt cashSdebt till 0 istället för null
+        const finalCashSdebt = isCashSdebtDivZero ? 0 : cashSdebt;
         
         // Parse (TB/S)/Price directly from column
         const tbSPrice = parseNumericValueNullable(tbSPriceStr);
@@ -125,7 +127,7 @@ function createScoreBoardTransformer(
           pe1Industry: pe1Industry,
           pe2Industry: pe2Industry,
           currentRatio: currentRatio,
-          cashSdebt: cashSdebt,
+          cashSdebt: finalCashSdebt,
           isCashSdebtDivZero: isCashSdebtDivZero || false,
           sma100: smaMatch ? smaMatch.sma100 : null, // Directly from SMA sheet
           sma200: smaMatch ? smaMatch.sma200 : null, // Directly from SMA sheet
@@ -208,6 +210,22 @@ export async function fetchScoreBoardData(
   // Create transformer with the maps
   const transformer = createScoreBoardTransformer(industryPe1Map, industryPe2Map, smaDataMap);
 
+  // Convert Maps to plain objects for worker serialization
+  const industryPe1MapObj: Record<string, number> = {};
+  industryPe1Map.forEach((value, key) => {
+    industryPe1MapObj[key] = value;
+  });
+  
+  const industryPe2MapObj: Record<string, number> = {};
+  industryPe2Map.forEach((value, key) => {
+    industryPe2MapObj[key] = value;
+  });
+  
+  const smaDataMapObj: Record<string, { sma100: number | null; sma200: number | null; smaCross: string | null }> = {};
+  smaDataMap.forEach((value, key) => {
+    smaDataMapObj[key] = value;
+  });
+
   return fetchWithFallback<ScoreBoardData>({
     sheetName: 'DashBoard',
     dataTypeName: 'Score Board',
@@ -218,5 +236,10 @@ export async function fetchScoreBoardData(
     ttl: DEFAULT_TTL,
     progressCallback,
     csvUrl: SCORE_BOARD_CSV_URL,
+    additionalData: {
+      industryPe1Map: industryPe1MapObj,
+      industryPe2Map: industryPe2MapObj,
+      smaDataMap: smaDataMapObj,
+    },
   });
 }

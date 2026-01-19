@@ -240,6 +240,7 @@ export default function PEIndustryTable({ data, loading, error }: PEIndustryTabl
       virtualScrollRowHeight={60}
       virtualScrollOverscan={10}
       enableMobileExpand={true}
+      enableQuickFilters={false}
       searchFields={['industry']}
       searchPlaceholder="Sök efter bransch..."
       defaultSortKey="companyCount"

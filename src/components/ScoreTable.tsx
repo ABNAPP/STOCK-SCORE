@@ -130,7 +130,6 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
       renderCell={renderCell}
       renderMobileCard={renderMobileCard}
       enableVirtualScroll={true}
-      enableHelp={true}
       searchFields={['companyName', 'ticker']}
       searchPlaceholder="Sök efter företag eller ticker..."
       defaultSortKey="score"
