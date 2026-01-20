@@ -23,7 +23,7 @@ export default function UserProfile({ onClose }: UserProfileProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { currentUser, logout } = useAuth();
-  const { userRole, isEditor, isAdmin } = useUserRole();
+  const { userRole, isAdmin } = useUserRole();
   const { requestPermission, permissionState } = useNotifications();
   const [showDeregisterConfirm, setShowDeregisterConfirm] = useState(false);
   const [deregistering, setDeregistering] = useState(false);
@@ -114,9 +114,7 @@ export default function UserProfile({ onClose }: UserProfileProps) {
 
   const getRoleLabel = (): string => {
     if (isAdmin) return t('roles.admin');
-    if (isEditor) return t('roles.editor');
-    if (userRole === 'viewer1') return t('roles.viewer1');
-    if (userRole === 'viewer2') return t('roles.viewer2');
+    if (userRole === 'viewer') return t('roles.viewer');
     return t('roles.noRole');
   };
 

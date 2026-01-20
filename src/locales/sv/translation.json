@@ -204,37 +204,9 @@
     "roleEditorDescription": "Du kan läsa och redigera data (kräver admin-godkännande)"
   },
   "roles": {
-    "viewer": "Läsrättighet",
-    "viewer1": "Visare 1",
-    "viewer2": "Visare 2",
-    "editor": "Redigerare",
+    "viewer": "Visare",
     "admin": "Administratör",
-    "pending": "Väntande godkännande",
     "noRole": "Ingen roll tilldelad"
-  },
-  "admin": {
-    "panel": "Admin-panel",
-    "pendingRequests": "Väntande begäranden",
-    "pendingRegistrations": "Väntande registreringar",
-    "pendingUpgrades": "Väntande uppgraderingsbegäranden",
-    "noPendingRequests": "Inga väntande begäranden",
-    "approveAsViewer1": "Godkänn som Visare 1",
-    "approveAsViewer2": "Godkänn som Visare 2",
-    "approveAsEditor": "Godkänn som redigerare",
-    "deny": "Neka",
-    "approve": "Godkänn",
-    "userEmail": "E-post",
-    "requestedRole": "Begärd roll",
-    "requestType": "Typ",
-    "requestTypeInitial": "Ny registrering",
-    "requestTypeUpgrade": "Uppgraderingsbegäran",
-    "timestamp": "Skapad",
-    "approving": "Godkänner...",
-    "denying": "Nekar...",
-    "approveSuccess": "Begäran godkänd",
-    "denySuccess": "Begäran nekad",
-    "approveError": "Fel vid godkännande",
-    "denyError": "Fel vid nekande"
   },
   "profile": {
     "title": "Min profil",

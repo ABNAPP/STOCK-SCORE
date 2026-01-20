@@ -21,57 +21,29 @@ async function verifyAdmin(context: functions.https.CallableContext): Promise<vo
 export const setUserRole = functions.https.onCall(async (data, context) => {
   await verifyAdmin(context);
 
-  const { userId, role, requestId } = data;
+  const { userId, role, allowedViews } = data;
 
-  // Updated to accept viewer1 and viewer2 instead of viewer
-  if (!userId || !role || !['viewer1', 'viewer2', 'editor'].includes(role)) {
-    throw new functions.https.HttpsError('invalid-argument', 'Invalid parameters');
+  // Accept 'viewer' or 'admin' as roles
+  if (!userId || !role || !['viewer', 'admin'].includes(role)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid parameters. Role must be "viewer" or "admin"');
   }
 
   try {
-    // Set custom claim
-    await admin.auth().setCustomUserClaims(userId, { role });
+    // Build custom claims object
+    const customClaims: { role: string; allowedViews?: string[] } = { role };
+    
+    // If viewer role and allowedViews provided, add them to claims
+    if (role === 'viewer' && allowedViews && Array.isArray(allowedViews)) {
+      customClaims.allowedViews = allowedViews;
+    }
 
-    // Update pending request status
-    const db = admin.firestore();
-    await db.collection('pendingRequests').doc(requestId || userId).update({
-      status: 'approved',
-      approvedRole: role,
-      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
-      approvedBy: context.auth.uid,
-    });
+    // Set custom claim
+    await admin.auth().setCustomUserClaims(userId, customClaims);
 
     return { success: true, message: 'Role set successfully' };
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Error setting user role:', error);
-    throw new functions.https.HttpsError('internal', errorMessage);
-  }
-});
-
-// Deny request
-export const denyRequest = functions.https.onCall(async (data, context) => {
-  await verifyAdmin(context);
-
-  const { userId, requestId } = data;
-
-  if (!userId) {
-    throw new functions.https.HttpsError('invalid-argument', 'Invalid parameters');
-  }
-
-  try {
-    // Update pending request status
-    const db = admin.firestore();
-    await db.collection('pendingRequests').doc(requestId || userId).update({
-      status: 'denied',
-      deniedAt: admin.firestore.FieldValue.serverTimestamp(),
-      deniedBy: context.auth.uid,
-    });
-
-    return { success: true, message: 'Request denied' };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('Error denying request:', error);
     throw new functions.https.HttpsError('internal', errorMessage);
   }
 });
@@ -91,15 +63,6 @@ export const deleteUserAccount = functions.https.onCall(async (data, context) =>
   }
 
   try {
-    const db = admin.firestore();
-    
-    // Delete pending request if it exists
-    const requestRef = db.collection('pendingRequests').doc(userId);
-    const requestDoc = await requestRef.get();
-    if (requestDoc.exists) {
-      await requestRef.delete();
-    }
-
     // Delete Firebase Authentication account
     await admin.auth().deleteUser(userId);
 
@@ -107,39 +70,5 @@ export const deleteUserAccount = functions.https.onCall(async (data, context) =>
   } catch (error: any) {
     console.error('Error deleting user account:', error);
     throw new functions.https.HttpsError('internal', error.message);
-  }
-});
-
-// Set viewer2 role for new registrations
-// This function can be called without admin verification since it only sets viewer2 role
-export const autoApproveViewer2 = functions.https.onCall(async (data, context) => {
-  // Verify user is authenticated (must be the user themselves or authenticated request)
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-  }
-
-  const { userId } = data;
-
-  if (!userId) {
-    throw new functions.https.HttpsError('invalid-argument', 'UserId is required');
-  }
-
-  // Verify the user is setting their own role (for new registrations)
-  if (userId !== context.auth.uid) {
-    throw new functions.https.HttpsError('permission-denied', 'You can only set your own role');
-  }
-
-  try {
-    // Set custom claim to viewer2 directly
-    await admin.auth().setCustomUserClaims(userId, { role: 'viewer2' });
-
-    return { success: true, message: 'Viewer2 role set successfully' };
-  } catch (error: unknown) {
-    console.error('Error setting viewer2 role:', error);
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new functions.https.HttpsError('internal', errorMessage);
   }
 });

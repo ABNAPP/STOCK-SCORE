@@ -70,11 +70,13 @@ function isBrowserExtensionError(error: ErrorEvent | PromiseRejectionEvent | Err
     'safari-extension',
     'edge-extension',
     'could not find identifiable element',
+    'could not find',
+    'identifiable element',
     'extension context invalidated',
     'message handler closed',
     'receiving end does not exist',
     'webclient',
-    'identifiable element',
+    'web-client',
   ];
   
   // Vite HMR connection errors (when dev server isn't running or viewing built version)

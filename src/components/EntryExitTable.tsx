@@ -114,7 +114,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
   const { t } = useTranslation();
   const [expandedRows, setExpandedRows] = useState<{ [key: string]: boolean }>({});
   const { getEntryExitValue, getFieldValue, setFieldValue, commitField, initializeFromData } = useEntryExitValues();
-  const { isEditor } = useUserRole();
+  const { isAdmin } = useUserRole();
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Initialize entry/exit values from data
@@ -312,7 +312,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
       case 'ticker':
         return <span className="text-gray-600 dark:text-gray-300">{item.ticker}</span>;
       case 'currency':
-        if (!isEditor) {
+        if (!isAdmin) {
           return <span className="text-gray-900 dark:text-gray-100">{values.currency || 'USD'}</span>;
         }
         const currencyKey = `${item.ticker}-${item.companyName}-currency`;
@@ -362,7 +362,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
           </div>
         );
       case 'entry1':
-        if (!isEditor) {
+        if (!isAdmin) {
           return <span className="text-gray-900 dark:text-gray-100">{values.entry1 || '-'}</span>;
         }
         const entry1Key = `${item.ticker}-${item.companyName}-entry1`;
@@ -401,7 +401,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
           </div>
         );
       case 'entry2':
-        if (!isEditor) {
+        if (!isAdmin) {
           return <span className="text-gray-900 dark:text-gray-100">{values.entry2 || '-'}</span>;
         }
         const entry2Key = `${item.ticker}-${item.companyName}-entry2`;
@@ -440,7 +440,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
           </div>
         );
       case 'exit1':
-        if (!isEditor) {
+        if (!isAdmin) {
           return <span className="text-gray-900 dark:text-gray-100">{values.exit1 || '-'}</span>;
         }
         const exit1Key = `${item.ticker}-${item.companyName}-exit1`;
@@ -479,7 +479,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
           </div>
         );
       case 'exit2':
-        if (!isEditor) {
+        if (!isAdmin) {
           return <span className="text-gray-900 dark:text-gray-100">{values.exit2 || '-'}</span>;
         }
         const exit2Key = `${item.ticker}-${item.companyName}-exit2`;
@@ -583,7 +583,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
       default:
         return null;
     }
-  }, [getFieldValue, getEntryExitValue, calculateRR1, calculateRR2, getRR1Color, getRR2Color, hasIvFcf, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld, isEditor, validationErrors]);
+  }, [getFieldValue, getEntryExitValue, calculateRR1, calculateRR2, getRR1Color, getRR2Color, hasIvFcf, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld, isAdmin, validationErrors]);
 
   // Render mobile card
   const renderMobileCard = useCallback((item: BenjaminGrahamData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
@@ -626,7 +626,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Currency</span>
-              {isEditor ? (
+              {isAdmin ? (
                 <select
                   value={currency || 'USD'}
                   onChange={(e) => handleCurrencyChange(item.ticker, item.companyName, e.target.value)}
@@ -673,7 +673,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
           <div className="border-t border-gray-300 dark:border-gray-600 p-4 space-y-3 animate-fade-in">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY1</span>
-              {isEditor ? (
+              {isAdmin ? (
                 <input
                   type="number"
                   value={entry1 || ''}
@@ -691,7 +691,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY2</span>
-              {isEditor ? (
+              {isAdmin ? (
                 <input
                   type="number"
                   value={entry2 || ''}
@@ -709,7 +709,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT1</span>
-              {isEditor ? (
+              {isAdmin ? (
                 <input
                   type="number"
                   value={exit1 || ''}
@@ -727,7 +727,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT2</span>
-              {isEditor ? (
+              {isAdmin ? (
                 <input
                   type="number"
                   value={exit2 || ''}
@@ -805,7 +805,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
         )}
       </div>
     );
-  }, [getEntryExitValue, calculateRR1, calculateRR2, getRR1Color, getRR2Color, hasIvFcf, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld, isEditor]);
+  }, [getEntryExitValue, calculateRR1, calculateRR2, getRR1Color, getRR2Color, hasIvFcf, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld, isAdmin]);
 
   // Filter columns based on ivFcf availability
   const filteredColumns = useMemo(() => {

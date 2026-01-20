@@ -12,24 +12,14 @@ service cloud.firestore {
       return getUserRole() == 'admin';
     }
     
-    // Helper function to check if user is editor or admin
-    function isEditor() {
-      return getUserRole() == 'editor' || isAdmin();
-    }
-    
-    // Helper function to check if user is viewer1 or higher
-    function isViewer1() {
-      return getUserRole() == 'viewer1' || isEditor();
-    }
-    
-    // Helper function to check if user is viewer2 or higher
-    function isViewer2() {
-      return getUserRole() == 'viewer2' || isViewer1();
-    }
-    
-    // Helper function to check if user has any role
+    // Helper function to check if user has any role (admin or viewer)
     function hasRole() {
-      return getUserRole() == 'viewer1' || getUserRole() == 'viewer2' || getUserRole() == 'editor' || isAdmin();
+      return getUserRole() == 'viewer' || isAdmin();
+    }
+    
+    // Helper function to get viewer allowed views from custom claims
+    function getViewerAllowedViews() {
+      return request.auth.token.allowedViews;
     }
     
     // Helper function to validate EntryExit value structure
@@ -55,79 +45,39 @@ service cloud.firestore {
              true;
     }
     
-    // Helper function to validate pending request structure
-    function isValidPendingRequest(data) {
-      return data.keys().hasAll(['userId', 'status', 'createdAt']) &&
-             data.userId is string &&
-             data.status is string && data.status in ['pending', 'approved', 'rejected'] &&
-             data.createdAt is timestamp &&
-             // Validate userId matches authenticated user on create
-             (request.method == 'create' ? data.userId == request.auth.uid : true);
-    }
-    
-    // Shared data - read access for all users with role, write access only for editor/admin
+    // Shared data - read access for all (including unauthenticated for Score data), write access only for admin
     match /sharedData/{document} {
       // Threshold data - only admin can read/write
       match /threshold/{thresholdId} {
         allow read, write: if isAdmin();
       }
       
-      // EntryExit data - validate structure on write
+      // EntryExit data - available for Score table
       match /entryExit {
-        // Read: All authenticated users (including those waiting for role approval)
-        allow read: if request.auth != null;
+        // Read: All users (including unauthenticated viewers) can read for Score table
+        // Note: UI-level restrictions based on allowedViews will be enforced in the application
+        allow read: if true;
         
-        // Write: Only editor and admin, with validation
-        // Validate document structure and size
+        // Write: Only admin
         allow write: if request.auth != null && 
-                        isEditor() && 
+                        isAdmin() && 
                         request.resource.data.size() <= 1048576 &&
                         request.resource.data.values is map;
-        
-        // Additional validation: Check that values map contains valid EntryExit values
-        // Note: Individual value validation happens client-side, but we validate structure here
       }
       
       // All other shared data
       match /{sharedDoc=**} {
-        // Read: All authenticated users (including those waiting for role approval)
-        allow read: if request.auth != null;
+        // Read: All users (including unauthenticated viewers) for Score-related data
+        allow read: if true;
         
-        // Write: Only editor and admin, with size limit
+        // Write: Only admin
         allow write: if request.auth != null && 
-                        isEditor() && 
+                        isAdmin() && 
                         request.resource.data.size() <= 1048576; // 1MB limit
       }
     }
     
-    // Pending requests - users can create, admin can read/update
-    match /pendingRequests/{requestId} {
-      // Allow authenticated users to create their own request with validation
-      allow create: if request.auth != null && 
-                       request.resource.data.userId == request.auth.uid &&
-                       isValidPendingRequest(request.resource.data) &&
-                       request.resource.data.size() <= 10240; // 10KB limit for requests
-      
-      // Allow admin to read all requests
-      allow read: if request.auth != null && isAdmin();
-      
-      // Allow admin to update request status (validate status change)
-      allow update: if request.auth != null && 
-                       isAdmin() &&
-                       request.resource.data.status is string &&
-                       request.resource.data.status in ['pending', 'approved', 'rejected'] &&
-                       request.resource.data.size() <= 10240;
-      
-      // Users can read their own request
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      
-      // Users can delete their own pending request
-      allow delete: if request.auth != null && 
-                       resource.data.userId == request.auth.uid && 
-                       resource.data.status == 'pending';
-    }
-    
-    // User preferences - users can read/write their own preferences
+    // User preferences - users can read/write their own preferences (requires authentication)
     match /userPreferences/{userId} {
       // Users can only access their own preferences
       allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -139,15 +89,15 @@ service cloud.firestore {
                       request.resource.data.size() <= 10240; // 10KB limit
     }
     
-    // App cache - shared cache for all authenticated users
+    // App cache - shared cache for all users (including unauthenticated)
     match /appCache/{cacheKey} {
-      // Read: All authenticated users (including those waiting for role approval)
-      allow read: if request.auth != null;
+      // Read: All users (including unauthenticated viewers)
+      allow read: if true;
       
-      // Write: Only editor and admin, with validation
+      // Write: Only admin, with validation
       // Validate document structure: must have data, timestamp, and ttl
       allow write: if request.auth != null && 
-                      isEditor() &&
+                      isAdmin() &&
                       request.resource.data.size() <= 10485760 && // 10MB limit
                       request.resource.data.data != null &&
                       request.resource.data.timestamp is number &&

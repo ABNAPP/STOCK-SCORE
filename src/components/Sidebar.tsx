@@ -80,28 +80,19 @@ const getViewIcon = (viewId: ViewId) => {
 
 export default function Sidebar({ activeView, onViewChange, onOpenConditionsModal, isOpen, onClose, isCollapsed, onToggleCollapse, onOpenUserProfile }: SidebarProps) {
   const { t } = useTranslation();
-  const { isAdmin, isEditor, isViewer1, userRole } = useUserRole();
+  const { canView, isAdmin } = useUserRole();
   const { currentUser } = useAuth();
   
-  // Filter navigation sections based on user role
+  // Filter navigation sections based on user permissions
   const navigationSections = useMemo(() => {
     const allSections = getAllNavigationSections(t);
     
-    // Viewer2: Only show 'score' and 'score-board'
-    if (userRole === 'viewer2') {
-      return allSections.filter(section => 
-        section.id === 'score' || section.id === 'score-board'
-      );
-    }
-    
-    // Viewer1: Show everything except 'threshold-industry'
-    if (userRole === 'viewer1') {
-      return allSections.filter(section => section.id !== 'threshold-industry');
-    }
-    
-    // Editor and Admin: Show everything including 'threshold-industry'
-    return allSections;
-  }, [t, isAdmin, isEditor, isViewer1, userRole]);
+    // Filter sections based on what views user can access
+    return allSections.filter(section => {
+      // Check if user can view any item in this section
+      return section.items.some(item => canView(item.id));
+    });
+  }, [t, canView]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(['score'])
   );

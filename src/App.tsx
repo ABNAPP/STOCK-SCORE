@@ -4,7 +4,6 @@ import { logger } from './utils/logger';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Breadcrumbs from './components/Breadcrumbs';
-import AuthContainer from './components/AuthContainer';
 import { ViewId } from './types/navigation';
 import { getTableMetadata } from './config/tableMetadata';
 import type { TableMetadata } from './types/columnMetadata';
@@ -36,8 +35,8 @@ const ConditionsModal = lazy(() => import('./components/ConditionsModal'));
 const UserProfileModal = lazy(() => import('./components/UserProfileModal'));
 
 function App() {
-  const { currentUser, loading: authLoading } = useAuth();
-  const { hasRole, userRole } = useUserRole();
+  const { loading: authLoading } = useAuth();
+  const { canView } = useUserRole();
   const { t } = useTranslation();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -50,17 +49,14 @@ function App() {
   const [userProfileOpen, setUserProfileOpen] = useState(false);
   const [loadedShareableLink, setLoadedShareableLink] = useState<ShareableLink | null>(null);
 
-  // Redirect viewer2 users if they try to access unauthorized views
+  // Redirect viewers if they try to access unauthorized views
   // This useEffect must be called before any early returns to maintain hook order
   useEffect(() => {
-    if (userRole === 'viewer2') {
-      const allowedViews: ViewId[] = ['score', 'score-board'];
-      if (!allowedViews.includes(activeView)) {
-        setActiveView('score');
-        showToast(t('common.unauthorizedView') || 'Du har inte tillgång till denna vy', 'warning');
-      }
+    if (!canView(activeView)) {
+      setActiveView('score');
+      showToast(t('common.unauthorizedView') || 'Du har inte tillgång till denna vy', 'warning');
     }
-  }, [activeView, userRole, showToast, t]);
+  }, [activeView, canView, showToast, t]);
 
   // Background sync and cache warming disabled - using Firestore cache instead
 
@@ -74,28 +70,22 @@ function App() {
   }, []);
 
   const handleViewChange = useCallback((viewId: ViewId) => {
-    // Check if viewer2 is trying to access unauthorized view
-    if (userRole === 'viewer2') {
-      const allowedViews: ViewId[] = ['score', 'score-board'];
-      if (!allowedViews.includes(viewId)) {
-        showToast(t('common.unauthorizedView') || 'Du har inte tillgång till denna vy', 'warning');
-        return;
-      }
+    // Check if viewer is trying to access unauthorized view
+    if (!canView(viewId)) {
+      showToast(t('common.unauthorizedView') || 'Du har inte tillgång till denna vy', 'warning');
+      return;
     }
     setActiveView(viewId);
     // Update URL without navigation
     navigate(`/${viewId}`, { replace: true });
-  }, [userRole, showToast, t, navigate]);
+  }, [canView, showToast, t, navigate]);
 
   // Show loading state while auth is initializing
   if (authLoading) {
     return <LoadingFallback />;
   }
 
-  // Show login/signup if user is not authenticated
-  if (!currentUser) {
-    return <AuthContainer />;
-  }
+  // App now works without authentication (viewers can use it without login)
 
   const handleOpenConditionsModal = (viewId: ViewId) => {
     setSelectedViewForModal(viewId);
