@@ -44,7 +44,6 @@ function App() {
   const [activeView, setActiveView] = useState<ViewId>('score');
   const [conditionsModalOpen, setConditionsModalOpen] = useState(false);
   const [selectedViewForModal, setSelectedViewForModal] = useState<ViewId | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [userProfileOpen, setUserProfileOpen] = useState(false);
   const [loadedShareableLink, setLoadedShareableLink] = useState<ShareableLink | null>(null);
@@ -198,8 +197,6 @@ function App() {
                 <AppContent
                   activeView={activeView}
                   setActiveView={handleViewChange}
-                  sidebarOpen={sidebarOpen}
-                  setSidebarOpen={setSidebarOpen}
                   sidebarCollapsed={sidebarCollapsed}
                   setSidebarCollapsed={setSidebarCollapsed}
                   conditionsModalOpen={conditionsModalOpen}
@@ -225,8 +222,6 @@ function App() {
 function AppContent({
   activeView,
   setActiveView,
-  sidebarOpen,
-  setSidebarOpen,
   sidebarCollapsed,
   setSidebarCollapsed,
   conditionsModalOpen,
@@ -242,8 +237,6 @@ function AppContent({
 }: {
   activeView: ViewId;
   setActiveView: (view: ViewId) => void;
-  sidebarOpen: boolean;
-  setSidebarOpen: (open: boolean) => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean) => void;
   conditionsModalOpen: boolean;
@@ -274,17 +267,16 @@ function AppContent({
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       <SkipLinks />
       <Header 
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)} 
-        isMenuOpen={sidebarOpen}
         onNavigate={setActiveView}
         activeView={activeView}
+        sidebarCollapsed={sidebarCollapsed}
       />
       <Sidebar 
         activeView={activeView} 
         onViewChange={setActiveView}
         onOpenConditionsModal={handleOpenConditionsModal}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        isOpen={true}
+        onClose={() => {}}
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         onOpenUserProfile={() => setUserProfileOpen(true)}
@@ -292,7 +284,7 @@ function AppContent({
       <main 
         ref={containerRef as React.RefObject<HTMLElement>}
         id="main-content" 
-        className={`flex-1 mt-16 overflow-y-auto overflow-x-hidden flex flex-col w-full relative ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}
+        className={`flex-1 mt-16 overflow-y-auto overflow-x-hidden flex flex-col w-full relative ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}
         role="main" 
         aria-label={t('aria.mainContent', 'Huvudinnehåll')}
         style={{

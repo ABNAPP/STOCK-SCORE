@@ -30,7 +30,7 @@ export interface ColumnDefinition<T = unknown> extends ColumnConfig {
   align?: 'left' | 'center' | 'right';
   width?: string;
   renderHeader?: (props: HeaderRenderProps<T>) => ReactNode;
-  renderCell?: (item: T, column: ColumnDefinition<T>, index: number, globalIndex: number) => ReactNode;
+  renderCell?: (item: T, column: ColumnDefinition<T>, index: number, globalIndex: number, expandedRows?: { [key: string]: boolean }, toggleRow?: (rowKey: string) => void) => ReactNode;
 }
 
 export interface HeaderRenderProps<T = unknown> {
@@ -63,9 +63,10 @@ export interface BaseTableProps<T> {
   tableId: string;
   
   // Rendering functions
-  renderCell: (item: T, column: ColumnDefinition<T>, index: number, globalIndex: number) => ReactNode;
+  renderCell: (item: T, column: ColumnDefinition<T>, index: number, globalIndex: number, expandedRows?: { [key: string]: boolean }, toggleRow?: (rowKey: string) => void) => ReactNode;
   renderHeader?: (props: HeaderRenderProps<T>) => ReactNode;
   renderMobileCard?: (item: T, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => ReactNode;
+  renderExpandedRow?: (item: T, index: number, globalIndex: number) => ReactNode;
   
   // Options
   enablePagination?: boolean;
@@ -130,6 +131,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
   renderCell,
   renderHeader,
   renderMobileCard,
+  renderExpandedRow,
   enablePagination = false,
   enableVirtualScroll = false,
   enableHelp = false,
@@ -660,6 +662,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
     const rowBgClass = globalIndex % 2 === 0 
       ? 'bg-white dark:bg-gray-800' 
       : 'bg-gray-50 dark:bg-gray-800';
+    const rowKey = getItemRowKey(item, globalIndex);
 
     return (
       <div
@@ -676,7 +679,9 @@ export default function BaseTable<T extends Record<string, unknown>>({
                     {column.label}
                   </span>
                   <span className="text-sm text-black dark:text-white text-right">
-                    {renderCell(item, column, index, globalIndex)}
+                    {column.renderCell
+                      ? column.renderCell(item, column, index, globalIndex, expandedRows, toggleRow)
+                      : renderCell(item, column, index, globalIndex, expandedRows, toggleRow)}
                   </span>
                 </div>
               ))}
@@ -715,7 +720,9 @@ export default function BaseTable<T extends Record<string, unknown>>({
                     {column.label}
                   </span>
                   <span className="text-sm text-black dark:text-white text-right">
-                    {renderCell(item, column, index, globalIndex)}
+                    {column.renderCell
+                      ? column.renderCell(item, column, index, globalIndex, expandedRows, toggleRow)
+                      : renderCell(item, column, index, globalIndex, expandedRows, toggleRow)}
                   </span>
                 </div>
               ))}
@@ -723,7 +730,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
         )}
       </div>
     );
-  }, [columns, isColumnVisible, enableMobileExpand, renderCell]);
+  }, [columns, isColumnVisible, enableMobileExpand, renderCell, expandedRows, toggleRow, getItemRowKey]);
 
   if (loading) {
     return (
@@ -850,8 +857,8 @@ export default function BaseTable<T extends Record<string, unknown>>({
           </div>
         </div>
         
-        {/* Desktop Table View (≥1024px) */}
-        <div className="hidden lg:block flex-1 overflow-auto min-h-0 sm:overflow-y-auto">
+        {/* Table View */}
+        <div className="flex-1 overflow-auto min-h-0 sm:overflow-y-auto">
           <table 
             ref={tableRef}
             className="min-w-full sm:min-w-full divide-y divide-gray-300 dark:divide-gray-600"
@@ -938,45 +945,71 @@ export default function BaseTable<T extends Record<string, unknown>>({
                     : 'bg-gray-50 dark:bg-gray-800';
                   
                   const isFocused = focusedRowIndex === index;
+                  const isExpanded = expandedRows[rowKey] || false;
+                  const visibleColumnsCount = orderedColumns.filter(col => isColumnVisible(col.key)).length;
+                  
                   return (
-                    <tr 
-                      key={rowKey}
-                      data-row-index={index}
-                      className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''}`}
-                      onClick={() => handleRowClick(index)}
-                      tabIndex={0}
-                      role="row"
-                      aria-rowindex={globalIndex + 2}
-                      aria-label={`Row ${globalIndex + 1}: ${'companyName' in item && typeof item.companyName === 'string' ? item.companyName : 'Item ' + (globalIndex + 1)}`}
-                    >
-                      {orderedColumns
-                        .filter(col => isColumnVisible(col.key))
-                        .map((column, colIndex) => {
-                          const cellContent = column.renderCell
-                            ? column.renderCell(item, column, index, globalIndex)
-                            : renderCell(item, column, index, globalIndex);
-                          
-                          const isSticky = stickyColumns.includes(column.key);
-                          const stickyClass = isSticky ? `sm:sticky ${getStickyPosition(column.key)} z-20` : '';
-                          const alignClass = column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : '';
-                          const bgClass = globalIndex % 2 === 0 
-                            ? 'bg-white dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20' 
-                            : 'bg-gray-50 dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20';
-                          const columnWidth = enableColumnResize ? getColumnWidth(column.key) : undefined;
-                          
-                          return (
-                            <td
-                              key={column.key}
-                              className={`px-6 py-4 whitespace-nowrap text-sm text-black dark:text-white transition-colors duration-base ${stickyClass} ${alignClass} ${isSticky ? bgClass : ''}`}
-                              style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
-                              role="gridcell"
-                              aria-colindex={colIndex + 1}
-                            >
-                              {cellContent}
-                            </td>
-                          );
-                        })}
-                    </tr>
+                    <React.Fragment key={rowKey}>
+                      <tr 
+                        data-row-index={index}
+                        className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''}`}
+                        onClick={() => handleRowClick(index)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleRow(rowKey);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="row"
+                        aria-rowindex={globalIndex + 2}
+                        aria-label={`Row ${globalIndex + 1}: ${'companyName' in item && typeof item.companyName === 'string' ? item.companyName : 'Item ' + (globalIndex + 1)}`}
+                        aria-expanded={isExpanded}
+                      >
+                        {orderedColumns
+                          .filter(col => isColumnVisible(col.key))
+                          .map((column, colIndex) => {
+                            const cellContent = column.renderCell
+                              ? column.renderCell(item, column, index, globalIndex, expandedRows, toggleRow)
+                              : renderCell(item, column, index, globalIndex, expandedRows, toggleRow);
+                            
+                            const isSticky = stickyColumns.includes(column.key);
+                            const stickyClass = isSticky ? `sm:sticky ${getStickyPosition(column.key)} z-20` : '';
+                            const alignClass = column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : '';
+                            const bgClass = globalIndex % 2 === 0 
+                              ? 'bg-white dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20' 
+                              : 'bg-gray-50 dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20';
+                            const columnWidth = enableColumnResize ? getColumnWidth(column.key) : undefined;
+                            
+                            return (
+                              <td
+                                key={column.key}
+                                className={`px-6 py-4 whitespace-nowrap text-sm text-black dark:text-white transition-colors duration-base ${stickyClass} ${alignClass} ${isSticky ? bgClass : ''}`}
+                                style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
+                                role="gridcell"
+                                aria-colindex={colIndex + 1}
+                              >
+                                {cellContent}
+                              </td>
+                            );
+                          })}
+                      </tr>
+                      {isExpanded && renderExpandedRow && (
+                        <tr 
+                          className="bg-gray-50 dark:bg-gray-900/50 transition-all duration-300 ease-in-out"
+                          role="row"
+                          aria-rowindex={globalIndex + 3}
+                        >
+                          <td 
+                            colSpan={visibleColumnsCount} 
+                            className="px-0 py-0"
+                            role="gridcell"
+                          >
+                            {renderExpandedRow(item, index, globalIndex)}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 }}
                 rowHeight={virtualScrollRowHeight}
@@ -1009,96 +1042,80 @@ export default function BaseTable<T extends Record<string, unknown>>({
                       : 'bg-gray-50 dark:bg-gray-800';
                     
                     const isFocused = focusedRowIndex === index;
+                    const isExpanded = expandedRows[rowKey] || false;
+                    const visibleColumnsCount = orderedColumns.filter(col => isColumnVisible(col.key)).length;
+                    
                     return (
-                      <tr 
-                        key={rowKey}
-                        data-row-index={index}
-                        className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base animate-fade-in ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''}`}
-                        style={{ animationDelay: `${index * 10}ms` }}
-                        onClick={() => handleRowClick(index)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            const globalIndex = enablePagination ? startIndex - 1 + index : index;
-                            const rowKey = getItemRowKey(item, globalIndex);
-                            toggleRow(rowKey);
-                          }
-                        }}
-                        tabIndex={0}
-                        role="row"
-                        aria-rowindex={globalIndex + 2}
-                        aria-label={`Row ${globalIndex + 1}: ${'companyName' in item && typeof item.companyName === 'string' ? item.companyName : 'Item ' + (globalIndex + 1)}`}
-                      >
-                        {orderedColumns
-                          .filter(col => isColumnVisible(col.key))
-                          .map((column, colIndex) => {
-                            const cellContent = column.renderCell
-                              ? column.renderCell(item, column, index, globalIndex)
-                              : renderCell(item, column, index, globalIndex);
-                            
-                            const isSticky = stickyColumns.includes(column.key);
-                            const stickyClass = isSticky ? `sm:sticky ${getStickyPosition(column.key)} z-20` : '';
-                            const alignClass = column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : '';
-                            const bgClass = globalIndex % 2 === 0 
-                              ? 'bg-white dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20' 
-                              : 'bg-gray-50 dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20';
-                            const columnWidth = enableColumnResize ? getColumnWidth(column.key) : undefined;
-                            
-                            return (
-                              <td
-                                key={column.key}
-                                className={`px-6 py-4 whitespace-nowrap text-sm text-black dark:text-white transition-colors duration-base ${stickyClass} ${alignClass} ${isSticky ? bgClass : ''}`}
-                                style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
-                                role="gridcell"
-                                aria-colindex={colIndex + 1}
-                              >
-                                {cellContent}
-                              </td>
-                            );
-                          })}
-                      </tr>
+                      <React.Fragment key={rowKey}>
+                        <tr 
+                          data-row-index={index}
+                          className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base animate-fade-in ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''}`}
+                          style={{ animationDelay: `${index * 10}ms` }}
+                          onClick={() => handleRowClick(index)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              const globalIndex = enablePagination ? startIndex - 1 + index : index;
+                              const rowKey = getItemRowKey(item, globalIndex);
+                              toggleRow(rowKey);
+                            }
+                          }}
+                          tabIndex={0}
+                          role="row"
+                          aria-rowindex={globalIndex + 2}
+                          aria-label={`Row ${globalIndex + 1}: ${'companyName' in item && typeof item.companyName === 'string' ? item.companyName : 'Item ' + (globalIndex + 1)}`}
+                          aria-expanded={isExpanded}
+                        >
+                          {orderedColumns
+                            .filter(col => isColumnVisible(col.key))
+                            .map((column, colIndex) => {
+                              const cellContent = column.renderCell
+                                ? column.renderCell(item, column, index, globalIndex, expandedRows, toggleRow)
+                                : renderCell(item, column, index, globalIndex, expandedRows, toggleRow);
+                              
+                              const isSticky = stickyColumns.includes(column.key);
+                              const stickyClass = isSticky ? `sm:sticky ${getStickyPosition(column.key)} z-20` : '';
+                              const alignClass = column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : '';
+                              const bgClass = globalIndex % 2 === 0 
+                                ? 'bg-white dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20' 
+                                : 'bg-gray-50 dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20';
+                              const columnWidth = enableColumnResize ? getColumnWidth(column.key) : undefined;
+                              
+                              return (
+                                <td
+                                  key={column.key}
+                                  className={`px-6 py-4 whitespace-nowrap text-sm text-black dark:text-white transition-colors duration-base ${stickyClass} ${alignClass} ${isSticky ? bgClass : ''}`}
+                                  style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
+                                  role="gridcell"
+                                  aria-colindex={colIndex + 1}
+                                >
+                                  {cellContent}
+                                </td>
+                              );
+                            })}
+                        </tr>
+                        {isExpanded && renderExpandedRow && (
+                          <tr 
+                            className="bg-gray-50 dark:bg-gray-900/50 transition-all duration-300 ease-in-out"
+                            role="row"
+                            aria-rowindex={globalIndex + 3}
+                          >
+                            <td 
+                              colSpan={visibleColumnsCount} 
+                              className="px-0 py-0"
+                              role="gridcell"
+                            >
+                              {renderExpandedRow(item, index, globalIndex)}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })
                 )}
               </tbody>
             )}
           </table>
-        </div>
-        
-        {/* Mobile Card View (<1024px) */}
-        <div className="lg:hidden flex-1 overflow-auto min-h-0 space-y-4 p-4">
-          {displayData.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center" role="status" aria-live="polite">
-              <p className="text-gray-600 dark:text-gray-300">
-                {searchValue || hasColumnFilters ? 'Inga resultat hittades.' : (emptyMessage || t('aria.noData'))}
-              </p>
-              {(searchValue || hasColumnFilters) && (
-                <p className="text-xs mt-2 text-gray-500 dark:text-gray-400">
-                  Försök ändra dina sökkriterier eller filter.
-                </p>
-              )}
-            </div>
-          ) : (
-            displayData.map((item, index) => {
-              const globalIndex = enablePagination ? startIndex - 1 + index : index;
-              const rowKey = getItemRowKey(item, globalIndex);
-              const isExpanded = expandedRows[rowKey] || false;
-              
-              if (renderMobileCard) {
-                return (
-                  <React.Fragment key={rowKey}>
-                    {renderMobileCard(item, index, globalIndex, isExpanded, () => toggleRow(rowKey))}
-                  </React.Fragment>
-                );
-              }
-              
-              return (
-                <React.Fragment key={rowKey}>
-                  {defaultRenderMobileCard(item, index, globalIndex, isExpanded, () => toggleRow(rowKey))}
-                </React.Fragment>
-              );
-            })
-          )}
         </div>
         
         {/* Pagination */}

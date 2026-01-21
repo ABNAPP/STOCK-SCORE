@@ -7,7 +7,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useUserRole } from '../hooks/useUserRole';
-import HamburgerMenu from './HamburgerMenu';
 import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
 import { ViewId } from '../types/navigation';
@@ -16,13 +15,12 @@ import { ViewId } from '../types/navigation';
 const OnboardingHelp = lazy(() => import('./OnboardingHelp'));
 
 interface HeaderProps {
-  onMenuToggle: () => void;
-  isMenuOpen: boolean;
   onNavigate?: (viewId: ViewId) => void;
   activeView?: ViewId;
+  sidebarCollapsed?: boolean;
 }
 
-export default function Header({ onMenuToggle, isMenuOpen, onNavigate, activeView }: HeaderProps) {
+export default function Header({ onNavigate, activeView, sidebarCollapsed = false }: HeaderProps) {
   const { i18n, t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const { refreshAll, isRefreshing } = useRefresh();
@@ -160,14 +158,9 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, activeVie
   };
 
   return (
-    <div className="h-16 bg-white dark:bg-gray-800 border-b border-gray-300 dark:border-gray-400 fixed top-0 left-0 lg:left-64 right-0 z-30 flex items-center justify-between px-4">
-      {/* Hamburger menu - visible on mobile */}
-      <div className="lg:hidden">
-        <HamburgerMenu isOpen={isMenuOpen} onClick={onMenuToggle} />
-      </div>
-      
-      {/* Global Search - visible on desktop and tablet */}
-      <div className="hidden sm:block flex-1 max-w-md mx-2 sm:mx-4">
+    <div className={`h-16 bg-white dark:bg-gray-800 border-b border-gray-300 dark:border-gray-400 fixed top-0 ${sidebarCollapsed ? 'left-16' : 'left-64'} right-0 z-30 flex items-center justify-between px-4`}>
+      {/* Global Search */}
+      <div className="flex-1 max-w-md mx-2 sm:mx-4">
         {onNavigate && <GlobalSearch onNavigate={onNavigate} />}
       </div>
 

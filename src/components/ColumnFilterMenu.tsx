@@ -45,7 +45,80 @@ export default function ColumnFilterMenu<T extends Record<string, unknown>>({
   const [searchValue, setSearchValue] = useState('');
   const [showValueFilter, setShowValueFilter] = useState(false);
   const [showConditionFilter, setShowConditionFilter] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; flipped: boolean }>({ top: 0, left: 0, flipped: false });
   const debouncedSearchValue = useDebounce(searchValue, 300);
+
+  // Calculate menu position based on trigger element
+  useEffect(() => {
+    if (isOpen && triggerRef?.current) {
+      const calculatePosition = () => {
+        if (!triggerRef.current) return;
+        
+        const triggerRect = triggerRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        
+        // Get menu dimensions (use estimated height if not yet rendered)
+        const menuWidth = 256; // w-64 = 256px
+        const estimatedMenuHeight = 500; // max-h-[500px]
+        const actualMenuHeight = menuRef.current?.getBoundingClientRect().height || estimatedMenuHeight;
+        
+        // Default: position below trigger
+        let top = triggerRect.bottom + 4; // 4px gap (mt-1 equivalent)
+        let left = triggerRect.left;
+        let flipped = false;
+        
+        // Check if menu would extend below viewport
+        const spaceBelow = viewportHeight - triggerRect.bottom;
+        const spaceAbove = triggerRect.top;
+        
+        // If not enough space below but more space above, flip upward
+        if (spaceBelow < actualMenuHeight && spaceAbove > spaceBelow) {
+          top = triggerRect.top - actualMenuHeight - 4;
+          flipped = true;
+        }
+        
+        // Ensure menu doesn't go off-screen horizontally
+        if (left + menuWidth > viewportWidth) {
+          left = viewportWidth - menuWidth - 8; // 8px margin from edge
+        }
+        if (left < 8) {
+          left = 8; // 8px margin from edge
+        }
+        
+        setMenuPosition({ top, left, flipped });
+      };
+      
+      // Calculate position after a brief delay to ensure menu is rendered
+      const timeoutId = setTimeout(() => {
+        calculatePosition();
+      }, 0);
+      
+      // Also calculate on next frame to get accurate dimensions
+      requestAnimationFrame(() => {
+        calculatePosition();
+      });
+      
+      // Recalculate on scroll (for sticky headers)
+      const handleScroll = () => {
+        calculatePosition();
+      };
+      
+      // Recalculate on window resize
+      const handleResize = () => {
+        calculatePosition();
+      };
+      
+      window.addEventListener('scroll', handleScroll, true); // Use capture to catch all scrolls
+      window.addEventListener('resize', handleResize);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        window.removeEventListener('scroll', handleScroll, true);
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, [isOpen, triggerRef, showValueFilter, showConditionFilter]); // Recalculate when filter sections expand/collapse
 
   // Reset state when menu closes
   useEffect(() => {
@@ -186,8 +259,11 @@ export default function ColumnFilterMenu<T extends Record<string, unknown>>({
   return (
     <div
       ref={menuRef}
-      className="absolute left-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-500 z-[60] max-h-[500px] overflow-hidden flex flex-col animate-fade-in-up transition-all duration-200"
-      style={{ top: '100%' }}
+      className="fixed w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-500 z-[100] max-h-[500px] overflow-hidden flex flex-col animate-fade-in-up transition-all duration-200"
+      style={{ 
+        top: `${menuPosition.top}px`,
+        left: `${menuPosition.left}px`
+      }}
       role="menu"
       aria-label={`Filter och sortering för ${columnLabel}`}
     >

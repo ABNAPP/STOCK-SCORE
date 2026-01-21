@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { ViewId, NavigationSection } from '../types/navigation';
 import ConditionsSidebar from './ConditionsSidebar';
 import { useUserRole } from '../hooks/useUserRole';
-import { useSwipeGesture } from '../hooks/useSwipeGesture';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   TrophyIcon, 
@@ -127,44 +126,22 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
 
   const handleItemClick = (viewId: ViewId) => {
     onViewChange(viewId);
-    // Close sidebar on mobile when item is clicked
-    if (window.innerWidth < 1024) {
-      onClose();
-    }
   };
 
   const isSectionExpanded = (sectionId: string) => expandedSections.has(sectionId);
   const isSubmenuExpanded = (itemId: string) => expandedSubmenus.has(itemId);
   const isActive = (viewId: ViewId) => activeView === viewId;
 
-  // Swipe gesture for mobile: close sidebar when swiping left
-  const sidebarRef = useSwipeGesture({
-    onSwipeLeft: () => {
-      // Only close on mobile when sidebar is open
-      if (isOpen && window.innerWidth < 1024) {
-        onClose();
-      }
-    },
-  });
+  // Sidebar always visible - no swipe gesture needed
+  const sidebarRef = null;
 
   return (
     <>
-      {/* Overlay for mobile */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden transition-opacity duration-300 animate-fade-in"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-      )}
-      
-      {/* Sidebar */}
+      {/* Sidebar - always visible */}
       <nav
         ref={sidebarRef}
         id="navigation"
-        className={`fixed top-0 left-0 h-screen bg-white dark:bg-gray-800 border-r border-gray-300 dark:border-gray-500 overflow-y-auto pt-6 z-50 transition-all duration-300 ease-in-out flex flex-col ${
-          isOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'
-        } lg:translate-x-0 lg:opacity-100 ${isCollapsed ? 'w-16' : 'w-64'}`}
+        className={`fixed top-0 left-0 h-screen bg-white dark:bg-gray-800 border-r border-gray-300 dark:border-gray-500 overflow-y-auto pt-6 z-50 flex flex-col ${isCollapsed ? 'w-16' : 'w-64'}`}
         aria-label={t('navigation.title')}
       >
         <div className={`${isCollapsed ? 'px-2' : 'px-4'} pb-4 pt-0 flex flex-col flex-1`}>
@@ -288,10 +265,6 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
             <button
               onClick={() => {
                 onOpenUserProfile();
-                // Close sidebar on mobile when profile is clicked
-                if (window.innerWidth < 1024) {
-                  onClose();
-                }
               }}
               className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-3'} py-3 sm:py-2.5 ${isCollapsed ? '' : 'text-left'} text-sm rounded-md transition-colors min-h-[44px] touch-manipulation flex items-center gap-3 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-all duration-200 hover:scale-[1.02] active:scale-95`}
               title={isCollapsed ? t('profile.title') : undefined}

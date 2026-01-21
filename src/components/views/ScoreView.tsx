@@ -8,6 +8,7 @@ import ProgressIndicator from '../ProgressIndicator';
 import { TableSkeleton } from '../SkeletonLoader';
 import { EntryExitProvider, useEntryExitValues } from '../../contexts/EntryExitContext';
 import { calculateDetailedScore } from '../../utils/calculateScoreDetailed';
+import ScoreDashboard from '../ScoreDashboard';
 
 // Lazy load table component
 const ScoreTable = lazy(() => import('../ScoreTable'));
@@ -111,6 +112,17 @@ function ScoreViewInner() {
             <p className="text-xs text-blue-600 dark:text-blue-400">
               {t('common.loadingAdditionalData', 'Laddar ytterligare data i bakgrunden...')}
             </p>
+          </div>
+        )}
+        {!isLoading && scoreData.length > 0 && (
+          <div className="mb-4">
+            <ScoreDashboard 
+              data={scoreData} 
+              loading={false}
+              thresholdData={thresholdData || []}
+              benjaminGrahamData={benjaminGrahamData || []}
+              entryExitValues={entryExitValues}
+            />
           </div>
         )}
         <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">

@@ -4,8 +4,9 @@ import { ScoreData } from './views/ScoreView';
 import { ThresholdIndustryData, BenjaminGrahamData } from '../types/stock';
 import { EntryExitValues } from '../contexts/EntryExitContext';
 import { calculateDetailedScoreBreakdown } from '../utils/calculateScoreDetailed';
-import ScoreBreakdownTooltip from './ScoreBreakdownTooltip';
 import { FilterConfig } from '../types/filters';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
+import ScoreBreakdownRow from './ScoreBreakdownRow';
 
 interface ScoreTableProps {
   data: ScoreData[];
@@ -45,16 +46,48 @@ const SCORE_FILTERS: FilterConfig[] = [
 ];
 
 export default function ScoreTable({ data, loading, error, thresholdData = [], benjaminGrahamData = [], entryExitValues = new Map() }: ScoreTableProps) {
+  // Helper function to generate row key - must be used consistently everywhere
+  const generateRowKey = useCallback((item: ScoreData, index: number): string => {
+    return `${item.ticker}-${item.companyName}-${index}`;
+  }, []);
+
   const getScoreColorClass = useCallback((score: number): string => {
     if (score >= 75) return 'text-green-700 dark:text-green-200 font-bold';
     if (score >= 50) return 'text-blue-700 dark:text-blue-400 font-semibold';
     return 'text-black dark:text-white';
   }, []);
 
-  const renderCell = useCallback((item: ScoreData, column: ColumnDefinition, index: number, globalIndex: number) => {
+  const renderCell = useCallback((item: ScoreData, column: ColumnDefinition, index: number, globalIndex: number, expandedRows?: { [key: string]: boolean }, toggleRow?: (rowKey: string) => void) => {
+    // Use the same format as getRowKey: ticker-companyName-index (where index is globalIndex)
+    // IMPORTANT: This must match exactly with getRowKey function below
+    const rowKey = generateRowKey(item, globalIndex);
+    const isExpanded = expandedRows?.[rowKey] || false;
+
     switch (column.key) {
       case 'antal':
-        return globalIndex + 1;
+        return (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (toggleRow) {
+                  toggleRow(rowKey);
+                }
+              }}
+              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
+              aria-expanded={isExpanded}
+              title={isExpanded ? 'Collapse' : 'Expand'}
+              type="button"
+            >
+              <ChevronDownIcon 
+                className={`w-4 h-4 text-gray-600 dark:text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} 
+              />
+            </button>
+            <span>{globalIndex + 1}</span>
+          </div>
+        );
       case 'companyName':
         return <span className="font-medium">{item.companyName}</span>;
       case 'ticker':
@@ -62,22 +95,13 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
       case 'score':
         return (
           <span className={getScoreColorClass(item.score)}>
-            <ScoreBreakdownTooltip
-              breakdown={calculateDetailedScoreBreakdown(
-                item.scoreBoardData,
-                thresholdData,
-                benjaminGrahamData,
-                entryExitValues
-              )}
-            >
-              <span>{item.score.toFixed(1)}</span>
-            </ScoreBreakdownTooltip>
+            {item.score.toFixed(1)}
           </span>
         );
       default:
         return null;
     }
-  }, [thresholdData, benjaminGrahamData, entryExitValues, getScoreColorClass]);
+  }, [getScoreColorClass, generateRowKey]);
 
   const renderMobileCard = useCallback((item: ScoreData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
     return (
@@ -103,21 +127,23 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Score</span>
-            <ScoreBreakdownTooltip
-              breakdown={calculateDetailedScoreBreakdown(
-                item.scoreBoardData,
-                thresholdData,
-                benjaminGrahamData,
-                entryExitValues
-              )}
-            >
-              <span className={`text-sm ${getScoreColorClass(item.score)}`}>{item.score.toFixed(1)}</span>
-            </ScoreBreakdownTooltip>
+            <span className={`text-sm ${getScoreColorClass(item.score)}`}>{item.score.toFixed(1)}</span>
           </div>
         </div>
       </div>
     );
-  }, [thresholdData, benjaminGrahamData, entryExitValues, getScoreColorClass]);
+  }, [getScoreColorClass]);
+
+  const renderExpandedRow = useCallback((item: ScoreData, index: number, globalIndex: number) => {
+    const breakdown = calculateDetailedScoreBreakdown(
+      item.scoreBoardData,
+      thresholdData,
+      benjaminGrahamData,
+      entryExitValues
+    );
+
+    return <ScoreBreakdownRow breakdown={breakdown} />;
+  }, [thresholdData, benjaminGrahamData, entryExitValues]);
 
   return (
     <BaseTable<ScoreData>
@@ -129,6 +155,7 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
       tableId="score"
       renderCell={renderCell}
       renderMobileCard={renderMobileCard}
+      renderExpandedRow={renderExpandedRow}
       enableVirtualScroll={true}
       searchFields={['companyName', 'ticker']}
       searchPlaceholder="Sök efter företag eller ticker..."
@@ -137,7 +164,11 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
       stickyColumns={['antal', 'companyName', 'ticker']}
       ariaLabel="Score"
       minTableWidth="600px"
-      getRowKey={(item, index) => `${item.ticker}-${item.companyName}-${index}`}
+      getRowKey={(item, index) => {
+        // index parameter is globalIndex when called from BaseTable
+        // Use the same function to ensure consistency
+        return generateRowKey(item, index);
+      }}
       enableExport={true}
       enablePrint={true}
       enableShareableLink={true}
