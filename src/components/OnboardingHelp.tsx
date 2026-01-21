@@ -143,7 +143,7 @@ export default function OnboardingHelp({ tableId, isOpen: externalIsOpen, onClos
           <div className="flex items-center gap-3">
             <span className="text-3xl">{currentStepData.icon}</span>
             <div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              <h3 className="text-xl font-bold text-black dark:text-white">
                 {currentStepData.title}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">

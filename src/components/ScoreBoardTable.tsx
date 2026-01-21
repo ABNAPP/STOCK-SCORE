@@ -2,6 +2,7 @@ import React, { useMemo, useCallback } from 'react';
 import { ScoreBoardData, ThresholdIndustryData } from '../types/stock';
 import BaseTable, { ColumnDefinition, HeaderRenderProps } from './BaseTable';
 import ColumnTooltip from './ColumnTooltip';
+import ColumnFilterMenu from './ColumnFilterMenu';
 import { getColumnMetadata } from '../config/tableMetadata';
 import { FilterConfig } from './AdvancedFilters';
 import { useTranslation } from 'react-i18next';
@@ -418,42 +419,134 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
 
   // Custom header renderer with ColumnTooltip
   const renderHeader = useCallback((props: HeaderRenderProps) => {
-    const { column, sortConfig, handleSort, getSortIcon, getStickyPosition, isColumnVisible } = props;
+    const { 
+      column, 
+      sortConfig, 
+      handleSort, 
+      getSortIcon, 
+      getStickyPosition, 
+      isColumnVisible,
+      openFilterMenuColumn,
+      setOpenFilterMenuColumn,
+      hasActiveColumnFilter,
+      getColumnUniqueValues,
+      columnFilters,
+      setColumnFilter,
+      handleColumnSort,
+      headerRefs,
+    } = props;
     const metadata = getColumnMetadata('score-board', column.key);
     const isSticky = column.sticky;
     const isSorted = sortConfig.key === column.key;
     const sortIcon = getSortIcon(column.key);
     const stickyClass = isSticky ? `sm:sticky sm:top-0 ${getStickyPosition(column.key)} z-50` : '';
+    const isFilterMenuOpen = openFilterMenuColumn === column.key;
+    const hasActiveFilter = hasActiveColumnFilter(column.key);
+    const headerRef = headerRefs.current[column.key] || null;
+
+    const handleFilterIconClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isFilterMenuOpen) {
+        setOpenFilterMenuColumn(null);
+      } else {
+        setOpenFilterMenuColumn(column.key);
+      }
+    };
+
+    const handleSortClick = (e?: React.MouseEvent) => {
+      if (e) {
+        e.stopPropagation();
+      }
+      if (!isFilterMenuOpen) {
+        handleSort(column.key);
+      }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleSortClick();
+      }
+    };
+
+    const filterIcon = (
+      <button
+        onClick={handleFilterIconClick}
+        className={`ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${
+          hasActiveFilter ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+        }`}
+        aria-label={`Filter ${column.label}`}
+        aria-expanded={isFilterMenuOpen}
+        title="Filter och sortering"
+        type="button"
+      >
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6h16M4 12h16M4 18h16"
+          />
+        </svg>
+      </button>
+    );
     
     if (!column.sortable) {
       const headerContent = (
         <th
+          ref={(el) => {
+            headerRefs.current[column.key] = el;
+          }}
           className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ${stickyClass} bg-gray-50 dark:bg-gray-900`}
           scope="col"
           role="columnheader"
         >
-          {metadata ? (
-            <ColumnTooltip metadata={metadata}>
-              <div>{column.label}</div>
-            </ColumnTooltip>
-          ) : (
-            column.label
-          )}
+          <div className="flex items-center justify-between relative w-full">
+            <div className="flex items-center flex-1">
+              {metadata ? (
+                <ColumnTooltip metadata={metadata}>
+                  <div>{column.label}</div>
+                </ColumnTooltip>
+              ) : (
+                column.label
+              )}
+            </div>
+            <div className="flex items-center relative" style={{ minWidth: '40px' }}>
+              <div className="relative">
+                {filterIcon}
+                {isFilterMenuOpen && headerRef && (
+                  <ColumnFilterMenu
+                    columnKey={column.key}
+                    columnLabel={column.label}
+                    isOpen={isFilterMenuOpen}
+                    onClose={() => setOpenFilterMenuColumn(null)}
+                    filter={columnFilters[column.key]}
+                    onFilterChange={(filter) => setColumnFilter(column.key, filter)}
+                    sortConfig={sortConfig}
+                    onSort={handleColumnSort}
+                    uniqueValues={getColumnUniqueValues(column.key)}
+                    triggerRef={{ current: headerRef }}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
         </th>
       );
       return headerContent;
     }
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        handleSort(column.key);
-      }
-    };
-
     return (
       <th
-        onClick={() => handleSort(column.key)}
+        ref={(el) => {
+          headerRefs.current[column.key] = el;
+        }}
+        onClick={handleSortClick}
         onKeyDown={handleKeyDown}
         className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-200 ${stickyClass} bg-gray-50 dark:bg-gray-900`}
         scope="col"
@@ -462,19 +555,42 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         aria-sort={isSorted ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
         tabIndex={0}
       >
-        {metadata ? (
-          <ColumnTooltip metadata={metadata}>
-            <div className="flex items-center space-x-1">
-              <span>{column.label === 'VALUE CREATION' ? 'VALUE CREATION' : column.label}</span>
-              {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
-            </div>
-          </ColumnTooltip>
-        ) : (
-          <div className="flex items-center space-x-1">
-            <span>{column.label}</span>
-            {sortIcon && <span className="text-gray-400 dark:text-gray-300">{sortIcon}</span>}
+        <div className="flex items-center justify-between relative w-full">
+          <div className="flex items-center flex-1" onClick={handleSortClick}>
+            {metadata ? (
+              <ColumnTooltip metadata={metadata}>
+                <div className="flex items-center space-x-1">
+                  <span>{column.label === 'VALUE CREATION' ? 'VALUE CREATION' : column.label}</span>
+                  {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
+                </div>
+              </ColumnTooltip>
+            ) : (
+              <div className="flex items-center space-x-1">
+                <span>{column.label}</span>
+                {sortIcon && <span className="text-gray-400 dark:text-gray-300">{sortIcon}</span>}
+              </div>
+            )}
           </div>
-        )}
+          <div className="flex items-center relative" style={{ minWidth: '40px' }}>
+            <div className="relative">
+              {filterIcon}
+              {isFilterMenuOpen && headerRef && (
+                <ColumnFilterMenu
+                  columnKey={column.key}
+                  columnLabel={column.label}
+                  isOpen={isFilterMenuOpen}
+                  onClose={() => setOpenFilterMenuColumn(null)}
+                  filter={columnFilters[column.key]}
+                  onFilterChange={(filter) => setColumnFilter(column.key, filter)}
+                  sortConfig={sortConfig}
+                  onSort={handleColumnSort}
+                  uniqueValues={getColumnUniqueValues(column.key)}
+                  triggerRef={{ current: headerRef }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
       </th>
     );
   }, [t]);
@@ -490,7 +606,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         return <span className="text-gray-600 dark:text-gray-300">{item.ticker}</span>;
       case 'irr':
         return (
-          <span className={getIRRColor(item.irr, item.industry, thresholdData) || 'text-gray-900 dark:text-gray-100'}>
+          <span className={getIRRColor(item.irr, item.industry, thresholdData) || 'text-black dark:text-white'}>
             {item.irr !== null ? `${item.irr.toFixed(2)}%` : 'N/A'}
           </span>
         );
@@ -498,7 +614,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         return (
           <span className={
             item.mungerQualityScore === null
-              ? 'text-gray-900 dark:text-gray-100'
+              ? 'text-black dark:text-white'
               : item.mungerQualityScore < MUNGER_QUALITY_SCORE_RED_THRESHOLD
               ? 'text-red-700 dark:text-red-400'
               : item.mungerQualityScore >= MUNGER_QUALITY_SCORE_RED_THRESHOLD && item.mungerQualityScore <= MUNGER_QUALITY_SCORE_GREEN_THRESHOLD
@@ -512,7 +628,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         return (
           <span className={
             item.valueCreation === null
-              ? 'text-gray-900 dark:text-gray-100'
+              ? 'text-black dark:text-white'
               : item.valueCreation < 0
               ? 'text-red-700 dark:text-red-400'
               : 'text-green-700 dark:text-green-200'
@@ -522,37 +638,37 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         );
       case 'tbSPrice':
         return (
-          <span className={getTBSPPriceColor(item.tbSPrice) || 'text-gray-900 dark:text-gray-100'}>
+          <span className={getTBSPPriceColor(item.tbSPrice) || 'text-black dark:text-white'}>
             {item.tbSPrice !== null ? item.tbSPrice.toFixed(2) : 'N/A'}
           </span>
         );
       case 'ro40F1':
         return (
-          <span className={getRo40Color(item.ro40F1, item.industry, thresholdData) || 'text-gray-900 dark:text-gray-100'}>
+          <span className={getRo40Color(item.ro40F1, item.industry, thresholdData) || 'text-black dark:text-white'}>
             {item.ro40F1 !== null ? `${item.ro40F1.toFixed(2)}%` : 'N/A'}
           </span>
         );
       case 'ro40F2':
         return (
-          <span className={getRo40Color(item.ro40F2, item.industry, thresholdData) || 'text-gray-900 dark:text-gray-100'}>
+          <span className={getRo40Color(item.ro40F2, item.industry, thresholdData) || 'text-black dark:text-white'}>
             {item.ro40F2 !== null ? `${item.ro40F2.toFixed(2)}%` : 'N/A'}
           </span>
         );
       case 'currentRatio':
         return (
-          <span className={getCurrentRatioColor(item.currentRatio, item.industry, thresholdData) || 'text-gray-900 dark:text-gray-100'}>
+          <span className={getCurrentRatioColor(item.currentRatio, item.industry, thresholdData) || 'text-black dark:text-white'}>
             {item.currentRatio !== null ? item.currentRatio.toFixed(2) : 'N/A'}
           </span>
         );
       case 'cashSdebt':
         return (
-          <span className={getCashSdebtColor(item.cashSdebt, item.isCashSdebtDivZero, item.industry, thresholdData) || 'text-gray-900 dark:text-gray-100'}>
+          <span className={getCashSdebtColor(item.cashSdebt, item.isCashSdebtDivZero, item.industry, thresholdData) || 'text-black dark:text-white'}>
             {item.cashSdebt !== null ? item.cashSdebt.toFixed(2) : 'N/A'}
           </span>
         );
       case 'leverageF2':
         return (
-          <span className={getLeverageF2Color(item.leverageF2, item.industry, thresholdData) || 'text-gray-900 dark:text-gray-100'}>
+          <span className={getLeverageF2Color(item.leverageF2, item.industry, thresholdData) || 'text-black dark:text-white'}>
             {item.leverageF2 !== null ? item.leverageF2.toLocaleString() : 'N/A'}
           </span>
         );
@@ -560,7 +676,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         return (
           <span className={
             item.pe1Industry === null
-              ? 'text-gray-900 dark:text-gray-100'
+              ? 'text-black dark:text-white'
               : item.pe1Industry > 0
               ? 'text-red-700 dark:text-red-400'
               : 'text-green-700 dark:text-green-200'
@@ -572,7 +688,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         return (
           <span className={
             item.pe2Industry === null
-              ? 'text-gray-900 dark:text-gray-100'
+              ? 'text-black dark:text-white'
               : item.pe2Industry > 0
               ? 'text-red-700 dark:text-red-400'
               : 'text-green-700 dark:text-green-200'
@@ -582,13 +698,13 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         );
       case 'sma100':
         return (
-          <span className={getSMAColor(item.price, item.sma100) || 'text-gray-900 dark:text-gray-100'}>
+          <span className={getSMAColor(item.price, item.sma100) || 'text-black dark:text-white'}>
             {item.sma100 !== null ? item.sma100.toFixed(2) : 'N/A'}
           </span>
         );
       case 'sma200':
         return (
-          <span className={getSMAColor(item.price, item.sma200) || 'text-gray-900 dark:text-gray-100'}>
+          <span className={getSMAColor(item.price, item.sma200) || 'text-black dark:text-white'}>
             {item.sma200 !== null ? item.sma200.toFixed(2) : 'N/A'}
           </span>
         );
@@ -599,7 +715,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
               ? 'text-red-700 dark:text-red-400'
               : item.smaCross && item.smaCross.toUpperCase().includes('DEATH')
               ? 'text-green-700 dark:text-green-200'
-              : 'text-gray-900 dark:text-gray-100'
+              : 'text-black dark:text-white'
           }>
             {item.smaCross || 'N/A'}
           </span>
@@ -631,11 +747,11 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
           <div className="flex-1 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Antal</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{globalIndex + 1}</span>
+              <span className="text-sm font-medium text-black dark:text-white">{globalIndex + 1}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Company Name</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 text-right">{item.companyName}</span>
+              <span className="text-sm font-medium text-black dark:text-white text-right">{item.companyName}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Ticker</span>
@@ -666,7 +782,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
               return (
                 <div key={key} className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{column.label}</span>
-                  <span className="text-sm text-gray-900 dark:text-gray-100 text-right">
+                  <span className="text-sm text-black dark:text-white text-right">
                     {renderCell(item, column, index, globalIndex)}
                   </span>
                 </div>

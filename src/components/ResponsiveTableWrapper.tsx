@@ -72,7 +72,7 @@ export default function ResponsiveTableWrapper<T extends Record<string, unknown>
                   {primaryColumns.map((column) => (
                     <td
                       key={column.key}
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"
+                      className="px-6 py-4 whitespace-nowrap text-sm text-black dark:text-white"
                     >
                       {renderPrimaryCell(item, column, index)}
                     </td>
@@ -80,7 +80,7 @@ export default function ResponsiveTableWrapper<T extends Record<string, unknown>
                   {secondaryColumns.map((column) => (
                     <td
                       key={column.key}
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"
+                      className="px-6 py-4 whitespace-nowrap text-sm text-black dark:text-white"
                     >
                       {renderSecondaryContent(item, index)}
                     </td>
@@ -119,7 +119,7 @@ export default function ResponsiveTableWrapper<T extends Record<string, unknown>
                       <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
                         {column.label}
                       </span>
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <div className="text-sm font-medium text-black dark:text-white">
                         {renderPrimaryCell(item, column, index)}
                       </div>
                     </div>

@@ -8,9 +8,7 @@ import { TableSkeleton } from './SkeletonLoader';
 import TableSearchBar from './TableSearchBar';
 import Pagination from './Pagination';
 import ColumnVisibilityToggle from './ColumnVisibilityToggle';
-import AdvancedFilters from './AdvancedFilters';
 import { FilterConfig, FilterValues } from '../types/filters';
-import QuickFilters from './QuickFilters';
 import ShareableLinkModal from './ShareableLinkModal';
 import { useTranslation } from 'react-i18next';
 import { exportTableData, ExportColumn } from '../services/exportService';
@@ -21,6 +19,9 @@ import { useColumnResize } from '../hooks/useColumnResize';
 import { useColumnReorder } from '../hooks/useColumnReorder';
 import { SortableTableHeader } from './SortableTableHeader';
 import { printTable } from '../utils/printUtils';
+import { useColumnFilters, ColumnFilters, ColumnFilter } from '../hooks/useColumnFilters';
+import { UniqueValue } from '../hooks/useColumnUniqueValues';
+import ColumnFilterMenu from './ColumnFilterMenu';
 
 
 export interface ColumnDefinition<T = unknown> extends ColumnConfig {
@@ -39,6 +40,15 @@ export interface HeaderRenderProps<T = unknown> {
   getSortIcon: (columnKey: string) => string | null;
   getStickyPosition: (columnKey: string) => string;
   isColumnVisible: (columnKey: string) => boolean;
+  // Column filter props
+  openFilterMenuColumn: string | null;
+  setOpenFilterMenuColumn: (columnKey: string | null) => void;
+  hasActiveColumnFilter: (columnKey: string) => boolean;
+  getColumnUniqueValues: (columnKey: string) => UniqueValue[];
+  columnFilters: ColumnFilters;
+  setColumnFilter: (columnKey: string, filter: ColumnFilter | null) => void;
+  handleColumnSort: (columnKey: string, direction: 'asc' | 'desc') => void;
+  headerRefs: React.MutableRefObject<{ [key: string]: HTMLElement | null }>;
 }
 
 export interface BaseTableProps<T> {
@@ -62,7 +72,6 @@ export interface BaseTableProps<T> {
   enableVirtualScroll?: boolean;
   enableHelp?: boolean;
   enableMobileExpand?: boolean;
-  enableQuickFilters?: boolean;
   itemsPerPage?: number;
   virtualScrollRowHeight?: number;
   virtualScrollOverscan?: number;
@@ -125,7 +134,6 @@ export default function BaseTable<T extends Record<string, unknown>>({
   enableVirtualScroll = false,
   enableHelp = false,
   enableMobileExpand = false,
-  enableQuickFilters = true,
   itemsPerPage = 50,
   virtualScrollRowHeight = 60,
   virtualScrollOverscan = 10,
@@ -158,7 +166,22 @@ export default function BaseTable<T extends Record<string, unknown>>({
   const [shareableLinkModalOpen, setShareableLinkModalOpen] = useState(false);
   const [expandedRows, setExpandedRows] = useState<{ [key: string]: boolean }>({});
   const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
+  const [openFilterMenuColumn, setOpenFilterMenuColumn] = useState<string | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
+  const headerRefs = useRef<{ [key: string]: HTMLElement | null }>({});
+
+  // Column filters hook
+  const {
+    filters: columnFilters,
+    setColumnFilter,
+    clearColumnFilter,
+    hasActiveFilter: hasActiveColumnFilter,
+    getColumnUniqueValues,
+    filteredData: columnFilteredData,
+  } = useColumnFilters<T>({
+    data,
+    tableId,
+  });
   
   // Column visibility
   const {
@@ -203,19 +226,56 @@ export default function BaseTable<T extends Record<string, unknown>>({
   // Get columns in correct order
   const orderedColumns = enableColumnReorder ? getOrderedColumns(columns) : columns;
 
-  // Search/filter data
+  // Determine which data to use: column filters replace advanced filters
+  const hasColumnFilters = Object.keys(columnFilters).length > 0;
+  const dataToFilter = hasColumnFilters ? columnFilteredData : data;
+
+  // Search/filter data (only if no column filters are active)
   const { searchValue, setSearchValue, filteredData } = useTableSearch<T>({
-    data,
+    data: dataToFilter,
     searchFields,
-    advancedFilters: filterValues,
+    advancedFilters: hasColumnFilters ? {} : filterValues, // Don't apply advanced filters if column filters are active
   });
 
+  // Determine final data: if column filters active, use column filtered data; otherwise use search filtered data
+  const finalFilteredData = hasColumnFilters ? columnFilteredData : filteredData;
+
   // Sort filtered data
-  const { sortedData, sortConfig, handleSort } = useTableSort(
-    filteredData,
+  const { sortedData, sortConfig, handleSort: baseHandleSort } = useTableSort(
+    finalFilteredData,
     defaultSortKey || (searchFields[0] as keyof T),
     defaultSortDirection
   );
+
+  // Handler specifically for column filter menu sort buttons
+  const handleColumnSort = useCallback((columnKey: string, direction: 'asc' | 'desc') => {
+    const key = columnKey as keyof T;
+    // If already sorted in the desired direction, do nothing
+    if (sortConfig.key === key && sortConfig.direction === direction) {
+      return;
+    }
+    
+    // If same column but different direction, toggle
+    if (sortConfig.key === key) {
+      baseHandleSort(key);
+    } else {
+      // Different column - need to set it
+      // Since baseHandleSort always starts with 'asc', we call it once
+      // and if we need 'desc', we'll need to call it again after state updates
+      baseHandleSort(key);
+      if (direction === 'desc') {
+        // Use requestAnimationFrame to ensure state has updated
+        requestAnimationFrame(() => {
+          baseHandleSort(key);
+        });
+      }
+    }
+  }, [baseHandleSort, sortConfig]);
+
+  // Default handleSort for column header clicks
+  const handleSort = useCallback((key: keyof T) => {
+    baseHandleSort(key);
+  }, [baseHandleSort]);
 
   // Paginate sorted data (if enabled)
   const paginationResult = useTablePagination({
@@ -269,10 +329,6 @@ export default function BaseTable<T extends Record<string, unknown>>({
   // Optimistic filter update
   const handleFilterChange = useCallback((newFilters: FilterValues) => {
     setFilterValues(newFilters);
-  }, []);
-
-  const handleClearFilters = useCallback(() => {
-    setFilterValues({});
   }, []);
 
   // Generate row key - must be defined before it's used in handlers
@@ -470,51 +526,91 @@ export default function BaseTable<T extends Record<string, unknown>>({
     
     const columnWidth = enableColumnResize ? getColumnWidth(column.key) : undefined;
     const isResizing = enableColumnResize && resizingColumn === column.key;
+    const isFilterMenuOpen = openFilterMenuColumn === column.key;
+    const hasActiveFilter = hasActiveColumnFilter(column.key);
+    const headerRef = headerRefs.current[column.key] || null;
     
-    if (!column.sortable) {
-      return (
-        <th
-          className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ${stickyClass} bg-gray-50 dark:bg-gray-900 ${isResizing ? 'bg-blue-100 dark:bg-blue-900/50' : ''}`}
-          style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
-          scope="col"
-          role="columnheader"
+    const handleFilterIconClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      // Close any other open menu, then toggle this one
+      if (isFilterMenuOpen) {
+        setOpenFilterMenuColumn(null);
+      } else {
+        setOpenFilterMenuColumn(column.key);
+      }
+    };
+
+    const handleSortClick = (e: React.MouseEvent) => {
+      // Only sort if clicking on the label area, not on filter icon
+      if (!isFilterMenuOpen) {
+        e.stopPropagation();
+        handleSort(column.key);
+      }
+    };
+
+    const filterIcon = (
+      <button
+        onClick={handleFilterIconClick}
+        className={`ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${
+          hasActiveFilter ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+        }`}
+        aria-label={`Filter ${column.label}`}
+        aria-expanded={isFilterMenuOpen}
+        title="Filter och sortering"
+        type="button"
+      >
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
-          <div className="flex items-center justify-between relative">
-            <span>{column.label}</span>
-            {enableColumnResize && (
-              <div
-                className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 dark:hover:bg-blue-400 transition-colors duration-base"
-                onMouseDown={(e) => handleResizeStart(column.key, e)}
-                role="separator"
-                aria-orientation="vertical"
-                aria-label={t('aria.resizeColumn', 'Ändra kolumnbredd')}
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6h16M4 12h16M4 18h16"
+          />
+        </svg>
+      </button>
+    );
+
+    const headerContent = (
+      <div className="flex items-center justify-between relative w-full">
+        <div className="flex items-center flex-1" onClick={column.sortable ? handleSortClick : undefined}>
+          {column.sortable && (
+            <div className={`flex items-center ${column.sortable ? 'cursor-pointer' : ''}`}>
+              <span>{column.label}</span>
+              {sortIcon && <span className="ml-1 text-gray-600 dark:text-gray-300">{sortIcon}</span>}
+            </div>
+          )}
+          {!column.sortable && <span>{column.label}</span>}
+        </div>
+        <div className="flex items-center relative" style={{ minWidth: '40px' }}>
+          <div className="relative">
+            {filterIcon}
+            {isFilterMenuOpen && headerRef && (
+              <ColumnFilterMenu
+                columnKey={column.key}
+                columnLabel={column.label}
+                isOpen={isFilterMenuOpen}
+                onClose={() => setOpenFilterMenuColumn(null)}
+                filter={columnFilters[column.key]}
+                onFilterChange={(filter) => setColumnFilter(column.key, filter)}
+                sortConfig={sortConfig}
+                onSort={handleColumnSort}
+                uniqueValues={getColumnUniqueValues(column.key)}
+                triggerRef={{ current: headerRef }}
               />
             )}
-          </div>
-        </th>
-      );
-    }
-    
-    return (
-      <th
-        onClick={() => handleSort(column.key)}
-        className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-base ${stickyClass} bg-gray-50 dark:bg-gray-900 ${isResizing ? 'bg-blue-100 dark:bg-blue-900/50' : ''}`}
-        style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
-        scope="col"
-        role="columnheader"
-        aria-label={`${t('aria.sortColumn')}: ${column.label}`}
-        aria-sort={isSorted ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
-      >
-        <div className="flex items-center space-x-1 relative">
-          <div className="flex items-center">
-            <span>{column.label}</span>
-            {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
           </div>
           {enableColumnResize && (
             <div
               className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 dark:hover:bg-blue-400 transition-colors duration-base"
               onMouseDown={(e) => {
-                e.stopPropagation();
+                if (column.sortable) {
+                  e.stopPropagation();
+                }
                 handleResizeStart(column.key, e);
               }}
               role="separator"
@@ -523,9 +619,41 @@ export default function BaseTable<T extends Record<string, unknown>>({
             />
           )}
         </div>
+      </div>
+    );
+    
+    if (!column.sortable) {
+      return (
+        <th
+          ref={(el) => {
+            headerRefs.current[column.key] = el;
+          }}
+          className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ${stickyClass} bg-gray-50 dark:bg-gray-900 ${isResizing ? 'bg-blue-100 dark:bg-blue-900/50' : ''}`}
+          style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
+          scope="col"
+          role="columnheader"
+        >
+          {headerContent}
+        </th>
+      );
+    }
+    
+    return (
+      <th
+        ref={(el) => {
+          headerRefs.current[column.key] = el;
+        }}
+        className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-base ${stickyClass} bg-gray-50 dark:bg-gray-900 ${isResizing ? 'bg-blue-100 dark:bg-blue-900/50' : ''}`}
+        style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
+        scope="col"
+        role="columnheader"
+        aria-label={`${t('aria.sortColumn')}: ${column.label}`}
+        aria-sort={isSorted ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+      >
+        {headerContent}
       </th>
     );
-  }, [stickyColumns, enableColumnResize, getColumnWidth, resizingColumn, handleResizeStart, t]);
+  }, [stickyColumns, enableColumnResize, getColumnWidth, resizingColumn, handleResizeStart, t, openFilterMenuColumn, hasActiveColumnFilter, columnFilters, getColumnUniqueValues, handleSort, sortConfig]);
 
   // Default mobile card renderer
   const defaultRenderMobileCard = useCallback((item: T, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
@@ -547,7 +675,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                   <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                     {column.label}
                   </span>
-                  <span className="text-sm text-gray-900 dark:text-gray-100 text-right">
+                  <span className="text-sm text-black dark:text-white text-right">
                     {renderCell(item, column, index, globalIndex)}
                   </span>
                 </div>
@@ -586,7 +714,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                   <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                     {column.label}
                   </span>
-                  <span className="text-sm text-gray-900 dark:text-gray-100 text-right">
+                  <span className="text-sm text-black dark:text-white text-right">
                     {renderCell(item, column, index, globalIndex)}
                   </span>
                 </div>
@@ -614,16 +742,6 @@ export default function BaseTable<T extends Record<string, unknown>>({
     );
   }
 
-  if (sortedData.length === 0 && !loading) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8" role="status" aria-live="polite">
-        <p className="text-gray-600 dark:text-gray-300 text-center">
-          {searchValue ? 'Inga resultat hittades.' : (emptyMessage || t('aria.noData'))}
-        </p>
-      </div>
-    );
-  }
-
   const headerRenderProps: HeaderRenderProps<T> = {
     column: columns[0], // Will be overridden per column
     sortConfig,
@@ -631,19 +749,19 @@ export default function BaseTable<T extends Record<string, unknown>>({
     getSortIcon,
     getStickyPosition,
     isColumnVisible,
+    openFilterMenuColumn,
+    setOpenFilterMenuColumn,
+    hasActiveColumnFilter,
+    getColumnUniqueValues,
+    columnFilters,
+    setColumnFilter,
+    handleColumnSort,
+    headerRefs,
   };
 
   return (
     <>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden h-full flex flex-col transition-all duration-normal ease-in-out">
-        {enableQuickFilters && (
-          <QuickFilters
-            filters={filters}
-            values={filterValues}
-            onChange={handleFilterChange}
-            tableId={tableId}
-          />
-        )}
         <div className="bg-white dark:bg-gray-800 border-b border-gray-300 dark:border-gray-500 px-4 py-3 flex items-center justify-between gap-4 flex-shrink-0">
           <div className="flex-1">
             <TableSearchBar
@@ -655,13 +773,6 @@ export default function BaseTable<T extends Record<string, unknown>>({
             />
           </div>
           <div className="flex items-center gap-2">
-            <AdvancedFilters
-              filters={filters}
-              values={filterValues}
-              onChange={handleFilterChange}
-              onClear={handleClearFilters}
-              tableId={tableId}
-            />
             <ColumnVisibilityToggle
               columns={columns}
               columnVisibility={columnVisibility}
@@ -856,7 +967,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                           return (
                             <td
                               key={column.key}
-                              className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-base ${stickyClass} ${alignClass} ${isSticky ? bgClass : ''}`}
+                              className={`px-6 py-4 whitespace-nowrap text-sm text-black dark:text-white transition-colors duration-base ${stickyClass} ${alignClass} ${isSticky ? bgClass : ''}`}
                               style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
                               role="gridcell"
                               aria-colindex={colIndex + 1}
@@ -874,64 +985,81 @@ export default function BaseTable<T extends Record<string, unknown>>({
               />
             ) : (
               <tbody className="divide-y divide-gray-300 dark:divide-gray-600">
-                {displayData.map((item, index) => {
-                  const globalIndex = enablePagination ? startIndex - 1 + index : index;
-                  const rowKey = getItemRowKey(item, globalIndex);
-                  const rowBgClass = globalIndex % 2 === 0 
-                    ? 'bg-white dark:bg-gray-800' 
-                    : 'bg-gray-50 dark:bg-gray-800';
-                  
-                  const isFocused = focusedRowIndex === index;
-                  return (
-                    <tr 
-                      key={rowKey}
-                      data-row-index={index}
-                      className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base animate-fade-in ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''}`}
-                      style={{ animationDelay: `${index * 10}ms` }}
-                      onClick={() => handleRowClick(index)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          const globalIndex = enablePagination ? startIndex - 1 + index : index;
-                          const rowKey = getItemRowKey(item, globalIndex);
-                          toggleRow(rowKey);
-                        }
-                      }}
-                      tabIndex={0}
-                      role="row"
-                      aria-rowindex={globalIndex + 2}
-                      aria-label={`Row ${globalIndex + 1}: ${'companyName' in item && typeof item.companyName === 'string' ? item.companyName : 'Item ' + (globalIndex + 1)}`}
+                {displayData.length === 0 ? (
+                  <tr role="row">
+                    <td 
+                      colSpan={orderedColumns.filter(col => isColumnVisible(col.key)).length} 
+                      className="px-6 py-8 text-center text-gray-600 dark:text-gray-300"
+                      role="gridcell"
                     >
-                      {orderedColumns
-                        .filter(col => isColumnVisible(col.key))
-                        .map((column, colIndex) => {
-                          const cellContent = column.renderCell
-                            ? column.renderCell(item, column, index, globalIndex)
-                            : renderCell(item, column, index, globalIndex);
-                          
-                          const isSticky = stickyColumns.includes(column.key);
-                          const stickyClass = isSticky ? `sm:sticky ${getStickyPosition(column.key)} z-20` : '';
-                          const alignClass = column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : '';
-                          const bgClass = globalIndex % 2 === 0 
-                            ? 'bg-white dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20' 
-                            : 'bg-gray-50 dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20';
-                          const columnWidth = enableColumnResize ? getColumnWidth(column.key) : undefined;
-                          
-                          return (
-                            <td
-                              key={column.key}
-                              className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-base ${stickyClass} ${alignClass} ${isSticky ? bgClass : ''}`}
-                              style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
-                              role="gridcell"
-                              aria-colindex={colIndex + 1}
-                            >
-                              {cellContent}
-                            </td>
-                          );
-                        })}
-                    </tr>
-                  );
-                })}
+                      <div className="text-sm">{searchValue || hasColumnFilters ? 'Inga resultat hittades.' : (emptyMessage || t('aria.noData'))}</div>
+                      {(searchValue || hasColumnFilters) && (
+                        <div className="text-xs mt-2 text-gray-500 dark:text-gray-400">
+                          Försök ändra dina sökkriterier eller filter.
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ) : (
+                  displayData.map((item, index) => {
+                    const globalIndex = enablePagination ? startIndex - 1 + index : index;
+                    const rowKey = getItemRowKey(item, globalIndex);
+                    const rowBgClass = globalIndex % 2 === 0 
+                      ? 'bg-white dark:bg-gray-800' 
+                      : 'bg-gray-50 dark:bg-gray-800';
+                    
+                    const isFocused = focusedRowIndex === index;
+                    return (
+                      <tr 
+                        key={rowKey}
+                        data-row-index={index}
+                        className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base animate-fade-in ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''}`}
+                        style={{ animationDelay: `${index * 10}ms` }}
+                        onClick={() => handleRowClick(index)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            const globalIndex = enablePagination ? startIndex - 1 + index : index;
+                            const rowKey = getItemRowKey(item, globalIndex);
+                            toggleRow(rowKey);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="row"
+                        aria-rowindex={globalIndex + 2}
+                        aria-label={`Row ${globalIndex + 1}: ${'companyName' in item && typeof item.companyName === 'string' ? item.companyName : 'Item ' + (globalIndex + 1)}`}
+                      >
+                        {orderedColumns
+                          .filter(col => isColumnVisible(col.key))
+                          .map((column, colIndex) => {
+                            const cellContent = column.renderCell
+                              ? column.renderCell(item, column, index, globalIndex)
+                              : renderCell(item, column, index, globalIndex);
+                            
+                            const isSticky = stickyColumns.includes(column.key);
+                            const stickyClass = isSticky ? `sm:sticky ${getStickyPosition(column.key)} z-20` : '';
+                            const alignClass = column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : '';
+                            const bgClass = globalIndex % 2 === 0 
+                              ? 'bg-white dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20' 
+                              : 'bg-gray-50 dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20';
+                            const columnWidth = enableColumnResize ? getColumnWidth(column.key) : undefined;
+                            
+                            return (
+                              <td
+                                key={column.key}
+                                className={`px-6 py-4 whitespace-nowrap text-sm text-black dark:text-white transition-colors duration-base ${stickyClass} ${alignClass} ${isSticky ? bgClass : ''}`}
+                                style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
+                                role="gridcell"
+                                aria-colindex={colIndex + 1}
+                              >
+                                {cellContent}
+                              </td>
+                            );
+                          })}
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             )}
           </table>
@@ -939,25 +1067,38 @@ export default function BaseTable<T extends Record<string, unknown>>({
         
         {/* Mobile Card View (<1024px) */}
         <div className="lg:hidden flex-1 overflow-auto min-h-0 space-y-4 p-4">
-          {displayData.map((item, index) => {
-            const globalIndex = enablePagination ? startIndex - 1 + index : index;
-            const rowKey = getItemRowKey(item, globalIndex);
-            const isExpanded = expandedRows[rowKey] || false;
-            
-            if (renderMobileCard) {
+          {displayData.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center" role="status" aria-live="polite">
+              <p className="text-gray-600 dark:text-gray-300">
+                {searchValue || hasColumnFilters ? 'Inga resultat hittades.' : (emptyMessage || t('aria.noData'))}
+              </p>
+              {(searchValue || hasColumnFilters) && (
+                <p className="text-xs mt-2 text-gray-500 dark:text-gray-400">
+                  Försök ändra dina sökkriterier eller filter.
+                </p>
+              )}
+            </div>
+          ) : (
+            displayData.map((item, index) => {
+              const globalIndex = enablePagination ? startIndex - 1 + index : index;
+              const rowKey = getItemRowKey(item, globalIndex);
+              const isExpanded = expandedRows[rowKey] || false;
+              
+              if (renderMobileCard) {
+                return (
+                  <React.Fragment key={rowKey}>
+                    {renderMobileCard(item, index, globalIndex, isExpanded, () => toggleRow(rowKey))}
+                  </React.Fragment>
+                );
+              }
+              
               return (
                 <React.Fragment key={rowKey}>
-                  {renderMobileCard(item, index, globalIndex, isExpanded, () => toggleRow(rowKey))}
+                  {defaultRenderMobileCard(item, index, globalIndex, isExpanded, () => toggleRow(rowKey))}
                 </React.Fragment>
               );
-            }
-            
-            return (
-              <React.Fragment key={rowKey}>
-                {defaultRenderMobileCard(item, index, globalIndex, isExpanded, () => toggleRow(rowKey))}
-              </React.Fragment>
-            );
-          })}
+            })
+          )}
         </div>
         
         {/* Pagination */}

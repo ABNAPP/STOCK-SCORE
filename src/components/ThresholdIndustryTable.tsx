@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useCallback } from 'react';
 import { ThresholdIndustryData } from '../types/stock';
 import BaseTable, { ColumnDefinition, HeaderRenderProps } from './BaseTable';
 import ColumnTooltip from './ColumnTooltip';
+import ColumnFilterMenu from './ColumnFilterMenu';
 import { getColumnMetadata } from '../config/tableMetadata';
 import { FilterConfig } from './AdvancedFilters';
 import { useTranslation } from 'react-i18next';
@@ -92,30 +93,119 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
 
   // Custom header renderer with ColumnTooltip
   const renderHeader = useCallback((props: HeaderRenderProps<ThresholdIndustryData>) => {
-    const { column, sortConfig, handleSort, getSortIcon, getStickyPosition, isColumnVisible } = props;
+    const { 
+      column, 
+      sortConfig, 
+      handleSort, 
+      getSortIcon, 
+      getStickyPosition, 
+      isColumnVisible,
+      openFilterMenuColumn,
+      setOpenFilterMenuColumn,
+      hasActiveColumnFilter,
+      getColumnUniqueValues,
+      columnFilters,
+      setColumnFilter,
+      handleColumnSort,
+      headerRefs,
+    } = props;
     const metadata = getColumnMetadata('threshold-industry', column.key);
     const isSticky = column.sticky;
     const sortIcon = getSortIcon(column.key);
     const stickyClass = isSticky ? `sm:sticky sm:top-0 ${getStickyPosition(column.key)} z-50` : '';
+    const isFilterMenuOpen = openFilterMenuColumn === column.key;
+    const hasActiveFilter = hasActiveColumnFilter(column.key);
+    const headerRef = headerRefs.current[column.key] || null;
+
+    const handleFilterIconClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isFilterMenuOpen) {
+        setOpenFilterMenuColumn(null);
+      } else {
+        setOpenFilterMenuColumn(column.key);
+      }
+    };
+
+    const handleSortClick = (e?: React.MouseEvent) => {
+      if (e) {
+        e.stopPropagation();
+      }
+      if (!isFilterMenuOpen) {
+        handleSort(column.key);
+      }
+    };
+
+    const filterIcon = (
+      <button
+        onClick={handleFilterIconClick}
+        className={`ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${
+          hasActiveFilter ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+        }`}
+        aria-label={`Filter ${column.label}`}
+        aria-expanded={isFilterMenuOpen}
+        title="Filter och sortering"
+        type="button"
+      >
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6h16M4 12h16M4 18h16"
+          />
+        </svg>
+      </button>
+    );
     
     if (!column.sortable) {
       const headerContent = (
         <th
+          ref={(el) => {
+            headerRefs.current[column.key] = el;
+          }}
           className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ${stickyClass} bg-gray-50 dark:bg-gray-900`}
           scope="col"
           role="columnheader"
         >
-          {metadata ? (
-            <ColumnTooltip metadata={metadata}>
-              <div className="flex items-center space-x-1">
-                <span>{column.label}</span>
-              </div>
-            </ColumnTooltip>
-          ) : (
-            <div className="flex items-center space-x-1">
-              <span>{column.label}</span>
+          <div className="flex items-center justify-between relative w-full">
+            <div className="flex items-center flex-1">
+              {metadata ? (
+                <ColumnTooltip metadata={metadata}>
+                  <div className="flex items-center space-x-1">
+                    <span>{column.label}</span>
+                  </div>
+                </ColumnTooltip>
+              ) : (
+                <div className="flex items-center space-x-1">
+                  <span>{column.label}</span>
+                </div>
+              )}
             </div>
-          )}
+            <div className="flex items-center relative" style={{ minWidth: '40px' }}>
+              <div className="relative">
+                {filterIcon}
+                {isFilterMenuOpen && headerRef && (
+                  <ColumnFilterMenu
+                    columnKey={column.key}
+                    columnLabel={column.label}
+                    isOpen={isFilterMenuOpen}
+                    onClose={() => setOpenFilterMenuColumn(null)}
+                    filter={columnFilters[column.key]}
+                    onFilterChange={(filter) => setColumnFilter(column.key, filter)}
+                    sortConfig={sortConfig}
+                    onSort={handleColumnSort}
+                    uniqueValues={getColumnUniqueValues(column.key)}
+                    triggerRef={{ current: headerRef }}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
         </th>
       );
       return <React.Fragment key={column.key}>{headerContent}</React.Fragment>;
@@ -123,24 +213,50 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
 
     const headerContent = (
       <th
-        onClick={() => handleSort(column.key)}
+        ref={(el) => {
+          headerRefs.current[column.key] = el;
+        }}
+        onClick={handleSortClick}
         className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-200 ${stickyClass} bg-gray-50 dark:bg-gray-900`}
         scope="col"
         role="columnheader"
       >
-        {metadata ? (
-          <ColumnTooltip metadata={metadata}>
-            <div className="flex items-center space-x-1">
-              <span>{column.label}</span>
-              {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
-            </div>
-          </ColumnTooltip>
-        ) : (
-          <div className="flex items-center space-x-1">
-            <span>{column.label}</span>
-            {sortIcon && <span className="text-gray-400 dark:text-gray-300">{sortIcon}</span>}
+        <div className="flex items-center justify-between relative w-full">
+          <div className="flex items-center flex-1" onClick={handleSortClick}>
+            {metadata ? (
+              <ColumnTooltip metadata={metadata}>
+                <div className="flex items-center space-x-1">
+                  <span>{column.label}</span>
+                  {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
+                </div>
+              </ColumnTooltip>
+            ) : (
+              <div className="flex items-center space-x-1">
+                <span>{column.label}</span>
+                {sortIcon && <span className="text-gray-400 dark:text-gray-300">{sortIcon}</span>}
+              </div>
+            )}
           </div>
-        )}
+          <div className="flex items-center relative" style={{ minWidth: '40px' }}>
+            <div className="relative">
+              {filterIcon}
+              {isFilterMenuOpen && headerRef && (
+                <ColumnFilterMenu
+                  columnKey={column.key}
+                  columnLabel={column.label}
+                  isOpen={isFilterMenuOpen}
+                  onClose={() => setOpenFilterMenuColumn(null)}
+                  filter={columnFilters[column.key]}
+                  onFilterChange={(filter) => setColumnFilter(column.key, filter)}
+                  sortConfig={sortConfig}
+                  onSort={handleColumnSort}
+                  uniqueValues={getColumnUniqueValues(column.key)}
+                  triggerRef={{ current: headerRef }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
       </th>
     );
     return <React.Fragment key={column.key}>{headerContent}</React.Fragment>;
@@ -176,7 +292,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               handleThresholdChange(item.industry, 'irr', value);
             }}
             onBlur={() => commitField(item.industry, 'irr')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
         );
@@ -191,7 +307,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               handleThresholdChange(item.industry, 'leverageF2Min', value);
             }}
             onBlur={() => commitField(item.industry, 'leverageF2Min')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
         );
@@ -206,7 +322,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               handleThresholdChange(item.industry, 'leverageF2Max', value);
             }}
             onBlur={() => commitField(item.industry, 'leverageF2Max')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
         );
@@ -221,7 +337,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               handleThresholdChange(item.industry, 'ro40Min', value);
             }}
             onBlur={() => commitField(item.industry, 'ro40Min')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
         );
@@ -236,7 +352,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               handleThresholdChange(item.industry, 'ro40Max', value);
             }}
             onBlur={() => commitField(item.industry, 'ro40Max')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
         );
@@ -251,7 +367,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               handleThresholdChange(item.industry, 'cashSdebtMin', value);
             }}
             onBlur={() => commitField(item.industry, 'cashSdebtMin')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
         );
@@ -266,7 +382,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               handleThresholdChange(item.industry, 'cashSdebtMax', value);
             }}
             onBlur={() => commitField(item.industry, 'cashSdebtMax')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
         );
@@ -281,7 +397,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               handleThresholdChange(item.industry, 'currentRatioMin', value);
             }}
             onBlur={() => commitField(item.industry, 'currentRatioMin')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
         );
@@ -296,7 +412,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
               handleThresholdChange(item.industry, 'currentRatioMax', value);
             }}
             onBlur={() => commitField(item.industry, 'currentRatioMax')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
             onClick={(e) => e.stopPropagation()}
           />
         );
@@ -335,11 +451,11 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
           <div className="flex-1 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Antal</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{globalIndex + 1}</span>
+              <span className="text-sm font-medium text-black dark:text-white">{globalIndex + 1}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">INDUSTRY</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 text-right">{item.industry}</span>
+              <span className="text-sm font-medium text-black dark:text-white text-right">{item.industry}</span>
             </div>
           </div>
           {/* Expand/Collapse Button */}
@@ -390,7 +506,7 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
                     handleThresholdChange(item.industry, key as keyof ThresholdValues, value);
                   }}
                   onBlur={() => commitField(item.industry, key as keyof ThresholdValues)}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>

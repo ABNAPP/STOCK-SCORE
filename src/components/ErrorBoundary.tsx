@@ -56,7 +56,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              <h2 className="text-2xl font-bold text-black dark:text-white">
                 {i18n.t('errorBoundary.configurationError')}
               </h2>
             </div>

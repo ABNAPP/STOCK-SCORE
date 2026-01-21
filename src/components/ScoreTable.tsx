@@ -47,8 +47,8 @@ const SCORE_FILTERS: FilterConfig[] = [
 export default function ScoreTable({ data, loading, error, thresholdData = [], benjaminGrahamData = [], entryExitValues = new Map() }: ScoreTableProps) {
   const getScoreColorClass = useCallback((score: number): string => {
     if (score >= 75) return 'text-green-700 dark:text-green-200 font-bold';
-    if (score >= 45) return 'text-blue-700 dark:text-blue-400 font-semibold';
-    return 'text-gray-600 dark:text-gray-400';
+    if (score >= 50) return 'text-blue-700 dark:text-blue-400 font-semibold';
+    return 'text-black dark:text-white';
   }, []);
 
   const renderCell = useCallback((item: ScoreData, column: ColumnDefinition, index: number, globalIndex: number) => {
@@ -91,11 +91,11 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Antal</span>
-            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{globalIndex + 1}</span>
+            <span className="text-sm font-medium text-black dark:text-white">{globalIndex + 1}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Company Name</span>
-            <span className="text-sm font-medium text-gray-900 dark:text-gray-100 text-right">{item.companyName}</span>
+            <span className="text-sm font-medium text-black dark:text-white text-right">{item.companyName}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ticker</span>

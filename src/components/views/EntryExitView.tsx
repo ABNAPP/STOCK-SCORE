@@ -34,7 +34,7 @@ export default function EntryExitView({ viewId }: EntryExitViewProps) {
           <div className="w-full flex flex-col flex-1 min-h-0">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 flex-shrink-0 gap-4">
               <div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-1 tracking-tight">{getViewTitle()}</h1>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black dark:text-white mb-1 tracking-tight">{getViewTitle()}</h1>
                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Entry och exit-punkter för aktier</p>
               </div>
             </div>
@@ -58,7 +58,7 @@ export default function EntryExitView({ viewId }: EntryExitViewProps) {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">{getViewTitle()}</h1>
+        <h1 className="text-3xl font-bold text-black dark:text-white mb-6">{getViewTitle()}</h1>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01]">
           <p className="text-gray-600 dark:text-gray-400">{t('common.underConstruction')}</p>
           <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">{t('common.viewId')} {viewId}</p>

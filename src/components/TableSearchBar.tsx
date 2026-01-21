@@ -45,7 +45,7 @@ export default function TableSearchBar({
             }}
             placeholder={placeholder}
             maxLength={200}
-            className="block w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-500 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 focus:shadow-sm"
+            className="block w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-500 rounded-md leading-5 bg-white dark:bg-gray-700 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 focus:shadow-sm"
           />
           {searchValue && (
             <button
@@ -75,12 +75,12 @@ export default function TableSearchBar({
       <div className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap text-center sm:text-left">
         {filteredRows !== totalRows ? (
           <>
-            Visar <span className="font-bold text-gray-900 dark:text-gray-100">{filteredRows}</span> av{' '}
-            <span className="font-bold text-gray-900 dark:text-gray-100">{totalRows}</span> rader
+            Visar <span className="font-bold text-black dark:text-white">{filteredRows}</span> av{' '}
+            <span className="font-bold text-black dark:text-white">{totalRows}</span> rader
           </>
         ) : (
           <>
-            <span className="font-bold text-gray-900 dark:text-gray-100">{totalRows}</span> rader
+            <span className="font-bold text-black dark:text-white">{totalRows}</span> rader
           </>
         )}
       </div>

@@ -186,7 +186,7 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
           
           {/* Title */}
           {!isCollapsed && (
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 tracking-tight">
+            <h2 className="text-2xl font-bold text-black dark:text-white mb-6 tracking-tight">
               {t('navigation.title')}
             </h2>
           )}

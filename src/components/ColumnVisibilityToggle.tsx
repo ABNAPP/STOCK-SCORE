@@ -86,7 +86,7 @@ export default function ColumnVisibilityToggle({
         <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-500 z-50 max-h-96 overflow-y-auto animate-fade-in-up transition-all duration-200">
           <div className="p-3 border-b border-gray-200 dark:border-gray-500">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-sm font-semibold text-black dark:text-white">
                 Kolumnvisning
               </h3>
               <button

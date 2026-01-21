@@ -277,7 +277,7 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, activeVie
                 <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <span className="text-sm font-medium text-black dark:text-white">
                   {isRefreshing ? t('refresh.refreshing') : t('refresh.refreshNow')}
                 </span>
               </button>
@@ -295,7 +295,7 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, activeVie
                 aria-label={t('aria.autoRefreshOff')}
                 aria-checked={!enabled || interval === 0}
               >
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <span className="text-sm font-medium text-black dark:text-white">
                   {t('refresh.autoRefreshOff')}
                 </span>
               </button>
@@ -308,7 +308,7 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, activeVie
                 aria-label={t('aria.autoRefresh1Hour')}
                 aria-checked={enabled && interval === AUTO_REFRESH_INTERVALS.HOUR_1}
               >
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <span className="text-sm font-medium text-black dark:text-white">
                   {t('refresh.autoRefresh1Hour', '1 timme')}
                 </span>
               </button>
@@ -321,7 +321,7 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, activeVie
                 aria-label={t('aria.autoRefresh3Hours')}
                 aria-checked={enabled && interval === AUTO_REFRESH_INTERVALS.HOUR_3}
               >
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <span className="text-sm font-medium text-black dark:text-white">
                   {t('refresh.autoRefresh3Hours', '3 timmar')}
                 </span>
               </button>
@@ -356,7 +356,7 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, activeVie
                 aria-label={t('aria.englishLanguage')}
                 aria-checked={i18n.language === 'en'}
               >
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Engelska</span>
+                <span className="text-sm font-medium text-black dark:text-white">Engelska</span>
               </button>
               <button
                 onClick={() => handleLanguageChange('sv')}
@@ -367,7 +367,7 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, activeVie
                 aria-label={t('aria.swedishLanguage')}
                 aria-checked={i18n.language === 'sv'}
               >
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Svenska</span>
+                <span className="text-sm font-medium text-black dark:text-white">Svenska</span>
               </button>
             </div>
           )}
@@ -403,7 +403,7 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, activeVie
                 <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Light Theme</span>
+                <span className="text-sm font-medium text-black dark:text-white">Light Theme</span>
               </button>
               <button
                 onClick={() => handleThemeChange('dark')}
@@ -417,7 +417,7 @@ export default function Header({ onMenuToggle, isMenuOpen, onNavigate, activeVie
                 <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                 </svg>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Dark Theme</span>
+                <span className="text-sm font-medium text-black dark:text-white">Dark Theme</span>
               </button>
             </div>
           )}

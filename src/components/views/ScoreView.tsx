@@ -97,7 +97,7 @@ function ScoreViewInner() {
       <div className="w-full flex flex-col flex-1 min-h-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 flex-shrink-0 gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-1 tracking-tight">Score</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black dark:text-white mb-1 tracking-tight">Score</h1>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Poängsystem baserat på färgkodning (0-100)</p>
           </div>
         </div>

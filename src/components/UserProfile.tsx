@@ -121,7 +121,7 @@ export default function UserProfile({ onClose }: UserProfileProps) {
   return (
     <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <h2 className="text-2xl font-bold text-black dark:text-white">
           {t('profile.title')}
         </h2>
         {onClose && (
@@ -153,13 +153,13 @@ export default function UserProfile({ onClose }: UserProfileProps) {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t('auth.email')}
             </label>
-            <p className="text-gray-900 dark:text-gray-100">{currentUser.email}</p>
+            <p className="text-black dark:text-white">{currentUser.email}</p>
           </div>
         )}
 
         {/* Notification Preferences */}
         <div className="border-t border-gray-300 dark:border-gray-600 pt-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+          <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
             {t('profile.notificationPreferences', 'Notification Preferences')}
           </h3>
           
@@ -310,7 +310,7 @@ export default function UserProfile({ onClose }: UserProfileProps) {
       {showDeregisterConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-md mx-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+            <h3 className="text-lg font-bold text-black dark:text-white mb-4">
               {t('profile.confirmDeregister') || 'Bekräfta avregistrering'}
             </h3>
             <p className="text-gray-600 dark:text-gray-300 mb-6">

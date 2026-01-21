@@ -49,7 +49,7 @@ export default function EnhancedLoadingState({ dataSourceNames }: EnhancedLoadin
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="text-sm font-semibold text-black dark:text-white">
             {t('loading.loadingData', 'Laddar data...')}
           </h3>
           {estimatedTimeRemaining > 0 && (
@@ -116,7 +116,7 @@ export default function EnhancedLoadingState({ dataSourceNames }: EnhancedLoadin
                         ? 'text-green-700 dark:text-green-400'
                         : isError
                         ? 'text-red-700 dark:text-red-400'
-                        : 'text-gray-900 dark:text-gray-100'
+                        : 'text-black dark:text-white'
                     }`}
                   >
                     {displayName}

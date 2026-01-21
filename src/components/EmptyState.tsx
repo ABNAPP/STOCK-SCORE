@@ -209,7 +209,7 @@ export default function EmptyState({
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 sm:p-12" role="status" aria-live="polite">
       <div className="flex flex-col items-center justify-center text-center">
         <div className="mb-4">{content.icon}</div>
-        <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+        <h3 className="text-lg sm:text-xl font-semibold text-black dark:text-white mb-2">
           {content.title}
         </h3>
         {content.description && (

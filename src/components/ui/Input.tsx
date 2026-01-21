@@ -41,7 +41,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       ? 'pl-10 pr-10'
       : 'px-4';
 
-    const inputStyles = `${baseStyles} ${stateStyles} ${paddingStyles} py-2 text-base text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-secondary-400 dark:placeholder:text-secondary-500 ${className}`;
+    const inputStyles = `${baseStyles} ${stateStyles} ${paddingStyles} py-2 text-base text-black dark:text-white bg-white dark:bg-gray-800 placeholder:text-secondary-400 dark:placeholder:text-secondary-500 ${className}`;
 
     const widthStyles = fullWidth ? 'w-full' : '';
 

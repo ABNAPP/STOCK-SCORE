@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { BenjaminGrahamData } from '../types/stock';
 import BaseTable, { ColumnDefinition, HeaderRenderProps } from './BaseTable';
 import ColumnTooltip from './ColumnTooltip';
+import ColumnFilterMenu from './ColumnFilterMenu';
 import { getColumnMetadata } from '../config/tableMetadata';
 import { FilterConfig } from './AdvancedFilters';
 import { useTranslation } from 'react-i18next';
@@ -230,31 +231,120 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
 
   // Custom header renderer with ColumnTooltip
   const renderHeader = useCallback((props: HeaderRenderProps<BenjaminGrahamData>) => {
-    const { column, sortConfig, handleSort, getSortIcon, getStickyPosition, isColumnVisible } = props;
+    const { 
+      column, 
+      sortConfig, 
+      handleSort, 
+      getSortIcon, 
+      getStickyPosition, 
+      isColumnVisible,
+      openFilterMenuColumn,
+      setOpenFilterMenuColumn,
+      hasActiveColumnFilter,
+      getColumnUniqueValues,
+      columnFilters,
+      setColumnFilter,
+      handleColumnSort,
+      headerRefs,
+    } = props;
     const metadata = getColumnMetadata('benjamin-graham', column.key);
     const isSticky = column.sticky;
     const isSorted = sortConfig.key === column.key;
     const sortIcon = getSortIcon(column.key);
     const stickyClass = isSticky ? `sm:sticky sm:top-0 ${getStickyPosition(column.key)} z-50` : '';
+    const isFilterMenuOpen = openFilterMenuColumn === column.key;
+    const hasActiveFilter = hasActiveColumnFilter(column.key);
+    const headerRef = headerRefs.current[column.key] || null;
+
+    const handleFilterIconClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isFilterMenuOpen) {
+        setOpenFilterMenuColumn(null);
+      } else {
+        setOpenFilterMenuColumn(column.key);
+      }
+    };
+
+    const handleSortClick = (e?: React.MouseEvent) => {
+      if (e) {
+        e.stopPropagation();
+      }
+      if (!isFilterMenuOpen) {
+        handleSort(column.key);
+      }
+    };
+
+    const filterIcon = (
+      <button
+        onClick={handleFilterIconClick}
+        className={`ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${
+          hasActiveFilter ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+        }`}
+        aria-label={`Filter ${column.label}`}
+        aria-expanded={isFilterMenuOpen}
+        title="Filter och sortering"
+        type="button"
+      >
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6h16M4 12h16M4 18h16"
+          />
+        </svg>
+      </button>
+    );
     
     if (!column.sortable) {
       const headerContent = (
         <th
+          ref={(el) => {
+            headerRefs.current[column.key] = el;
+          }}
           className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ${stickyClass} bg-gray-50 dark:bg-gray-900`}
           scope="col"
           role="columnheader"
         >
-          {metadata ? (
-            <ColumnTooltip metadata={metadata}>
-              <div className="flex items-center space-x-1">
-                <span>{column.label}</span>
-              </div>
-            </ColumnTooltip>
-          ) : (
-            <div className="flex items-center space-x-1">
-              <span>{column.label}</span>
+          <div className="flex items-center justify-between relative w-full">
+            <div className="flex items-center flex-1">
+              {metadata ? (
+                <ColumnTooltip metadata={metadata}>
+                  <div className="flex items-center space-x-1">
+                    <span>{column.label}</span>
+                  </div>
+                </ColumnTooltip>
+              ) : (
+                <div className="flex items-center space-x-1">
+                  <span>{column.label}</span>
+                </div>
+              )}
             </div>
-          )}
+            <div className="flex items-center relative" style={{ minWidth: '40px' }}>
+              <div className="relative">
+                {filterIcon}
+                {isFilterMenuOpen && headerRef && (
+                  <ColumnFilterMenu
+                    columnKey={column.key}
+                    columnLabel={column.label}
+                    isOpen={isFilterMenuOpen}
+                    onClose={() => setOpenFilterMenuColumn(null)}
+                    filter={columnFilters[column.key]}
+                    onFilterChange={(filter) => setColumnFilter(column.key, filter)}
+                    sortConfig={sortConfig}
+                    onSort={handleColumnSort}
+                    uniqueValues={getColumnUniqueValues(column.key)}
+                    triggerRef={{ current: headerRef }}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
         </th>
       );
       return <React.Fragment key={column.key}>{headerContent}</React.Fragment>;
@@ -262,24 +352,50 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
 
     const headerContent = (
       <th
-        onClick={() => handleSort(column.key)}
+        ref={(el) => {
+          headerRefs.current[column.key] = el;
+        }}
+        onClick={handleSortClick}
         className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-200 ${stickyClass} bg-gray-50 dark:bg-gray-900`}
         scope="col"
         role="columnheader"
       >
-        {metadata ? (
-          <ColumnTooltip metadata={metadata}>
-            <div className="flex items-center space-x-1">
-              <span>{column.label}</span>
-              {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
-            </div>
-          </ColumnTooltip>
-        ) : (
-          <div className="flex items-center space-x-1">
-            <span>{column.label}</span>
-            {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
+        <div className="flex items-center justify-between relative w-full">
+          <div className="flex items-center flex-1" onClick={handleSortClick}>
+            {metadata ? (
+              <ColumnTooltip metadata={metadata}>
+                <div className="flex items-center space-x-1">
+                  <span>{column.label}</span>
+                  {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
+                </div>
+              </ColumnTooltip>
+            ) : (
+              <div className="flex items-center space-x-1">
+                <span>{column.label}</span>
+                {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
+              </div>
+            )}
           </div>
-        )}
+          <div className="flex items-center relative" style={{ minWidth: '40px' }}>
+            <div className="relative">
+              {filterIcon}
+              {isFilterMenuOpen && headerRef && (
+                <ColumnFilterMenu
+                  columnKey={column.key}
+                  columnLabel={column.label}
+                  isOpen={isFilterMenuOpen}
+                  onClose={() => setOpenFilterMenuColumn(null)}
+                  filter={columnFilters[column.key]}
+                  onFilterChange={(filter) => setColumnFilter(column.key, filter)}
+                  sortConfig={sortConfig}
+                  onSort={handleColumnSort}
+                  uniqueValues={getColumnUniqueValues(column.key)}
+                  triggerRef={{ current: headerRef }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
       </th>
     );
     return <React.Fragment key={column.key}>{headerContent}</React.Fragment>;
@@ -313,7 +429,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
         return <span className="text-gray-600 dark:text-gray-300">{item.ticker}</span>;
       case 'currency':
         if (!isAdmin) {
-          return <span className="text-gray-900 dark:text-gray-100">{values.currency || 'USD'}</span>;
+          return <span className="text-black dark:text-white">{values.currency || 'USD'}</span>;
         }
         const currencyKey = `${item.ticker}-${item.companyName}-currency`;
         const currencyError = validationErrors[currencyKey];
@@ -340,7 +456,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
                   commitField(item.ticker, item.companyName, 'currency');
                 }
               }}
-              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:border-transparent ${
+              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:border-transparent ${
                 currencyError
                   ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
                   : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
@@ -363,7 +479,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
         );
       case 'entry1':
         if (!isAdmin) {
-          return <span className="text-gray-900 dark:text-gray-100">{values.entry1 || '-'}</span>;
+          return <span className="text-black dark:text-white">{values.entry1 || '-'}</span>;
         }
         const entry1Key = `${item.ticker}-${item.companyName}-entry1`;
         const entry1Error = validationErrors[entry1Key];
@@ -385,7 +501,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
               min={0}
               max={1000000}
               step={0.01}
-              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
+              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
                 entry1Error
                   ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
                   : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
@@ -402,7 +518,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
         );
       case 'entry2':
         if (!isAdmin) {
-          return <span className="text-gray-900 dark:text-gray-100">{values.entry2 || '-'}</span>;
+          return <span className="text-black dark:text-white">{values.entry2 || '-'}</span>;
         }
         const entry2Key = `${item.ticker}-${item.companyName}-entry2`;
         const entry2Error = validationErrors[entry2Key];
@@ -424,7 +540,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
               min={0}
               max={1000000}
               step={0.01}
-              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
+              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
                 entry2Error
                   ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
                   : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
@@ -441,7 +557,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
         );
       case 'exit1':
         if (!isAdmin) {
-          return <span className="text-gray-900 dark:text-gray-100">{values.exit1 || '-'}</span>;
+          return <span className="text-black dark:text-white">{values.exit1 || '-'}</span>;
         }
         const exit1Key = `${item.ticker}-${item.companyName}-exit1`;
         const exit1Error = validationErrors[exit1Key];
@@ -463,7 +579,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
               min={0}
               max={1000000}
               step={0.01}
-              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
+              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
                 exit1Error
                   ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
                   : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
@@ -480,7 +596,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
         );
       case 'exit2':
         if (!isAdmin) {
-          return <span className="text-gray-900 dark:text-gray-100">{values.exit2 || '-'}</span>;
+          return <span className="text-black dark:text-white">{values.exit2 || '-'}</span>;
         }
         const exit2Key = `${item.ticker}-${item.companyName}-exit2`;
         const exit2Error = validationErrors[exit2Key];
@@ -502,7 +618,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
               min={0}
               max={1000000}
               step={0.01}
-              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
+              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
                 exit2Error
                   ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
                   : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
@@ -524,18 +640,18 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
             !(values.entry1 === 0 && values.entry2 === 0 && values.exit1 === 0 && values.exit2 === 0) &&
             isDateOld(values.dateOfUpdate)
               ? 'text-red-600 dark:text-red-400'
-              : 'text-gray-900 dark:text-gray-100'
+              : 'text-black dark:text-white'
           }>
             {values.dateOfUpdate || '-'}
           </span>
         );
       case 'price':
-        return <span className="text-gray-900 dark:text-gray-100">{item.price !== null ? item.price.toLocaleString() : 'N/A'}</span>;
+        return <span className="text-black dark:text-white">{item.price !== null ? item.price.toLocaleString() : 'N/A'}</span>;
       case 'benjaminGraham':
         return (
           <span className={
             item.benjaminGraham === null
-              ? 'text-gray-900 dark:text-gray-100'
+              ? 'text-black dark:text-white'
               : item.benjaminGraham < 0 
               ? 'text-red-700 dark:text-red-400'
               : item.benjaminGraham > 0 && 
@@ -546,14 +662,14 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
                 item.price !== null && item.price > 0 && 
                 item.price <= item.benjaminGraham * PRICE_TOLERANCE_BLUE
               ? 'text-blue-700 dark:text-blue-400'
-              : 'text-gray-900 dark:text-gray-100'
+              : 'text-black dark:text-white'
           }>
             {item.benjaminGraham !== null ? item.benjaminGraham.toLocaleString() : 'N/A'}
           </span>
         );
       case 'ivFcf':
         if (!hasIvFcf) return null;
-        return <span className="text-gray-900 dark:text-gray-100">{item.ivFcf !== null && item.ivFcf !== undefined ? item.ivFcf.toLocaleString() : 'N/A'}</span>;
+        return <span className="text-black dark:text-white">{item.ivFcf !== null && item.ivFcf !== undefined ? item.ivFcf.toLocaleString() : 'N/A'}</span>;
       case 'irr1':
         {
           const entryExitValues = getEntryExitValue(item.ticker, item.companyName);
@@ -562,7 +678,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
           const rr1 = calculateRR1(entry1, exit1);
           const colorClass = getRR1Color(rr1, item.price, entry1);
           return (
-            <span className={colorClass || 'text-gray-900 dark:text-gray-100'}>
+            <span className={colorClass || 'text-black dark:text-white'}>
               {rr1 !== null ? `${Math.round(rr1)}%` : 'N/A'}
             </span>
           );
@@ -575,7 +691,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
           const rr2 = calculateRR2(entry2, exit2);
           const colorClass = getRR2Color(rr2, item.price, entry2);
           return (
-            <span className={colorClass || 'text-gray-900 dark:text-gray-100'}>
+            <span className={colorClass || 'text-black dark:text-white'}>
               {rr2 !== null ? `${Math.round(rr2)}%` : 'N/A'}
             </span>
           );
@@ -614,11 +730,11 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
           <div className="flex-1 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Antal</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{globalIndex + 1}</span>
+              <span className="text-sm font-medium text-black dark:text-white">{globalIndex + 1}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Company Name</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 text-right">{item.companyName}</span>
+              <span className="text-sm font-medium text-black dark:text-white text-right">{item.companyName}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Ticker</span>
@@ -631,7 +747,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
                   value={currency || 'USD'}
                   onChange={(e) => handleCurrencyChange(item.ticker, item.companyName, e.target.value)}
                   onBlur={() => commitField(item.ticker, item.companyName, 'currency')}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {CURRENCIES.map((curr) => (
@@ -641,7 +757,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
                   ))}
                 </select>
               ) : (
-                <span className="text-sm text-gray-900 dark:text-gray-100">{currency || 'USD'}</span>
+                <span className="text-sm text-black dark:text-white">{currency || 'USD'}</span>
               )}
             </div>
           </div>
@@ -682,11 +798,11 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
                     handleEntryExitChange(item.ticker, item.companyName, 'entry1', value);
                   }}
                   onBlur={() => commitField(item.ticker, item.companyName, 'entry1')}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
-                <span className="text-sm text-gray-900 dark:text-gray-100">{entry1 || '-'}</span>
+                <span className="text-sm text-black dark:text-white">{entry1 || '-'}</span>
               )}
             </div>
             <div className="flex items-center justify-between">
@@ -700,11 +816,11 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
                     handleEntryExitChange(item.ticker, item.companyName, 'entry2', value);
                   }}
                   onBlur={() => commitField(item.ticker, item.companyName, 'entry2')}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
-                <span className="text-sm text-gray-900 dark:text-gray-100">{entry2 || '-'}</span>
+                <span className="text-sm text-black dark:text-white">{entry2 || '-'}</span>
               )}
             </div>
             <div className="flex items-center justify-between">
@@ -718,11 +834,11 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
                     handleEntryExitChange(item.ticker, item.companyName, 'exit1', value);
                   }}
                   onBlur={() => commitField(item.ticker, item.companyName, 'exit1')}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
-                <span className="text-sm text-gray-900 dark:text-gray-100">{exit1 || '-'}</span>
+                <span className="text-sm text-black dark:text-white">{exit1 || '-'}</span>
               )}
             </div>
             <div className="flex items-center justify-between">
@@ -736,11 +852,11 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
                     handleEntryExitChange(item.ticker, item.companyName, 'exit2', value);
                   }}
                   onBlur={() => commitField(item.ticker, item.companyName, 'exit2')}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
+                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
-                <span className="text-sm text-gray-900 dark:text-gray-100">{exit2 || '-'}</span>
+                <span className="text-sm text-black dark:text-white">{exit2 || '-'}</span>
               )}
             </div>
             <div className="flex items-center justify-between">
@@ -750,14 +866,14 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
                 !(entry1 === 0 && entry2 === 0 && exit1 === 0 && exit2 === 0) &&
                 isDateOld(dateOfUpdate)
                   ? 'text-red-600 dark:text-red-400'
-                  : 'text-gray-900 dark:text-gray-100'
+                  : 'text-black dark:text-white'
               }`}>
                 {dateOfUpdate || '-'}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Price</span>
-              <span className="text-sm text-gray-900 dark:text-gray-100">
+              <span className="text-sm text-black dark:text-white">
                 {item.price !== null ? item.price.toLocaleString() : 'N/A'}
               </span>
             </div>
@@ -765,7 +881,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Benjamin Graham</span>
               <span className={`text-sm text-center ${
                 item.benjaminGraham === null
-                  ? 'text-gray-900 dark:text-gray-100'
+                  ? 'text-black dark:text-white'
                   : item.benjaminGraham < 0 
                   ? 'text-red-700 dark:text-red-300'
                   : item.benjaminGraham > 0 && 
@@ -776,7 +892,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
                     item.price !== null && item.price > 0 && 
                     item.price <= item.benjaminGraham * PRICE_TOLERANCE_BLUE
                   ? 'text-blue-700 dark:text-blue-400'
-                  : 'text-gray-900 dark:text-gray-100'
+                  : 'text-black dark:text-white'
               }`}>
                 {item.benjaminGraham !== null ? item.benjaminGraham.toLocaleString() : 'N/A'}
               </span>
@@ -784,20 +900,20 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
             {hasIvFcf && (
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">IV (FCF)</span>
-                <span className="text-sm text-gray-900 dark:text-gray-100">
+                <span className="text-sm text-black dark:text-white">
                   {item.ivFcf !== null && item.ivFcf !== undefined ? item.ivFcf.toLocaleString() : 'N/A'}
                 </span>
               </div>
             )}
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">RR1</span>
-              <span className={`text-sm ${rr1Color || 'text-gray-900 dark:text-gray-100'}`}>
+              <span className={`text-sm ${rr1Color || 'text-black dark:text-white'}`}>
                 {rr1 !== null ? `${Math.round(rr1)}%` : 'N/A'}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">RR2</span>
-              <span className={`text-sm ${rr2Color || 'text-gray-900 dark:text-gray-100'}`}>
+              <span className={`text-sm ${rr2Color || 'text-black dark:text-white'}`}>
                 {rr2 !== null ? `${Math.round(rr2)}%` : 'N/A'}
               </span>
             </div>
@@ -830,7 +946,6 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
       virtualScrollRowHeight={60}
       virtualScrollOverscan={10}
       enableMobileExpand={true}
-      enableQuickFilters={false}
       searchFields={['companyName', 'ticker']}
       searchPlaceholder="Sök efter företag eller ticker..."
       defaultSortKey="companyName"

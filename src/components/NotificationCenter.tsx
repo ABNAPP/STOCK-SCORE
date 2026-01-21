@@ -110,7 +110,7 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-300 dark:border-gray-600">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="text-xl font-bold text-black dark:text-white">
               {t('notifications.title', 'Notifications')}
             </h2>
             {unreadCount > 0 && (

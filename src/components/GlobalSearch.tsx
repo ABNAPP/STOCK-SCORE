@@ -136,7 +136,7 @@ export default function GlobalSearch({ onNavigate }: GlobalSearchProps) {
           }}
           placeholder={t('globalSearch.placeholder', 'Sök i alla tabeller...')}
           maxLength={200}
-          className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-500 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-600 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm"
+          className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-500 rounded-lg bg-white dark:bg-gray-700 text-black dark:text-white placeholder-gray-600 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm"
         />
         {query && (
           <button
@@ -164,7 +164,7 @@ export default function GlobalSearch({ onNavigate }: GlobalSearchProps) {
                 className={`w-full text-left px-3 py-3 sm:py-2 rounded-md transition-all duration-200 min-h-[44px] touch-manipulation ${
                   index === selectedIndex
                     ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 scale-[1.02]'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 hover:scale-[1.01] active:scale-95'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-black dark:text-white hover:scale-[1.01] active:scale-95'
                 }`}
               >
                 <div className="flex items-center justify-between">

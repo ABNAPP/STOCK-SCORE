@@ -39,7 +39,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
       ? 'border-error-500 focus:border-error-500 focus:ring-error-500 dark:border-error-400 dark:focus:border-error-400'
       : 'border-secondary-300 focus:border-primary-500 focus:ring-primary-500 dark:border-secondary-600 dark:focus:border-primary-400';
 
-    const selectStyles = `${baseStyles} ${stateStyles} px-4 py-2 text-base text-gray-900 dark:text-gray-100 ${className}`;
+    const selectStyles = `${baseStyles} ${stateStyles} px-4 py-2 text-base text-black dark:text-white ${className}`;
 
     const widthStyles = fullWidth ? 'w-full' : '';
 

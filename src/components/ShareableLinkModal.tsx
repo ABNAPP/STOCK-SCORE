@@ -147,7 +147,7 @@ export default function ShareableLinkModal({
       >
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="text-2xl font-bold text-black dark:text-white">
               {t('shareableLinks.title', 'Create Shareable Link')}
             </h2>
             <button
@@ -172,7 +172,7 @@ export default function ShareableLinkModal({
                   value={linkName}
                   onChange={(e) => setLinkName(e.target.value)}
                   placeholder={t('shareableLinks.linkNamePlaceholder', 'e.g., High Score Stocks')}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white"
                 />
               </div>
 
@@ -185,7 +185,7 @@ export default function ShareableLinkModal({
                   onChange={(e) => setLinkDescription(e.target.value)}
                   placeholder={t('shareableLinks.descriptionPlaceholder', 'Add a description...')}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white"
                 />
               </div>
 
@@ -196,7 +196,7 @@ export default function ShareableLinkModal({
                 <select
                   value={expiresInDays}
                   onChange={(e) => setExpiresInDays(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white"
                 >
                   <option value={7}>7 days</option>
                   <option value={30}>30 days</option>
@@ -225,7 +225,7 @@ export default function ShareableLinkModal({
                     type="text"
                     value={shareableUrl}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-green-300 dark:border-green-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                    className="flex-1 px-3 py-2 border border-green-300 dark:border-green-700 rounded-md bg-white dark:bg-gray-800 text-black dark:text-white text-sm"
                   />
                   <Button
                     variant="primary"
@@ -248,7 +248,7 @@ export default function ShareableLinkModal({
           {/* User's existing links */}
           {currentUser && (
             <div className="mt-8 border-t border-gray-300 dark:border-gray-600 pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
                 {t('shareableLinks.myLinks', 'My Shareable Links')}
               </h3>
               {loadingLinks ? (
@@ -265,7 +265,7 @@ export default function ShareableLinkModal({
                       className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        <p className="text-sm font-medium text-black dark:text-white truncate">
                           {link.name || t('shareableLinks.unnamed', 'Unnamed Link')}
                         </p>
                         <p className="text-xs text-gray-600 dark:text-gray-400">

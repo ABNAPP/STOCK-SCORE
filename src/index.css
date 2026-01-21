@@ -16,6 +16,12 @@ body {
   background-color: #f5f5f5;
   font-size: 16px;
   line-height: 1.5;
+  color: #000000; /* Svart som standard färg */
+}
+
+/* Dark mode support */
+.dark body {
+  color: #ffffff; /* Vit i dark mode */
 }
 
 /* Typography Hierarchy */

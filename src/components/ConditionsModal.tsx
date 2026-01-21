@@ -43,7 +43,7 @@ export default function ConditionsModal({ isOpen, onClose, metadata, pageName }:
       >
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{pageName}</h2>
+          <h2 className="text-2xl font-bold text-black dark:text-white">{pageName}</h2>
           <button
             onClick={onClose}
             className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 hover:scale-110 active:scale-95 p-3 sm:p-2 min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center"
@@ -64,7 +64,7 @@ export default function ConditionsModal({ isOpen, onClose, metadata, pageName }:
                 className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 hover:scale-[1.02] transition-all duration-300 ease-in-out animate-fade-in-up cursor-default"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 capitalize">
+                <h3 className="text-lg font-semibold text-black dark:text-white mb-3 capitalize">
                   {column.columnKey.replace(/([A-Z])/g, ' $1').trim()}
                 </h3>
                 

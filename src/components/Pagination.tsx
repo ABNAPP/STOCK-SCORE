@@ -119,9 +119,9 @@ export default function Pagination({
       <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Visar <span className="font-bold text-gray-900 dark:text-gray-100">{startIndex}</span> till{' '}
-            <span className="font-bold text-gray-900 dark:text-gray-100">{endIndex}</span> av{' '}
-            <span className="font-bold text-gray-900 dark:text-gray-100">{totalItems}</span> resultat
+            Visar <span className="font-bold text-black dark:text-white">{startIndex}</span> till{' '}
+            <span className="font-bold text-black dark:text-white">{endIndex}</span> av{' '}
+            <span className="font-bold text-black dark:text-white">{totalItems}</span> resultat
           </p>
         </div>
         <div>

@@ -327,7 +327,7 @@ export default function AdvancedFilters({ filters, values, onChange, onClear, ta
         <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-300 dark:border-gray-400 z-50 max-h-96 overflow-y-auto animate-fade-in-up transition-all duration-200">
           <div className="p-4 border-b border-gray-300 dark:border-gray-400">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-sm font-semibold text-black dark:text-white">
                 Avancerade filter
               </h3>
               {hasActiveFilters && (
@@ -361,7 +361,7 @@ export default function AdvancedFilters({ filters, values, onChange, onClear, ta
                         value={(currentValue as string) || ''}
                         onChange={(e) => handleFilterChange(filter.key, e.target.value)}
                         placeholder={`Sök ${filter.label.toLowerCase()}...`}
-                        className={`w-full px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-600 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:border-blue-500 ${
+                        className={`w-full px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white placeholder-gray-600 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:border-blue-500 ${
                           validationErrors[filter.key]
                             ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
                             : 'border-gray-300 dark:border-gray-400 focus:ring-blue-500'
@@ -403,7 +403,7 @@ export default function AdvancedFilters({ filters, values, onChange, onClear, ta
                         step={filter.step || 1}
                         min={filter.min}
                         max={filter.max}
-                        className={`w-full px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-600 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:border-blue-500 ${
+                        className={`w-full px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white placeholder-gray-600 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:border-blue-500 ${
                           validationErrors[filter.key]
                             ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
                             : 'border-gray-300 dark:border-gray-400 focus:ring-blue-500'
@@ -445,7 +445,7 @@ export default function AdvancedFilters({ filters, values, onChange, onClear, ta
                           step={filter.step || 1}
                           min={filter.min}
                           max={filter.max}
-                          className={`flex-1 px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:border-blue-500 ${
+                          className={`flex-1 px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:border-blue-500 ${
                             validationErrors[filter.key]
                               ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
                               : 'border-gray-300 dark:border-gray-500 focus:ring-blue-500'
@@ -477,7 +477,7 @@ export default function AdvancedFilters({ filters, values, onChange, onClear, ta
                           step={filter.step || 1}
                           min={filter.min}
                           max={filter.max}
-                          className={`flex-1 px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:border-blue-500 ${
+                          className={`flex-1 px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:border-blue-500 ${
                             validationErrors[filter.key]
                               ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
                               : 'border-gray-300 dark:border-gray-500 focus:ring-blue-500'
@@ -510,7 +510,7 @@ export default function AdvancedFilters({ filters, values, onChange, onClear, ta
                     <select
                       value={String(currentValue || '')}
                       onChange={(e) => handleFilterChange(filter.key, e.target.value === '' ? null : e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       aria-label={filter.label}
                       tabIndex={0}
                     >
@@ -527,7 +527,7 @@ export default function AdvancedFilters({ filters, values, onChange, onClear, ta
                     <select
                       value={String(currentValue === null ? '' : currentValue)}
                       onChange={(e) => handleFilterChange(filter.key, e.target.value === '' ? null : e.target.value === 'true')}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       aria-label={filter.label}
                       tabIndex={0}
                     >
@@ -563,7 +563,7 @@ export default function AdvancedFilters({ filters, values, onChange, onClear, ta
                       className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        <p className="text-sm font-medium text-black dark:text-white truncate">
                           {template.name}
                         </p>
                         {template.description && (
@@ -623,7 +623,7 @@ export default function AdvancedFilters({ filters, values, onChange, onClear, ta
                         }
                       }}
                       placeholder="Namn på filter..."
-                      className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       aria-label="Filter name"
                     />
                     <button
@@ -669,7 +669,7 @@ export default function AdvancedFilters({ filters, values, onChange, onClear, ta
                         className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          <p className="text-sm font-medium text-black dark:text-white truncate">
                             {savedFilter.name}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
