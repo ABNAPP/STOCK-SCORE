@@ -21,6 +21,12 @@ const SCORE_COLUMNS: ColumnDefinition[] = [
   { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
   { key: 'companyName', label: 'Company Name', required: true, sticky: true, sortable: true },
   { key: 'ticker', label: 'Ticker', required: true, sticky: true, sortable: true },
+  { key: 'currency', label: 'Currency', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'price', label: 'Price', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'entry1', label: 'ENTRY1', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'entry2', label: 'ENTRY2', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'exit1', label: 'EXIT1', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'exit2', label: 'EXIT2', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'score', label: 'Score', defaultVisible: true, sortable: true, align: 'center' },
 ];
 
@@ -52,8 +58,8 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
   }, []);
 
   const getScoreColorClass = useCallback((score: number): string => {
-    if (score >= 75) return 'text-green-700 dark:text-green-200 font-bold';
-    if (score >= 50) return 'text-blue-700 dark:text-blue-400 font-semibold';
+    if (score >= 70) return 'text-green-700 dark:text-green-200 font-bold';
+    if (score >= 50 && score < 70) return 'text-blue-700 dark:text-blue-400 font-semibold';
     return 'text-black dark:text-white';
   }, []);
 
@@ -92,6 +98,18 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
         return <span className="font-medium">{item.companyName}</span>;
       case 'ticker':
         return <span className="text-gray-500 dark:text-gray-300">{item.ticker}</span>;
+      case 'currency':
+        return <span className="text-black dark:text-white">{item.currency || 'USD'}</span>;
+      case 'price':
+        return <span className="text-black dark:text-white">{item.price !== null ? item.price.toLocaleString() : 'N/A'}</span>;
+      case 'entry1':
+        return <span className="text-black dark:text-white">{item.entry1 || '-'}</span>;
+      case 'entry2':
+        return <span className="text-black dark:text-white">{item.entry2 || '-'}</span>;
+      case 'exit1':
+        return <span className="text-black dark:text-white">{item.exit1 || '-'}</span>;
+      case 'exit2':
+        return <span className="text-black dark:text-white">{item.exit2 || '-'}</span>;
       case 'score':
         return (
           <span className={getScoreColorClass(item.score)}>
@@ -124,6 +142,30 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ticker</span>
             <span className="text-sm text-gray-500 dark:text-gray-400">{item.ticker}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Currency</span>
+            <span className="text-sm text-black dark:text-white">{item.currency || 'USD'}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</span>
+            <span className="text-sm text-black dark:text-white">{item.price !== null ? item.price.toLocaleString() : 'N/A'}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY1</span>
+            <span className="text-sm text-black dark:text-white">{item.entry1 || '-'}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY2</span>
+            <span className="text-sm text-black dark:text-white">{item.entry2 || '-'}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT1</span>
+            <span className="text-sm text-black dark:text-white">{item.exit1 || '-'}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT2</span>
+            <span className="text-sm text-black dark:text-white">{item.exit2 || '-'}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Score</span>
@@ -161,7 +203,7 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
       searchPlaceholder="Sök efter företag eller ticker..."
       defaultSortKey="score"
       defaultSortDirection="desc"
-      stickyColumns={['antal', 'companyName', 'ticker']}
+      stickyColumns={['antal', 'companyName', 'ticker', 'currency']}
       ariaLabel="Score"
       minTableWidth="600px"
       getRowKey={(item, index) => {

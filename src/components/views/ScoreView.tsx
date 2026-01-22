@@ -16,6 +16,12 @@ const ScoreTable = lazy(() => import('../ScoreTable'));
 export interface ScoreData extends Record<string, unknown> {
   companyName: string;
   ticker: string;
+  currency: string;
+  price: number | null;
+  entry1: number;
+  entry2: number;
+  exit1: number;
+  exit2: number;
   score: number;
   scoreBoardData: ScoreBoardData; // Full data for breakdown calculation
 }
@@ -76,6 +82,15 @@ function ScoreViewInner() {
         price: price,
       };
 
+      // Get currency and entry/exit values from entryExitValues
+      const key = `${item.ticker}-${item.companyName}`;
+      const entryExitValue = entryExitValues.get(key);
+      const currency = entryExitValue?.currency || 'USD';
+      const entry1 = entryExitValue?.entry1 || 0;
+      const entry2 = entryExitValue?.entry2 || 0;
+      const exit1 = entryExitValue?.exit1 || 0;
+      const exit2 = entryExitValue?.exit2 || 0;
+
       // Calculate detailed score
       const score = calculateDetailedScore(
         enhancedData,
@@ -87,6 +102,12 @@ function ScoreViewInner() {
       return {
         companyName: item.companyName,
         ticker: item.ticker,
+        currency: currency,
+        price: price,
+        entry1: entry1,
+        entry2: entry2,
+        exit1: exit1,
+        exit2: exit2,
         score: score,
         scoreBoardData: enhancedData,
       };
@@ -114,35 +135,39 @@ function ScoreViewInner() {
             </p>
           </div>
         )}
-        {!isLoading && scoreData.length > 0 && (
-          <div className="mb-4">
-            <ScoreDashboard 
-              data={scoreData} 
-              loading={false}
-              thresholdData={thresholdData || []}
-              benjaminGrahamData={benjaminGrahamData || []}
-              entryExitValues={entryExitValues}
-            />
-          </div>
-        )}
-        <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
-          {!isLoading && scoreData.length > 0 ? (
-            <Suspense fallback={<TableSkeleton rows={15} columns={4} hasStickyColumns={true} />}>
-              <ScoreTable 
+        {!isLoading && scoreData.length > 0 ? (
+          <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 transition-all duration-300 ease-in-out">
+            {/* Left side: Table */}
+            <div className="flex-[3] min-h-0 min-w-0">
+              <Suspense fallback={<TableSkeleton rows={15} columns={4} hasStickyColumns={true} />}>
+                <ScoreTable 
+                  data={scoreData} 
+                  loading={false}
+                  error={error}
+                  thresholdData={thresholdData || []}
+                  benjaminGrahamData={benjaminGrahamData || []}
+                  entryExitValues={entryExitValues}
+                />
+              </Suspense>
+            </div>
+            {/* Right side: Dashboard with Heatmap and Scatter Plot */}
+            <div className="flex-[2] lg:flex-shrink-0 flex flex-col min-h-0">
+              <ScoreDashboard 
                 data={scoreData} 
                 loading={false}
-                error={error}
                 thresholdData={thresholdData || []}
                 benjaminGrahamData={benjaminGrahamData || []}
                 entryExitValues={entryExitValues}
               />
-            </Suspense>
-          ) : isLoading ? (
+            </div>
+          </div>
+        ) : isLoading ? (
+          <div className="flex-1 min-h-0">
             <TableSkeleton rows={15} columns={4} hasStickyColumns={true} />
-          ) : error ? (
-            <div className="text-red-600 dark:text-red-400 p-4">{error}</div>
-          ) : null}
-        </div>
+          </div>
+        ) : error ? (
+          <div className="text-red-600 dark:text-red-400 p-4">{error}</div>
+        ) : null}
       </div>
     </div>
   );

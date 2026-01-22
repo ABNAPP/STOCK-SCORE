@@ -217,6 +217,66 @@ export const tableMetadata: TableMetadata[] = [
         ]
       },
       {
+        columnKey: 'currency',
+        dataSource: 'Speglat från Entry/Exit-tabellen',
+        conditions: [
+          'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
+          'Standardvärde är USD om currency saknas',
+          'Tillgängliga valutor: USD, EUR, SEK, DKK, NOK, GBP, AUD, CAD, NZD',
+          'Currency kan endast redigeras i Entry/Exit-tabellen'
+        ]
+      },
+      {
+        columnKey: 'price',
+        dataSource: 'Speglat från Entry/Exit-tabellen',
+        conditions: [
+          'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
+          'Visa N/A om värdet är null eller ogiltigt',
+          'Visa faktiska 0-värden som "0"',
+          'Price kan endast redigeras i Entry/Exit-tabellen'
+        ]
+      },
+      {
+        columnKey: 'entry1',
+        dataSource: 'Speglat från Entry/Exit-tabellen',
+        conditions: [
+          'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
+          'Visar numeriskt värde om det finns, annars "-"',
+          'Entry1 kan endast redigeras i Entry/Exit-tabellen',
+          'Används för beräkning av RR1: (Exit1 - Entry1) / Entry1 * 100'
+        ]
+      },
+      {
+        columnKey: 'entry2',
+        dataSource: 'Speglat från Entry/Exit-tabellen',
+        conditions: [
+          'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
+          'Visar numeriskt värde om det finns, annars "-"',
+          'Entry2 kan endast redigeras i Entry/Exit-tabellen',
+          'Används för beräkning av RR2: (Exit2 - Entry2) / Entry2 * 100'
+        ]
+      },
+      {
+        columnKey: 'exit1',
+        dataSource: 'Speglat från Entry/Exit-tabellen',
+        conditions: [
+          'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
+          'Visar numeriskt värde om det finns, annars "-"',
+          'Exit1 kan endast redigeras i Entry/Exit-tabellen',
+          'Används för beräkning av RR1: (Exit1 - Entry1) / Entry1 * 100'
+        ]
+      },
+      {
+        columnKey: 'exit2',
+        dataSource: 'Speglat från Entry/Exit-tabellen',
+        conditions: [
+          'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
+          'Visar numeriskt värde om det finns, annars "-"',
+          'Exit2 kan endast redigeras i Entry/Exit-tabellen',
+          'Används för beräkning av RR2: (Exit2 - Entry2) / Entry2 * 100'
+        ]
+      },
+      {
         columnKey: 'score',
         dataSource: 'Beräknat från Score Board data med viktat poängsystem',
         formula: 'Summa av (vikt × färgfaktor) för alla metrics, där färgfaktor = 1.0 (grön), 0.7 (blå), 0.0 (röd/tom/N/A)',
@@ -241,7 +301,7 @@ export const tableMetadata: TableMetadata[] = [
           '  - SMA(200) (vikt: 2.5)',
           '  - SMA CROSS (vikt: 5)',
           'Färgmarkering:',
-          '  - GRÖN om score >= 75',
+          '  - GRÖN om score >= 70',
           '  - BLÅ om score >= 45',
           '  - GRÅ om score < 45',
           'Hovra över score-värde för detaljerad breakdown'
