@@ -73,14 +73,37 @@ async function loadWorker(): Promise<Worker> {
         }
       };
 
-      worker.onerror = (error) => {
+      worker.onerror = (errorEvent) => {
         // Handle worker errors
-        console.error('Worker error:', error);
+        // ErrorEvent has: error, message, filename, lineno, colno
+        const errorMessage = errorEvent.message || 
+                           (errorEvent.error instanceof Error ? errorEvent.error.message : String(errorEvent.error || 'Unknown error')) ||
+                           `Worker error at ${errorEvent.filename || 'unknown'}:${errorEvent.lineno || '?'}:${errorEvent.colno || '?'}`;
+        
+        console.error('Worker error:', {
+          message: errorMessage,
+          filename: errorEvent.filename,
+          lineno: errorEvent.lineno,
+          colno: errorEvent.colno,
+          error: errorEvent.error,
+        });
+        
+        // Reject the loading promise if worker hasn't been assigned yet (initialization error)
+        if (workerInstance !== worker && workerLoadPromise) {
+          const currentPromise = workerLoadPromise;
+          workerLoadPromise = null;
+          currentPromise.catch(() => {}); // Prevent unhandled rejection warning
+          reject(new Error(`Failed to load worker: ${errorMessage}`));
+          return; // Early return for initialization errors
+        }
+        
         // Reject all pending jobs
         for (const [jobId, job] of pendingJobs.entries()) {
           pendingJobs.delete(jobId);
-          job.reject(new Error(`Worker error: ${error.message || 'Unknown error'}`));
+          job.reject(new Error(`Worker error: ${errorMessage}`));
         }
+        
+        // Clean up worker instance
         workerInstance = null;
         workerLoadPromise = null;
       };
