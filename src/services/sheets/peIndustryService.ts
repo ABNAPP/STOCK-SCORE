@@ -19,7 +19,7 @@ const PE_INDUSTRY_CSV_URL = `https://docs.google.com/spreadsheets/d/${PE_INDUSTR
 /**
  * Transformer function for P/E Industry data
  */
-function transformPEIndustryData(results: { data: DataRow[]; meta: { fields: string[] | null } }): PEIndustryData[] {
+export function transformPEIndustryData(results: { data: DataRow[]; meta: { fields: string[] | null } }): PEIndustryData[] {
   // Group data by industry
   const industryMap = new Map<string, { pe: number[], pe1: number[], pe2: number[], count: number }>();
 

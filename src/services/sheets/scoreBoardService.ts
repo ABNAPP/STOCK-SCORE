@@ -27,7 +27,7 @@ const SCORE_BOARD_CSV_URL = `https://docs.google.com/spreadsheets/d/${SCORE_BOAR
  * @param smaDataMap - Map of ticker to SMA data
  * @returns Transformer function
  */
-function createScoreBoardTransformer(
+export function createScoreBoardTransformer(
   industryPe1Map: Map<string, number>,
   industryPe2Map: Map<string, number>,
   smaDataMap: Map<string, { sma100: number | null; sma200: number | null; smaCross: string | null }>
