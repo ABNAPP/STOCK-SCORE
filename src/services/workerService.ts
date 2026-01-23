@@ -76,17 +76,29 @@ async function loadWorker(): Promise<Worker> {
       worker.onerror = (errorEvent) => {
         // Handle worker errors
         // ErrorEvent has: error, message, filename, lineno, colno
-        const errorMessage = errorEvent.message || 
-                           (errorEvent.error instanceof Error ? errorEvent.error.message : String(errorEvent.error || 'Unknown error')) ||
-                           `Worker error at ${errorEvent.filename || 'unknown'}:${errorEvent.lineno || '?'}:${errorEvent.colno || '?'}`;
+        let errorMessage = errorEvent.message;
         
-        console.error('Worker error:', {
+        if (!errorMessage && errorEvent.error) {
+          if (errorEvent.error instanceof Error) {
+            errorMessage = errorEvent.error.message;
+          } else {
+            errorMessage = String(errorEvent.error);
+          }
+        }
+        
+        if (!errorMessage) {
+          errorMessage = `Worker error at ${errorEvent.filename || 'unknown'}:${errorEvent.lineno || '?'}:${errorEvent.colno || '?'}`;
+        }
+        
+        const errorDetails = {
           message: errorMessage,
           filename: errorEvent.filename,
           lineno: errorEvent.lineno,
           colno: errorEvent.colno,
           error: errorEvent.error,
-        });
+        };
+        
+        console.error('Worker error:', errorDetails);
         
         // Reject the loading promise if worker hasn't been assigned yet (initialization error)
         if (workerInstance !== worker && workerLoadPromise) {

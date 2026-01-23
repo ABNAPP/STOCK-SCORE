@@ -578,18 +578,60 @@ const transformers: Record<string, TransformerFunction> = {
 };
 
 // ============================================================================
+// Worker Error Handlers
+// ============================================================================
+
+self.onerror = function(errorEvent: ErrorEvent) {
+  console.error('[Worker] Unhandled error:', {
+    message: errorEvent.message,
+    filename: errorEvent.filename,
+    lineno: errorEvent.lineno,
+    colno: errorEvent.colno,
+    error: errorEvent.error,
+  });
+  
+  // Try to send error message if we have context
+  // Note: We can't send a message without a jobId, so we just log it
+  return false; // Don't prevent default error handling
+};
+
+// Handle unhandled promise rejections
+self.addEventListener('unhandledrejection', function(event: PromiseRejectionEvent) {
+  console.error('[Worker] Unhandled promise rejection:', {
+    reason: event.reason,
+    promise: event.promise,
+  });
+  
+  // Prevent the default browser behavior
+  event.preventDefault();
+});
+
+// ============================================================================
 // Worker Message Handler
 // ============================================================================
 
 self.onmessage = function(e: MessageEvent<TransformMessage>) {
   const message = e.data;
 
+  // Validate message structure
+  if (!message || typeof message !== 'object') {
+    console.error('[Worker] Invalid message received:', message);
+    return;
+  }
+
   if (message.type !== 'transform') {
+    const jobId = message.jobId || 'unknown';
     self.postMessage({
       type: 'error',
-      jobId: message.jobId,
+      jobId,
       error: 'Invalid message type',
     } as ErrorMessage);
+    return;
+  }
+
+  // Ensure jobId exists
+  if (!message.jobId) {
+    console.error('[Worker] Message missing jobId:', message);
     return;
   }
 
@@ -673,10 +715,23 @@ self.onmessage = function(e: MessageEvent<TransformMessage>) {
     } as CompleteMessage);
 
   } catch (error) {
-    self.postMessage({
-      type: 'error',
-      jobId: message.jobId,
-      error: error instanceof Error ? error.message : String(error),
-    } as ErrorMessage);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const jobId = message?.jobId || 'unknown';
+    
+    console.error('[Worker] Error in message handler:', {
+      error,
+      errorMessage,
+      jobId,
+      transformerId: message?.transformerId,
+    });
+    
+    // Only send error message if we have a valid jobId
+    if (message?.jobId) {
+      self.postMessage({
+        type: 'error',
+        jobId: message.jobId,
+        error: errorMessage,
+      } as ErrorMessage);
+    }
   }
 };
