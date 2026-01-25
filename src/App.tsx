@@ -1,4 +1,5 @@
-import { useState, Suspense, lazy, useEffect, useCallback } from 'react';
+import { useState, Suspense, useEffect, useCallback } from 'react';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { logger } from './utils/logger';
 import Header from './components/Header';
@@ -24,16 +25,16 @@ import { ShareableLink } from './services/shareableLinkService';
 import { FilterValues } from './types/filters';
 import { migrateCoreBoardToScoreBoard } from './services/firestoreCacheService';
 
-// Lazy load view components for better performance
-const ScoreBoardView = lazy(() => import('./components/views/ScoreBoardView'));
-const ScoreView = lazy(() => import('./components/views/ScoreView'));
-const EntryExitView = lazy(() => import('./components/views/EntryExitView'));
-const FundamentalView = lazy(() => import('./components/views/FundamentalView'));
-const ThresholdIndustryView = lazy(() => import('./components/views/ThresholdIndustryView'));
+// Lazy load view components for better performance (with retry for dev "Failed to fetch" resilience)
+const ScoreBoardView = lazyWithRetry<typeof import('./components/views/ScoreBoardView').default>(() => import('./components/views/ScoreBoardView'), 'ScoreBoardView');
+const ScoreView = lazyWithRetry<typeof import('./components/views/ScoreView').default>(() => import('./components/views/ScoreView'), 'ScoreView');
+const EntryExitView = lazyWithRetry<typeof import('./components/views/EntryExitView').default>(() => import('./components/views/EntryExitView'), 'EntryExitView');
+const FundamentalView = lazyWithRetry<typeof import('./components/views/FundamentalView').default>(() => import('./components/views/FundamentalView'), 'FundamentalView');
+const ThresholdIndustryView = lazyWithRetry<typeof import('./components/views/ThresholdIndustryView').default>(() => import('./components/views/ThresholdIndustryView'), 'ThresholdIndustryView');
 
 // Lazy load modal components
-const ConditionsModal = lazy(() => import('./components/ConditionsModal'));
-const UserProfileModal = lazy(() => import('./components/UserProfileModal'));
+const ConditionsModal = lazyWithRetry<typeof import('./components/ConditionsModal').default>(() => import('./components/ConditionsModal'), 'ConditionsModal');
+const UserProfileModal = lazyWithRetry<typeof import('./components/UserProfileModal').default>(() => import('./components/UserProfileModal'), 'UserProfileModal');
 
 /**
  * Migrate from localStorage cache to Firestore cache
