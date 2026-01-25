@@ -374,6 +374,150 @@ export async function getCacheAge(key: string): Promise<number | null> {
 }
 
 /**
+ * Generic helper: migrate a wrongly named cache document to the correct document ID.
+ * Used for one-time migrations (e.g. eIndustry -> peIndustry) from substring(8) bug.
+ * Not exported.
+ */
+async function migrateCacheDocument(
+  oldDocId: string,
+  cacheKey: string,
+  migrationFlag: string
+): Promise<boolean> {
+  try {
+    if (localStorage.getItem(migrationFlag) === 'true') {
+      return true;
+    }
+  } catch (error) {
+    logger.warn('Could not check migration flag', {
+      component: 'firestoreCacheService',
+      operation: 'migrateCacheDocument',
+      oldDocId,
+      migrationFlag,
+      error,
+    });
+  }
+
+  try {
+    const oldRef = doc(db, CACHE_COLLECTION, oldDocId);
+    const oldSnap = await getDoc(oldRef);
+
+    if (!oldSnap.exists()) {
+      try {
+        localStorage.setItem(migrationFlag, 'true');
+      } catch {
+        /* ignore */
+      }
+      return true;
+    }
+
+    const oldData = oldSnap.data() as FirestoreCacheEntry<unknown>;
+    const correctRef = getCacheDocRef(cacheKey);
+    const correctSnap = await getDoc(correctRef);
+
+    if (correctSnap.exists()) {
+      try {
+        await deleteDoc(oldRef);
+        logger.info('Deleted old cache document (correct document already exists)', {
+          component: 'firestoreCacheService',
+          operation: 'migrateCacheDocument',
+          oldDocId,
+          cacheKey,
+        });
+      } catch (deleteError: unknown) {
+        const err = deleteError as { code?: string; name?: string };
+        const isPermissionError =
+          err?.code === 'permission-denied' ||
+          (err?.name === 'FirebaseError' && err?.code === 'permission-denied');
+        if (isPermissionError) {
+          logger.warn('Could not delete old document (insufficient permissions). Migration will be retried later.', {
+            component: 'firestoreCacheService',
+            operation: 'migrateCacheDocument',
+            oldDocId,
+          });
+          return true;
+        }
+        logger.error('Failed to delete old cache document', deleteError, {
+          component: 'firestoreCacheService',
+          operation: 'migrateCacheDocument',
+          oldDocId,
+          cacheKey,
+        });
+        return false;
+      }
+    } else {
+      try {
+        if (oldData.version !== undefined) {
+          await setDeltaCacheEntry(
+            cacheKey,
+            oldData.data,
+            oldData.version ?? 0,
+            oldData.lastSnapshotAt !== undefined,
+            oldData.ttl
+          );
+        } else {
+          await setCachedData(cacheKey, oldData.data, oldData.ttl ?? DEFAULT_TTL);
+        }
+
+        try {
+          await deleteDoc(oldRef);
+          logger.info('Migrated cache document to correct ID and deleted old document', {
+            component: 'firestoreCacheService',
+            operation: 'migrateCacheDocument',
+            oldDocId,
+            cacheKey,
+          });
+        } catch (deleteError: unknown) {
+          const err = deleteError as { code?: string; name?: string };
+          const isPermissionError =
+            err?.code === 'permission-denied' ||
+            (err?.name === 'FirebaseError' && err?.code === 'permission-denied');
+          if (isPermissionError) {
+            logger.warn('Migrated but could not delete old document (insufficient permissions). Migration will be retried later.', {
+              component: 'firestoreCacheService',
+              operation: 'migrateCacheDocument',
+              oldDocId,
+              cacheKey,
+            });
+            return true;
+          }
+          logger.error('Migrated but failed to delete old document', deleteError, {
+            component: 'firestoreCacheService',
+            operation: 'migrateCacheDocument',
+            oldDocId,
+            cacheKey,
+          });
+          return true;
+        }
+      } catch (copyError) {
+        logger.error('Failed to copy cache document to correct ID', copyError, {
+          component: 'firestoreCacheService',
+          operation: 'migrateCacheDocument',
+          oldDocId,
+          cacheKey,
+        });
+        return false;
+      }
+    }
+
+    try {
+      localStorage.setItem(migrationFlag, 'true');
+    } catch {
+      /* ignore */
+    }
+    return true;
+  } catch (error) {
+    logger.error('Failed to migrate cache document', error, {
+      component: 'firestoreCacheService',
+      operation: 'migrateCacheDocument',
+      oldDocId,
+      cacheKey,
+      migrationFlag,
+    });
+    return false;
+  }
+}
+
+/**
  * Migrate cache from coreBoard to scoreBoard
  * 
  * This function migrates data from the incorrectly named 'coreBoard' document
@@ -529,6 +673,45 @@ export async function migrateCoreBoardToScoreBoard(): Promise<boolean> {
     });
     return false;
   }
+}
+
+/**
+ * Migrate eIndustry -> peIndustry (truncated cache doc ID from substring(8) bug).
+ */
+export async function migrateEIndustryToPeIndustry(): Promise<boolean> {
+  return migrateCacheDocument(
+    'eIndustry',
+    CACHE_KEYS.PE_INDUSTRY,
+    'firestore:migration:eIndustry-to-peIndustry'
+  );
+}
+
+/**
+ * Migrate enjaminGraham -> benjaminGraham (truncated cache doc ID from substring(8) bug).
+ */
+export async function migrateEnjaminGrahamToBenjaminGraham(): Promise<boolean> {
+  return migrateCacheDocument(
+    'enjaminGraham',
+    CACHE_KEYS.BENJAMIN_GRAHAM,
+    'firestore:migration:enjaminGraham-to-benjaminGraham'
+  );
+}
+
+/**
+ * Migrate ma -> sma (truncated cache doc ID from substring(8) bug).
+ */
+export async function migrateMaToSma(): Promise<boolean> {
+  return migrateCacheDocument('ma', CACHE_KEYS.SMA, 'firestore:migration:ma-to-sma');
+}
+
+/**
+ * Run all truncated-cache-document migrations (eIndustry, enjaminGraham, ma).
+ * Call at app start after auth, alongside migrateCoreBoardToScoreBoard.
+ */
+export async function runTruncatedCacheMigrations(): Promise<void> {
+  await migrateEIndustryToPeIndustry();
+  await migrateEnjaminGrahamToBenjaminGraham();
+  await migrateMaToSma();
 }
 
 /**

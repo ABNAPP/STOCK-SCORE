@@ -23,7 +23,7 @@ import { usePullToRefresh } from './hooks/usePullToRefresh';
 import ShareableView from './components/views/ShareableView';
 import { ShareableLink } from './services/shareableLinkService';
 import { FilterValues } from './types/filters';
-import { migrateCoreBoardToScoreBoard } from './services/firestoreCacheService';
+import { migrateCoreBoardToScoreBoard, runTruncatedCacheMigrations } from './services/firestoreCacheService';
 
 // Lazy load view components for better performance (with retry for dev "Failed to fetch" resilience)
 const ScoreBoardView = lazyWithRetry<typeof import('./components/views/ScoreBoardView').default>(() => import('./components/views/ScoreBoardView'), 'ScoreBoardView');
@@ -94,15 +94,21 @@ function App() {
     migrateFromLocalStorageCache();
   }, []);
 
-  // Run Firestore cache migration after user is authenticated
+  // Run Firestore cache migrations after user is authenticated
   useEffect(() => {
     if (!authLoading && currentUser) {
-      // Run migration asynchronously in background - don't block app start
+      // Run migrations asynchronously in background - don't block app start
       migrateCoreBoardToScoreBoard().catch((error) => {
-        // Log error but don't show to user - this is a background migration
         logger.warn('Firestore cache migration failed', {
           component: 'App',
           operation: 'migrateCoreBoardToScoreBoard',
+          error,
+        });
+      });
+      runTruncatedCacheMigrations().catch((error) => {
+        logger.warn('Firestore truncated cache migrations failed', {
+          component: 'App',
+          operation: 'runTruncatedCacheMigrations',
           error,
         });
       });
