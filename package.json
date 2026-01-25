@@ -28,7 +28,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@heroicons/react": "^2.1.1",
-    "firebase": "^10.7.1",
+    "firebase": "^12.8.0",
     "i18next": "^25.7.3",
     "pako": "^2.1.0",
     "papaparse": "^5.4.1",
@@ -71,7 +71,7 @@
     "storybook": "^10.1.11",
     "tailwindcss": "^3.3.6",
     "typescript": "^5.2.2",
-    "vite": "^5.0.8",
+    "vite": "^7.3.1",
     "vitest": "^4.0.0"
   }
 }

@@ -122,8 +122,16 @@ export function snapshotToTransformerFormat(snapshot: SnapshotResponse): { data:
     throw new Error('Invalid snapshot: snapshot is not an object');
   }
   
+  if (!snapshot.headers) {
+    throw new Error(`Invalid snapshot: headers is undefined or null. Snapshot structure: ${JSON.stringify(Object.keys(snapshot || {}))}`);
+  }
+  
   if (!isArray(snapshot.headers)) {
     throw new Error(`Invalid snapshot: headers is not an array. Got: ${typeof snapshot.headers}`);
+  }
+  
+  if (!snapshot.rows) {
+    throw new Error(`Invalid snapshot: rows is undefined or null. Snapshot structure: ${JSON.stringify(Object.keys(snapshot || {}))}`);
   }
   
   if (!isArray(snapshot.rows)) {
@@ -161,7 +169,7 @@ export function snapshotToTransformerFormat(snapshot: SnapshotResponse): { data:
   
   return {
     data: dataRows,
-    meta: { fields: snapshot.headers.length > 0 ? snapshot.headers : null },
+    meta: { fields: snapshot.headers && snapshot.headers.length > 0 ? snapshot.headers : null },
   };
 }
 
