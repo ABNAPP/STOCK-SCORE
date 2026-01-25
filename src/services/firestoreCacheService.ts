@@ -23,6 +23,7 @@ import { DeltaCacheEntry } from './cacheService';
 
 // Re-export CACHE_KEYS for convenience
 export { CACHE_KEYS } from './cacheKeys';
+import { CACHE_KEYS } from './cacheKeys';
 
 // Default TTL: 30 minutes
 const DEFAULT_TTL_MINUTES = parseInt(import.meta.env.VITE_CACHE_DEFAULT_TTL_MINUTES || '30', 10);
@@ -369,6 +370,164 @@ export async function getCacheAge(key: string): Promise<number | null> {
       error 
     });
     return null;
+  }
+}
+
+/**
+ * Migrate cache from coreBoard to scoreBoard
+ * 
+ * This function migrates data from the incorrectly named 'coreBoard' document
+ * to the correct 'scoreBoard' document in Firestore. This is a one-time migration
+ * that runs automatically on app start.
+ * 
+ * Migration logic:
+ * - If coreBoard exists and scoreBoard doesn't: copy coreBoard to scoreBoard, then delete coreBoard
+ * - If both exist: keep scoreBoard (it's the correct one), delete coreBoard
+ * - If neither exists: nothing to migrate
+ * 
+ * @returns Promise resolving to true if migration succeeded or was already done, false on error
+ */
+export async function migrateCoreBoardToScoreBoard(): Promise<boolean> {
+  const MIGRATION_FLAG = 'firestore:migration:coreBoard-to-scoreBoard';
+  
+  // Check if migration already completed
+  try {
+    if (localStorage.getItem(MIGRATION_FLAG) === 'true') {
+      return true; // Already migrated
+    }
+  } catch (error) {
+    // If localStorage is not available, continue anyway
+    logger.warn('Could not check migration flag', {
+      component: 'firestoreCacheService',
+      operation: 'migrateCoreBoardToScoreBoard',
+      error,
+    });
+  }
+
+  try {
+    const coreBoardRef = doc(db, CACHE_COLLECTION, 'coreBoard');
+    const scoreBoardRef = doc(db, CACHE_COLLECTION, 'scoreBoard');
+    
+    // Check if coreBoard exists
+    const coreBoardSnap = await getDoc(coreBoardRef);
+    
+    if (!coreBoardSnap.exists()) {
+      // No coreBoard to migrate, mark as done
+      try {
+        localStorage.setItem(MIGRATION_FLAG, 'true');
+      } catch {
+        // Ignore localStorage errors
+      }
+      return true; // Nothing to migrate
+    }
+
+    const coreBoardData = coreBoardSnap.data() as FirestoreCacheEntry<unknown>;
+    
+    // Check if scoreBoard already exists
+    const scoreBoardSnap = await getDoc(scoreBoardRef);
+    
+    if (scoreBoardSnap.exists()) {
+      // scoreBoard already exists (correct name), just delete coreBoard
+      try {
+        await deleteDoc(coreBoardRef);
+        logger.info('Deleted old coreBoard document (scoreBoard already exists)', {
+          component: 'firestoreCacheService',
+          operation: 'migrateCoreBoardToScoreBoard',
+        });
+      } catch (deleteError: any) {
+        // Check if it's a permission error
+        const isPermissionError = deleteError?.code === 'permission-denied' || 
+                                  (deleteError?.name === 'FirebaseError' && deleteError?.code === 'permission-denied');
+        
+        if (isPermissionError) {
+          logger.warn('Could not delete coreBoard (insufficient permissions). Migration will be retried later.', {
+            component: 'firestoreCacheService',
+            operation: 'migrateCoreBoardToScoreBoard',
+          });
+          // Don't set flag - allow retry later
+          return true; // Not a critical error
+        }
+        
+        // Other error
+        logger.error('Failed to delete coreBoard document', deleteError, {
+          component: 'firestoreCacheService',
+          operation: 'migrateCoreBoardToScoreBoard',
+        });
+        return false;
+      }
+    } else {
+      // scoreBoard doesn't exist, copy coreBoard to scoreBoard
+      try {
+        // Determine cache type and copy accordingly
+        if (coreBoardData.version !== undefined) {
+          // Delta cache entry
+          await setDeltaCacheEntry(
+            CACHE_KEYS.SCORE_BOARD,
+            coreBoardData.data,
+            coreBoardData.version || 0,
+            coreBoardData.lastSnapshotAt !== undefined,
+            coreBoardData.ttl
+          );
+        } else {
+          // TTL-based cache entry
+          await setCachedData(
+            CACHE_KEYS.SCORE_BOARD,
+            coreBoardData.data,
+            coreBoardData.ttl || DEFAULT_TTL
+          );
+        }
+        
+        // Now delete coreBoard
+        try {
+          await deleteDoc(coreBoardRef);
+          logger.info('Migrated coreBoard to scoreBoard and deleted old document', {
+            component: 'firestoreCacheService',
+            operation: 'migrateCoreBoardToScoreBoard',
+          });
+        } catch (deleteError: any) {
+          // Check if it's a permission error
+          const isPermissionError = deleteError?.code === 'permission-denied' || 
+                                    (deleteError?.name === 'FirebaseError' && deleteError?.code === 'permission-denied');
+          
+          if (isPermissionError) {
+            logger.warn('Migrated coreBoard to scoreBoard but could not delete old document (insufficient permissions). Migration will be retried later.', {
+              component: 'firestoreCacheService',
+              operation: 'migrateCoreBoardToScoreBoard',
+            });
+            // Don't set flag - allow retry later
+            return true; // Migration succeeded, deletion can be done later
+          }
+          
+          // Other error
+          logger.error('Migrated coreBoard to scoreBoard but failed to delete old document', deleteError, {
+            component: 'firestoreCacheService',
+            operation: 'migrateCoreBoardToScoreBoard',
+          });
+          // Still return true since migration succeeded
+        }
+      } catch (copyError) {
+        logger.error('Failed to copy coreBoard to scoreBoard', copyError, {
+          component: 'firestoreCacheService',
+          operation: 'migrateCoreBoardToScoreBoard',
+        });
+        return false;
+      }
+    }
+    
+    // Mark migration as complete
+    try {
+      localStorage.setItem(MIGRATION_FLAG, 'true');
+    } catch {
+      // Ignore localStorage errors
+    }
+    
+    return true;
+  } catch (error) {
+    logger.error('Failed to migrate coreBoard to scoreBoard', error, {
+      component: 'firestoreCacheService',
+      operation: 'migrateCoreBoardToScoreBoard',
+    });
+    return false;
   }
 }
 

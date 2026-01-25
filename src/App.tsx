@@ -22,6 +22,7 @@ import { usePullToRefresh } from './hooks/usePullToRefresh';
 import ShareableView from './components/views/ShareableView';
 import { ShareableLink } from './services/shareableLinkService';
 import { FilterValues } from './types/filters';
+import { migrateCoreBoardToScoreBoard } from './services/firestoreCacheService';
 
 // Lazy load view components for better performance
 const ScoreBoardView = lazy(() => import('./components/views/ScoreBoardView'));
@@ -74,7 +75,7 @@ function migrateFromLocalStorageCache() {
 }
 
 function App() {
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, currentUser } = useAuth();
   const { canView } = useUserRole();
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -91,6 +92,21 @@ function App() {
   useEffect(() => {
     migrateFromLocalStorageCache();
   }, []);
+
+  // Run Firestore cache migration after user is authenticated
+  useEffect(() => {
+    if (!authLoading && currentUser) {
+      // Run migration asynchronously in background - don't block app start
+      migrateCoreBoardToScoreBoard().catch((error) => {
+        // Log error but don't show to user - this is a background migration
+        logger.warn('Firestore cache migration failed', {
+          component: 'App',
+          operation: 'migrateCoreBoardToScoreBoard',
+          error,
+        });
+      });
+    }
+  }, [authLoading, currentUser]);
 
   // Redirect viewers if they try to access unauthorized views
   // This useEffect must be called before any early returns to maintain hook order
