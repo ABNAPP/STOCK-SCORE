@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { warmCache, isCacheWarmingEnabled } from '../cacheWarmingService';
-import { getCachedData, getCacheAge, setCachedData, CACHE_KEYS } from '../cacheService';
+import { getCachedData, getCacheAge, setCachedData, CACHE_KEYS } from '../firestoreCacheService';
 import { 
   fetchScoreBoardData, 
   fetchPEIndustryData, 
@@ -25,6 +25,17 @@ vi.mock('../../utils/logger', () => ({
     error: vi.fn(),
   },
 }));
+
+// Mock firestoreCacheService
+vi.mock('../firestoreCacheService', async () => {
+  const actual = await vi.importActual('../firestoreCacheService');
+  return {
+    ...actual,
+    getCachedData: vi.fn(),
+    getCacheAge: vi.fn(),
+    setCachedData: vi.fn(),
+  };
+});
 
 describe('cacheWarmingService', () => {
   beforeEach(() => {
@@ -70,6 +81,10 @@ describe('cacheWarmingService', () => {
     it('should warm cache when cache is empty', async () => {
       vi.useFakeTimers();
       
+      // Mock no cache
+      (getCachedData as any).mockResolvedValue(null);
+      (getCacheAge as any).mockResolvedValue(null);
+      
       const mockData = [{ companyName: 'Test', ticker: 'TEST' }];
       (fetchScoreBoardData as any).mockResolvedValue(mockData);
       (fetchPEIndustryData as any).mockResolvedValue(mockData);
@@ -93,15 +108,10 @@ describe('cacheWarmingService', () => {
     it('should skip warming when cache is fresh (< 15 minutes)', async () => {
       vi.useFakeTimers();
       
-      // Set fresh cache data
+      // Set fresh cache data (mocked)
       const mockData = [{ companyName: 'Test', ticker: 'TEST' }];
-      setCachedData(CACHE_KEYS.SCORE_BOARD, mockData);
-      setCachedData(CACHE_KEYS.PE_INDUSTRY, mockData);
-      // Note: THRESHOLD_INDUSTRY removed - threshold data is now static
-      setCachedData(CACHE_KEYS.BENJAMIN_GRAHAM, mockData);
-
-      // Advance time by 5 minutes (still fresh)
-      await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+      (getCachedData as any).mockResolvedValue(mockData);
+      (getCacheAge as any).mockResolvedValue(5 * 60 * 1000); // 5 minutes old
 
       const warmPromise = warmCache();
       await vi.advanceTimersByTimeAsync(2000);
@@ -119,15 +129,10 @@ describe('cacheWarmingService', () => {
     it('should warm cache when cache is stale (> 15 minutes)', async () => {
       vi.useFakeTimers();
       
-      // Set stale cache data
+      // Set stale cache data (mocked)
       const mockData = [{ companyName: 'Test', ticker: 'TEST' }];
-      setCachedData(CACHE_KEYS.SCORE_BOARD, mockData);
-      setCachedData(CACHE_KEYS.PE_INDUSTRY, mockData);
-      // Note: THRESHOLD_INDUSTRY removed - threshold data is now static
-      setCachedData(CACHE_KEYS.BENJAMIN_GRAHAM, mockData);
-
-      // Advance time by 20 minutes (stale)
-      await vi.advanceTimersByTimeAsync(20 * 60 * 1000);
+      (getCachedData as any).mockResolvedValue(mockData);
+      (getCacheAge as any).mockResolvedValue(20 * 60 * 1000); // 20 minutes old (stale)
 
       (fetchScoreBoardData as any).mockResolvedValue(mockData);
       (fetchPEIndustryData as any).mockResolvedValue(mockData);
@@ -150,9 +155,12 @@ describe('cacheWarmingService', () => {
     it('should handle fetch failures gracefully', async () => {
       vi.useFakeTimers();
       
+      (getCachedData as any).mockResolvedValue(null); // No cache
+      (getCacheAge as any).mockResolvedValue(null);
+      
       (fetchScoreBoardData as any).mockRejectedValue(new Error('Network error'));
       (fetchPEIndustryData as any).mockResolvedValue([]);
-      (fetchThresholdIndustryData as any).mockResolvedValue([]);
+      // Note: fetchThresholdIndustryData removed - threshold data is now static
       (fetchBenjaminGrahamData as any).mockResolvedValue([]);
 
       const warmPromise = warmCache();
@@ -171,6 +179,10 @@ describe('cacheWarmingService', () => {
 
     it('should warm all data types in parallel', async () => {
       vi.useFakeTimers();
+      
+      // Mock no cache
+      (getCachedData as any).mockResolvedValue(null);
+      (getCacheAge as any).mockResolvedValue(null);
       
       const mockData = [{ companyName: 'Test', ticker: 'TEST' }];
       (fetchScoreBoardData as any).mockResolvedValue(mockData);
@@ -193,6 +205,10 @@ describe('cacheWarmingService', () => {
 
     it('should wait 2 seconds before warming', async () => {
       vi.useFakeTimers();
+      
+      // Mock no cache
+      (getCachedData as any).mockResolvedValue(null);
+      (getCacheAge as any).mockResolvedValue(null);
       
       const mockData = [{ companyName: 'Test', ticker: 'TEST' }];
       (fetchScoreBoardData as any).mockResolvedValue(mockData);

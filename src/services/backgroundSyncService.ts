@@ -8,7 +8,7 @@
 import { logger } from '../utils/logger';
 import { requestBackgroundSync } from '../utils/serviceWorkerRegistration';
 import { isDeltaSyncEnabled } from './deltaSyncService';
-import { CACHE_KEYS } from './cacheService';
+import { CACHE_KEYS } from './cacheKeys';
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
 

@@ -34,6 +34,45 @@ const ThresholdIndustryView = lazy(() => import('./components/views/ThresholdInd
 const ConditionsModal = lazy(() => import('./components/ConditionsModal'));
 const UserProfileModal = lazy(() => import('./components/UserProfileModal'));
 
+/**
+ * Migrate from localStorage cache to Firestore cache
+ * 
+ * Clears all localStorage cache entries on first load after migration.
+ * This ensures old localStorage cache is not used after switching to Firestore.
+ */
+function migrateFromLocalStorageCache() {
+  const MIGRATION_FLAG = 'cache:migrated-to-firestore';
+  try {
+    if (localStorage.getItem(MIGRATION_FLAG)) {
+      return; // Already migrated
+    }
+    
+    // Clear all cache keys (those starting with 'cache:')
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('cache:')) {
+        keysToRemove.push(key);
+      }
+    }
+    
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    localStorage.setItem(MIGRATION_FLAG, 'true');
+    
+    logger.info('Migrated from localStorage cache to Firestore cache', {
+      component: 'App',
+      operation: 'migrateFromLocalStorageCache',
+      clearedKeys: keysToRemove.length,
+    });
+  } catch (error) {
+    logger.warn('Failed to migrate from localStorage cache', {
+      component: 'App',
+      operation: 'migrateFromLocalStorageCache',
+      error,
+    });
+  }
+}
+
 function App() {
   const { loading: authLoading } = useAuth();
   const { canView } = useUserRole();
@@ -47,6 +86,11 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [userProfileOpen, setUserProfileOpen] = useState(false);
   const [loadedShareableLink, setLoadedShareableLink] = useState<ShareableLink | null>(null);
+
+  // Run migration on app start
+  useEffect(() => {
+    migrateFromLocalStorageCache();
+  }, []);
 
   // Redirect viewers if they try to access unauthorized views
   // This useEffect must be called before any early returns to maintain hook order

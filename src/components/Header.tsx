@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 import { useRefresh } from '../contexts/RefreshContext';
-import { useAutoRefresh, AUTO_REFRESH_INTERVALS } from '../contexts/AutoRefreshContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -24,10 +23,10 @@ export default function Header({ onNavigate, activeView, sidebarCollapsed = fals
   const { i18n, t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const { refreshAll, isRefreshing } = useRefresh();
-  const { enabled, interval, setEnabled, setIntervalValue } = useAutoRefresh();
   const { currentUser, logout } = useAuth();
   const { showToast } = useToast();
   const { unreadCount } = useNotifications();
+  const { isAdmin } = useUserRole();
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement>(null);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
@@ -61,36 +60,12 @@ export default function Header({ onNavigate, activeView, sidebarCollapsed = fals
     localStorage.setItem('stockScoreLanguage', language);
   };
 
-  const getAutoRefreshValue = () => {
-    if (!enabled || !interval || interval === 0) {
-      return AUTO_REFRESH_INTERVALS.OFF.toString();
-    }
-    // Ensure interval matches one of the valid intervals (MIN_15 removed from UI)
-    const validIntervals = [
-      AUTO_REFRESH_INTERVALS.OFF,
-      AUTO_REFRESH_INTERVALS.HOUR_1,
-      AUTO_REFRESH_INTERVALS.HOUR_3,
-    ];
-    if (!validIntervals.includes(interval)) {
-      return AUTO_REFRESH_INTERVALS.OFF.toString();
-    }
-    return interval.toString();
-  };
-
   const handleRefreshNow = async () => {
+    if (!isAdmin) {
+      return; // Only admin can refresh
+    }
     setRefreshMenuOpen(false);
     await refreshAll();
-  };
-
-  const handleRefreshAutoRefreshChange = (intervalValue: number) => {
-    if (intervalValue === AUTO_REFRESH_INTERVALS.OFF) {
-      setEnabled(false);
-      setIntervalValue(AUTO_REFRESH_INTERVALS.HOUR_1); // Keep interval even when disabled
-    } else {
-      setEnabled(true);
-      setIntervalValue(intervalValue);
-    }
-    setRefreshMenuOpen(false);
   };
 
   // Close menus when clicking outside
@@ -219,108 +194,59 @@ export default function Header({ onNavigate, activeView, sidebarCollapsed = fals
             )}
           </button>
         )}
-        {/* Combined Refresh Button with Dropdown */}
-        <div className="relative" ref={refreshMenuRef}>
-          <button
-            onClick={() => setRefreshMenuOpen(!refreshMenuOpen)}
-            disabled={isRefreshing}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] min-w-[44px] touch-manipulation relative"
-            title={t('refresh.refreshAllTooltip')}
-            aria-label={t('refresh.refreshAllTooltip')}
-            aria-expanded={refreshMenuOpen}
-          >
-            <svg
-              className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
+        {/* Refresh Button - Admin Only */}
+        {isAdmin && (
+          <div className="relative" ref={refreshMenuRef}>
+            <button
+              onClick={() => setRefreshMenuOpen(!refreshMenuOpen)}
+              disabled={isRefreshing}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] min-w-[44px] touch-manipulation relative"
+              title={t('refresh.refreshAllTooltip')}
+              aria-label={t('refresh.refreshAllTooltip')}
+              aria-expanded={refreshMenuOpen}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            {/* Active indicator when auto-refresh is enabled */}
-            {enabled && interval > 0 && (
-              <div
-                className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse border-2 border-white dark:border-gray-800"
-                title={t('refresh.autoRefreshActive')}
-              />
+              <svg
+                className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            </button>
+
+            {/* Dropdown Menu - Only Refresh Now */}
+            {refreshMenuOpen && (
+              <div 
+                className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-50 animate-scale-in"
+                role="menu"
+                aria-label={t('aria.refreshMenu')}
+              >
+                {/* Refresh Now */}
+                <button
+                  onClick={handleRefreshNow}
+                  disabled={isRefreshing}
+                  className="w-full px-4 py-3 text-left flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  role="menuitem"
+                  aria-label={t('aria.refreshNowButton')}
+                >
+                  <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span className="text-sm font-medium text-black dark:text-white">
+                    {isRefreshing ? t('refresh.refreshing') : t('refresh.refreshNow')}
+                  </span>
+                </button>
+              </div>
             )}
-          </button>
-
-          {/* Dropdown Menu */}
-          {refreshMenuOpen && (
-            <div 
-              className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-50 animate-scale-in"
-              role="menu"
-              aria-label={t('aria.refreshMenu')}
-            >
-              {/* Refresh Now */}
-              <button
-                onClick={handleRefreshNow}
-                disabled={isRefreshing}
-                className="w-full px-4 py-3 text-left flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                role="menuitem"
-                aria-label={t('aria.refreshNowButton')}
-              >
-                <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span className="text-sm font-medium text-black dark:text-white">
-                  {isRefreshing ? t('refresh.refreshing') : t('refresh.refreshNow')}
-                </span>
-              </button>
-
-              {/* Separator */}
-              <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-
-              {/* Auto-refresh Options */}
-              <button
-                onClick={() => handleRefreshAutoRefreshChange(AUTO_REFRESH_INTERVALS.OFF)}
-                className={`w-full px-4 py-3 text-left flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                  !enabled || interval === 0 ? 'bg-gray-100 dark:bg-gray-700' : ''
-                }`}
-                role="menuitem"
-                aria-label={t('aria.autoRefreshOff')}
-                aria-checked={!enabled || interval === 0}
-              >
-                <span className="text-sm font-medium text-black dark:text-white">
-                  {t('refresh.autoRefreshOff')}
-                </span>
-              </button>
-              <button
-                onClick={() => handleRefreshAutoRefreshChange(AUTO_REFRESH_INTERVALS.HOUR_1)}
-                className={`w-full px-4 py-3 text-left flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                  enabled && interval === AUTO_REFRESH_INTERVALS.HOUR_1 ? 'bg-gray-100 dark:bg-gray-700' : ''
-                }`}
-                role="menuitem"
-                aria-label={t('aria.autoRefresh1Hour')}
-                aria-checked={enabled && interval === AUTO_REFRESH_INTERVALS.HOUR_1}
-              >
-                <span className="text-sm font-medium text-black dark:text-white">
-                  {t('refresh.autoRefresh1Hour', '1 timme')}
-                </span>
-              </button>
-              <button
-                onClick={() => handleRefreshAutoRefreshChange(AUTO_REFRESH_INTERVALS.HOUR_3)}
-                className={`w-full px-4 py-3 text-left flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                  enabled && interval === AUTO_REFRESH_INTERVALS.HOUR_3 ? 'bg-gray-100 dark:bg-gray-700' : ''
-                }`}
-                role="menuitem"
-                aria-label={t('aria.autoRefresh3Hours')}
-                aria-checked={enabled && interval === AUTO_REFRESH_INTERVALS.HOUR_3}
-              >
-                <span className="text-sm font-medium text-black dark:text-white">
-                  {t('refresh.autoRefresh3Hours', '3 timmar')}
-                </span>
-              </button>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
         {/* Language Selector */}
         <div className="relative" ref={languageMenuRef}>
           <button

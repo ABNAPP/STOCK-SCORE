@@ -49,14 +49,9 @@ export interface DeltaCacheEntry<T> {
   ttl?: number;
 }
 
-// Cache keys for different data types
-export const CACHE_KEYS = {
-  BENJAMIN_GRAHAM: 'cache:benjaminGraham',
-  SMA: 'cache:sma',
-  PE_INDUSTRY: 'cache:peIndustry',
-  SCORE_BOARD: 'cache:scoreBoard',
-  THRESHOLD_INDUSTRY: 'cache:thresholdIndustry',
-} as const;
+// Re-export CACHE_KEYS from centralized location for backward compatibility
+// @deprecated Import CACHE_KEYS from './cacheKeys' instead
+export { CACHE_KEYS } from './cacheKeys';
 
 // Default TTL: Configurable via environment variable, default 180 minutes (3 hours)
 const DEFAULT_TTL_MINUTES = parseInt(import.meta.env.VITE_CACHE_DEFAULT_TTL_MINUTES || '180', 10);

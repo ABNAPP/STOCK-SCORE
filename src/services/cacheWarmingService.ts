@@ -5,7 +5,7 @@
  * to improve performance and reduce loading times
  */
 
-import { CACHE_KEYS, getCachedData, getCacheAge } from './cacheService';
+import { CACHE_KEYS, getCachedData, getCacheAge } from './firestoreCacheService';
 import { logger } from '../utils/logger';
 import { 
   fetchScoreBoardData, 
@@ -62,10 +62,10 @@ async function warmCacheForKey(
   try {
     // Check if cache exists and is fresh
     // If cache exists, skip warming (data hooks will handle revalidation)
-    const cachedData = getCachedData(cacheKey);
+    const cachedData = await getCachedData(cacheKey);
     
     // Only warm if cache doesn't exist or is very old (> 15 minutes)
-    const cacheAge = getCacheAge(cacheKey);
+    const cacheAge = await getCacheAge(cacheKey);
     const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
     
     if (cachedData && cacheAge !== null && cacheAge < FIFTEEN_MINUTES_MS) {

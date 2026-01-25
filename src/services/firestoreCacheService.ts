@@ -22,10 +22,10 @@ import { logger } from '../utils/logger';
 import { DeltaCacheEntry } from './cacheService';
 
 // Re-export CACHE_KEYS for convenience
-export { CACHE_KEYS } from './cacheService';
+export { CACHE_KEYS } from './cacheKeys';
 
-// Default TTL: 3 hours (180 minutes)
-const DEFAULT_TTL_MINUTES = parseInt(import.meta.env.VITE_CACHE_DEFAULT_TTL_MINUTES || '180', 10);
+// Default TTL: 30 minutes
+const DEFAULT_TTL_MINUTES = parseInt(import.meta.env.VITE_CACHE_DEFAULT_TTL_MINUTES || '30', 10);
 export const DEFAULT_TTL = DEFAULT_TTL_MINUTES * 60 * 1000;
 
 // Firestore collection name
@@ -319,6 +319,56 @@ export async function setDeltaCacheEntry<T>(
       error 
     });
     throw error;
+  }
+}
+
+/**
+ * Get cache age in milliseconds
+ * 
+ * Returns the age of a cache entry in milliseconds, or null if the cache
+ * doesn't exist or is invalid.
+ * 
+ * @param key - Cache key to get age for
+ * @returns Promise resolving to cache age in milliseconds, or null if not found
+ */
+export async function getCacheAge(key: string): Promise<number | null> {
+  try {
+    const docRef = getCacheDocRef(key);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      return null;
+    }
+    
+    const docData = docSnap.data();
+    const now = Date.now();
+    
+    // Check if it's a delta cache entry
+    if (docData.version !== undefined) {
+      const entry = docData as FirestoreCacheEntry<unknown>;
+      if (entry.timestamp) {
+        return now - entry.timestamp;
+      }
+      // Fallback to lastUpdated if timestamp not available
+      if (entry.lastUpdated) {
+        const lastUpdated = entry.lastUpdated as Timestamp;
+        return now - lastUpdated.toMillis();
+      }
+      return null;
+    } else if (docData.timestamp) {
+      // TTL-based cache entry
+      return now - docData.timestamp;
+    }
+    
+    return null;
+  } catch (error) {
+    logger.warn(`Failed to get cache age for key "${key}"`, { 
+      component: 'firestoreCacheService', 
+      operation: 'getCacheAge', 
+      key, 
+      error 
+    });
+    return null;
   }
 }
 
