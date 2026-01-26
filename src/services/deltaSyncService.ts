@@ -485,12 +485,12 @@ export async function pollChanges(
  * }
  * ```
  */
-export function applyChangesToCache<T>(
+export async function applyChangesToCache<T>(
   changes: ChangesResponse,
   cacheKey: string
-): { needsReload: boolean; version: number; data?: T[] } {
-  const existing = getDeltaCacheEntry<T[]>(cacheKey);
-  
+): Promise<{ needsReload: boolean; version: number; data?: T[] }> {
+  const existing = await getDeltaCacheEntry<T[]>(cacheKey);
+
   // Edge case: Full resync needed (version mismatch or server request)
   if (!changes.ok || changes.needsFullResync) {
     // Need full reload

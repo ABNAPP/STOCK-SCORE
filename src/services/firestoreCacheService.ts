@@ -31,6 +31,7 @@ export const DEFAULT_TTL = DEFAULT_TTL_MINUTES * 60 * 1000;
 
 // Firestore collection name
 const CACHE_COLLECTION = 'appCache';
+const CACHE_PREFIX = 'cache:';
 
 /**
  * Firestore cache entry interface (TTL-based)
@@ -49,7 +50,7 @@ interface FirestoreCacheEntry<T> {
  */
 function getCacheDocRef(key: string) {
   // Remove 'cache:' prefix if present for cleaner document IDs
-  const docId = key.startsWith('cache:') ? key.substring(7) : key;
+  const docId = key.startsWith(CACHE_PREFIX) ? key.slice(CACHE_PREFIX.length) : key;
   return doc(db, CACHE_COLLECTION, docId);
 }
 

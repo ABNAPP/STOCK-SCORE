@@ -219,7 +219,7 @@ describe('deltaSyncService Error Handling', () => {
   });
 
   describe('applyChangesToCache error cases', () => {
-    it('should handle invalid changes array', () => {
+    it('should handle invalid changes array', async () => {
       const changes: ChangesResponse = {
         ok: true,
         fromVersion: 1,
@@ -227,12 +227,10 @@ describe('deltaSyncService Error Handling', () => {
         changes: null as unknown as [],
       };
 
-      expect(() => {
-        applyChangesToCache(changes, 'test-key');
-      }).not.toThrow();
+      await expect(applyChangesToCache(changes, 'test-key')).resolves.toBeDefined();
     });
 
-    it('should handle changes with invalid row data', () => {
+    it('should handle changes with invalid row data', async () => {
       const changes: ChangesResponse = {
         ok: true,
         fromVersion: 1,
@@ -249,9 +247,7 @@ describe('deltaSyncService Error Handling', () => {
         ],
       };
 
-      expect(() => {
-        applyChangesToCache(changes, 'test-key');
-      }).not.toThrow();
+      await expect(applyChangesToCache(changes, 'test-key')).resolves.toBeDefined();
     });
   });
 

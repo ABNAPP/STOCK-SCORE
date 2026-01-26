@@ -314,7 +314,7 @@ export function useBenjaminGrahamData() {
       };
 
       const changes = await pollChanges(config, currentVersionRef.current);
-      const cacheResult = applyChangesToCache<BenjaminGrahamData>(changes, CACHE_KEY);
+      const cacheResult = await applyChangesToCache<BenjaminGrahamData>(changes, CACHE_KEY);
 
       if (cacheResult.needsReload) {
         // Changes detected, reload snapshot

@@ -310,7 +310,7 @@ export function useScoreBoardData() {
       };
 
       const changesResponse = await pollChanges(config, currentVersionRef.current);
-      const cacheResult = applyChangesToCache<ScoreBoardData>(changesResponse, CACHE_KEY);
+      const cacheResult = await applyChangesToCache<ScoreBoardData>(changesResponse, CACHE_KEY);
 
       if (cacheResult.needsReload) {
         // Changes detected, reload snapshot

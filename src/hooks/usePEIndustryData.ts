@@ -238,7 +238,7 @@ export function usePEIndustryData() {
       };
 
       const changesResponse = await pollChanges(config, currentVersionRef.current);
-      const cacheResult = applyChangesToCache<PEIndustryData>(changesResponse, CACHE_KEY);
+      const cacheResult = await applyChangesToCache<PEIndustryData>(changesResponse, CACHE_KEY);
 
       if (cacheResult.needsReload) {
         // Changes detected, reload snapshot
