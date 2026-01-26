@@ -235,7 +235,21 @@ export function useScoreBoardData() {
         }
       };
       
+      logger.debug('Fetching Score Board data', { 
+        component: 'useScoreBoardData', 
+        operation: 'loadData',
+        forceRefresh,
+        isBackground 
+      });
+      
       const fetchedData = await fetchScoreBoardData(forceRefresh, progressCallback);
+      
+      logger.info('Score Board data fetched successfully', { 
+        component: 'useScoreBoardData', 
+        operation: 'loadData',
+        entryCount: fetchedData.length,
+        forceRefresh 
+      });
       
       // Detect data changes
       const changes = detectDataChanges(
@@ -246,9 +260,22 @@ export function useScoreBoardData() {
       );
       
       // Update data
+      logger.debug('Updating Score Board state with new data', { 
+        component: 'useScoreBoardData', 
+        operation: 'loadData',
+        entryCount: fetchedData.length,
+        hasChanges: changes.hasSignificantChanges 
+      });
+      
       setData(fetchedData);
       previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
+      
+      logger.info('Score Board state updated successfully', { 
+        component: 'useScoreBoardData', 
+        operation: 'loadData',
+        entryCount: fetchedData.length 
+      });
       
       // Show notification if significant changes detected
       if (changes.hasSignificantChanges && !isBackground) {

@@ -431,7 +431,29 @@ export async function fetchJSONData<T>(
 
     // Cache the data if cacheKey is provided
     if (cacheKey) {
-      await setCachedData(cacheKey, transformedData, ttl);
+      logger.debug(`Saving ${dataTypeName} data to Firestore cache`, { 
+        component: 'fetchService', 
+        dataTypeName,
+        cacheKey,
+        entryCount: transformedData.length 
+      });
+      try {
+        await setCachedData(cacheKey, transformedData, ttl);
+        logger.info(`${dataTypeName} data saved to Firestore cache successfully`, { 
+          component: 'fetchService', 
+          dataTypeName,
+          cacheKey,
+          entryCount: transformedData.length 
+        });
+      } catch (cacheError) {
+        logger.error(`Failed to save ${dataTypeName} data to Firestore cache`, { 
+          component: 'fetchService', 
+          dataTypeName,
+          cacheKey,
+          error: cacheError 
+        });
+        // Don't throw - data was fetched successfully, cache failure is not critical
+      }
     }
 
     // Report complete
@@ -733,7 +755,29 @@ export async function fetchCSVData<T>(
               
               // Cache the data if cacheKey is provided
               if (cacheKey) {
-                await setCachedData(cacheKey, transformedData, ttl);
+                logger.debug(`Saving ${dataTypeName} data to Firestore cache (CSV)`, { 
+                  component: 'fetchService', 
+                  dataTypeName,
+                  cacheKey,
+                  entryCount: transformedData.length 
+                });
+                try {
+                  await setCachedData(cacheKey, transformedData, ttl);
+                  logger.info(`${dataTypeName} data saved to Firestore cache successfully (CSV)`, { 
+                    component: 'fetchService', 
+                    dataTypeName,
+                    cacheKey,
+                    entryCount: transformedData.length 
+                  });
+                } catch (cacheError) {
+                  logger.error(`Failed to save ${dataTypeName} data to Firestore cache (CSV)`, { 
+                    component: 'fetchService', 
+                    dataTypeName,
+                    cacheKey,
+                    error: cacheError 
+                  });
+                  // Don't throw - data was fetched successfully, cache failure is not critical
+                }
               }
               
               // Report complete

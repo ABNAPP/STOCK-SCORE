@@ -164,7 +164,21 @@ export function usePEIndustryData() {
         }
       };
       
+      logger.debug('Fetching PE Industry data', { 
+        component: 'usePEIndustryData', 
+        operation: 'loadData',
+        forceRefresh,
+        isBackground 
+      });
+      
       const fetchedData = await fetchPEIndustryData(forceRefresh, progressCallback);
+      
+      logger.info('PE Industry data fetched successfully', { 
+        component: 'usePEIndustryData', 
+        operation: 'loadData',
+        entryCount: fetchedData.length,
+        forceRefresh 
+      });
       
       // Detect data changes
       const changes = detectDataChanges(
@@ -174,9 +188,22 @@ export function usePEIndustryData() {
         0.05 // 5% threshold
       );
       
+      logger.debug('Updating PE Industry state with new data', { 
+        component: 'usePEIndustryData', 
+        operation: 'loadData',
+        entryCount: fetchedData.length,
+        hasChanges: changes.hasSignificantChanges 
+      });
+      
       setData(fetchedData);
       previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
+      
+      logger.info('PE Industry state updated successfully', { 
+        component: 'usePEIndustryData', 
+        operation: 'loadData',
+        entryCount: fetchedData.length 
+      });
       
       // Show notification if significant changes detected
       if (changes.hasSignificantChanges && !isBackground) {

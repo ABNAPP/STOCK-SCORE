@@ -47,10 +47,26 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
   // Refresh all data in parallel
   const refreshAll = useCallback(async () => {
     try {
+      logger.info('Refresh Now: Starting refresh process', { component: 'RefreshContext', operation: 'refreshAll' });
+      
       // Clear cache before refreshing to force fresh data (invalidate Firestore cache)
-      await clearCache();
+      logger.debug('Refresh Now: Clearing Firestore cache', { component: 'RefreshContext', operation: 'refreshAll' });
+      try {
+        await clearCache();
+        logger.info('Refresh Now: Firestore cache cleared successfully', { component: 'RefreshContext', operation: 'refreshAll' });
+      } catch (cacheError) {
+        logger.warn('Refresh Now: Failed to clear cache, continuing anyway', { 
+          component: 'RefreshContext', 
+          operation: 'refreshAll',
+          error: cacheError 
+        });
+        // Continue anyway - cache will expire via TTL
+      }
+      
       // Reset progress tracking
       resetProgress();
+      
+      logger.debug('Refresh Now: Starting data refetch with forceRefresh=true', { component: 'RefreshContext', operation: 'refreshAll' });
       
       // Check if any failed
       // Note: SMA data is fetched internally by fetchScoreBoardData, so no separate refresh needed
@@ -61,10 +77,34 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
         peIndustry.refetch(true),
       ]);
       
+      // Log individual results
+      results.forEach((result, index) => {
+        const dataType = ['BenjaminGraham', 'ScoreBoard', 'PEIndustry'][index];
+        if (result.status === 'fulfilled') {
+          logger.info(`Refresh Now: ${dataType} data refreshed successfully`, { 
+            component: 'RefreshContext', 
+            operation: 'refreshAll',
+            dataType 
+          });
+        } else {
+          logger.error(`Refresh Now: ${dataType} data refresh failed`, { 
+            component: 'RefreshContext', 
+            operation: 'refreshAll',
+            dataType,
+            error: result.reason 
+          });
+        }
+      });
+      
       const hasErrors = results.some(result => result.status === 'rejected');
       
       if (hasErrors) {
         const errorMessage = t('toast.refreshError', 'Fel vid uppdatering av data');
+        logger.error('Refresh Now: Refresh completed with errors', { 
+          component: 'RefreshContext', 
+          operation: 'refreshAll',
+          hasErrors: true 
+        });
         showError(errorMessage);
         createNotification(
           'error',
@@ -77,6 +117,10 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
         );
       } else {
         const successMessage = t('toast.refreshSuccess', 'All data har uppdaterats');
+        logger.info('Refresh Now: All data refreshed successfully', { 
+          component: 'RefreshContext', 
+          operation: 'refreshAll' 
+        });
         showSuccess(successMessage);
         createNotification(
           'success',
@@ -89,6 +133,11 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
         );
       }
     } catch (error: unknown) {
+      logger.error('Refresh Now: Unexpected error during refresh', { 
+        component: 'RefreshContext', 
+        operation: 'refreshAll',
+        error 
+      });
       const errorMessage = t('toast.refreshError', 'Fel vid uppdatering av data');
       showError(errorMessage);
       createNotification(
@@ -119,9 +168,15 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
     scoreBoard.loading ||
     peIndustry.loading;
 
-  const refreshBenjaminGraham = useCallback(() => benjaminGraham.refetch(true), [benjaminGraham.refetch]);
-  const refreshScoreBoard = useCallback(() => scoreBoard.refetch(true), [scoreBoard.refetch]);
-  const refreshPEIndustry = useCallback(() => peIndustry.refetch(true), [peIndustry.refetch]);
+  const refreshBenjaminGraham = useCallback(async () => {
+    await benjaminGraham.refetch(true);
+  }, [benjaminGraham.refetch]);
+  const refreshScoreBoard = useCallback(async () => {
+    await scoreBoard.refetch(true);
+  }, [scoreBoard.refetch]);
+  const refreshPEIndustry = useCallback(async () => {
+    await peIndustry.refetch(true);
+  }, [peIndustry.refetch]);
 
   const value: RefreshContextType = useMemo(() => ({
     refreshAll,

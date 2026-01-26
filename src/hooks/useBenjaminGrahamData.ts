@@ -240,7 +240,21 @@ export function useBenjaminGrahamData() {
         }
       };
       
+      logger.debug('Fetching Benjamin Graham data', { 
+        component: 'useBenjaminGrahamData', 
+        operation: 'loadData',
+        forceRefresh,
+        isBackground 
+      });
+      
       const fetchedData = await fetchBenjaminGrahamData(forceRefresh, progressCallback);
+      
+      logger.info('Benjamin Graham data fetched successfully', { 
+        component: 'useBenjaminGrahamData', 
+        operation: 'loadData',
+        entryCount: fetchedData.length,
+        forceRefresh 
+      });
       
       // Detect data changes
       const changes = detectDataChanges(
@@ -250,9 +264,22 @@ export function useBenjaminGrahamData() {
         0.05 // 5% threshold
       );
       
+      logger.debug('Updating Benjamin Graham state with new data', { 
+        component: 'useBenjaminGrahamData', 
+        operation: 'loadData',
+        entryCount: fetchedData.length,
+        hasChanges: changes.hasSignificantChanges 
+      });
+      
       setData(fetchedData);
       previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
+      
+      logger.info('Benjamin Graham state updated successfully', { 
+        component: 'useBenjaminGrahamData', 
+        operation: 'loadData',
+        entryCount: fetchedData.length 
+      });
       
       // Show notification if significant changes detected
       if (changes.hasSignificantChanges && !isBackground) {

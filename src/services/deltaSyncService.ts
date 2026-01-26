@@ -220,7 +220,7 @@ export async function initSync<T>(
   }
 
   // Check if we have existing cache with version
-  const existingEntry = getDeltaCacheEntry<T[]>(cacheKey);
+  const existingEntry = await getDeltaCacheEntry<T[]>(cacheKey);
   if (existingEntry) {
     // Return cached data
     return {
