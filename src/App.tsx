@@ -31,6 +31,7 @@ const ScoreView = lazyWithRetry<typeof import('./components/views/ScoreView').de
 const EntryExitView = lazyWithRetry<typeof import('./components/views/EntryExitView').default>(() => import('./components/views/EntryExitView'), 'EntryExitView');
 const FundamentalView = lazyWithRetry<typeof import('./components/views/FundamentalView').default>(() => import('./components/views/FundamentalView'), 'FundamentalView');
 const ThresholdIndustryView = lazyWithRetry<typeof import('./components/views/ThresholdIndustryView').default>(() => import('./components/views/ThresholdIndustryView'), 'ThresholdIndustryView');
+const PersonalPortfolioView = lazyWithRetry<typeof import('./components/views/PersonalPortfolioView').default>(() => import('./components/views/PersonalPortfolioView'), 'PersonalPortfolioView');
 
 // Lazy load modal components
 const ConditionsModal = lazyWithRetry<typeof import('./components/ConditionsModal').default>(() => import('./components/ConditionsModal'), 'ConditionsModal');
@@ -179,6 +180,7 @@ function App() {
       'entry-exit-benjamin-graham': t('navigation.benjaminGraham'),
       'fundamental-pe-industry': t('navigation.peIndustry'),
       'threshold-industry': t('navigation.thresholdIndustry'),
+      'personal-portfolio': t('navigation.personalPortfolio'),
     };
     return names[viewId] || viewId;
   };
@@ -220,6 +222,14 @@ function App() {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <ThresholdIndustryView />
+        </Suspense>
+      );
+    }
+
+    if (activeView === 'personal-portfolio') {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <PersonalPortfolioView />
         </Suspense>
       );
     }

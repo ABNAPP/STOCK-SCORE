@@ -69,6 +69,11 @@ export function useUserRole() {
    * Check if user can view a specific view
    */
   const canView = (viewId: ViewId): boolean => {
+    // Personal Portfolio is available to all authenticated users
+    if (viewId === 'personal-portfolio') {
+      return hasRole; // Any authenticated user (admin or viewer)
+    }
+    
     if (isAdmin) {
       return true; // Admin can view everything
     }

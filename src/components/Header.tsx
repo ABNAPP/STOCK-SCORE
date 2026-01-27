@@ -134,9 +134,39 @@ export default function Header({ onNavigate, activeView, sidebarCollapsed = fals
 
   return (
     <div className={`h-16 bg-white dark:bg-gray-800 border-b border-gray-300 dark:border-gray-400 fixed top-0 ${sidebarCollapsed ? 'left-16' : 'left-64'} right-0 z-30 flex items-center justify-between px-4`}>
-      {/* Global Search */}
-      <div className="flex-1 max-w-md mx-2 sm:mx-4">
-        {onNavigate && <GlobalSearch onNavigate={onNavigate} />}
+      {/* Left side: Personal Portfolio button and Global Search */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-1">
+        {/* Personal Portfolio Button - only shown for authenticated users */}
+        {currentUser && onNavigate && (
+          <button
+            onClick={() => onNavigate('personal-portfolio')}
+            className={`w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] min-w-[44px] touch-manipulation ${
+              activeView === 'personal-portfolio' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : ''
+            }`}
+            title={t('navigation.personalPortfolio', 'Personal Portfolio')}
+            aria-label={t('navigation.personalPortfolio', 'Personal Portfolio')}
+            aria-current={activeView === 'personal-portfolio' ? 'page' : undefined}
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+              />
+            </svg>
+          </button>
+        )}
+        {/* Global Search */}
+        <div className="flex-1 max-w-md mx-2 sm:mx-4">
+          {onNavigate && <GlobalSearch onNavigate={onNavigate} />}
+        </div>
       </div>
 
       {/* Right side controls */}

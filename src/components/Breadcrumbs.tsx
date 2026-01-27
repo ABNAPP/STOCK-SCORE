@@ -61,6 +61,14 @@ export default function Breadcrumbs({ activeView, onViewChange }: BreadcrumbsPro
       return breadcrumbs;
     }
 
+    if (activeView === 'personal-portfolio') {
+      breadcrumbs.push({
+        id: 'personal-portfolio',
+        label: t('navigation.personalPortfolio'),
+      });
+      return breadcrumbs;
+    }
+
     // Handle other entry-exit views
     if (activeView.startsWith('entry-exit-')) {
       const viewLabels: Partial<Record<ViewId, string>> = {

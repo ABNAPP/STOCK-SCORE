@@ -29,7 +29,8 @@
     "sma": "SMA:",
     "conditions": "Villkor",
     "condition": "Villkor",
-    "thresholdIndustry": "Threshold INDUSTRY"
+    "thresholdIndustry": "Threshold INDUSTRY",
+    "personalPortfolio": "Personal Portfolio"
   },
   "conditions": {
     "dataSource": "Datakälla",
@@ -50,7 +51,8 @@
     "loading": "Laddar...",
     "cancel": "Avbryt",
     "checking": "Kontrollerar status...",
-    "unauthorizedView": "Du har inte tillgång till denna vy"
+    "unauthorizedView": "Du har inte tillgång till denna vy",
+    "pleaseLogin": "Logga in för att visa din personliga portfölj"
   },
   "refresh": {
     "refreshAll": "Uppdatera allt",
@@ -364,6 +366,18 @@
     "doNotDisturb": "Stör Ej",
     "doNotDisturbDesc": "Tysta notifikationer under angivna timmar",
     "preferencesSaveError": "Kunde inte spara inställningar"
+  },
+  "portfolio": {
+    "description": "Hantera din personliga aktieportfölj",
+    "addItem": "Lägg till aktie",
+    "ticker": "Ticker",
+    "companyName": "Företagsnamn",
+    "companyNamePlaceholder": "Apple Inc.",
+    "add": "Lägg till",
+    "remove": "Ta bort",
+    "actions": "Åtgärder",
+    "empty": "Din portfölj är tom",
+    "emptyDescription": "Lägg till aktier ovan för att börja bygga din portfölj"
   }
 }
 

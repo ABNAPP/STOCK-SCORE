@@ -89,6 +89,19 @@ service cloud.firestore {
                       request.resource.data.size() <= 10240; // 10KB limit
     }
     
+    // User portfolios - users can read/write their own portfolio (requires authentication)
+    match /userPortfolios/{userId} {
+      // Users can only access their own portfolio
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Validate structure on write
+      allow write: if request.auth != null && 
+                      request.auth.uid == userId &&
+                      request.resource.data.userId == userId &&
+                      request.resource.data.size() <= 5242880 && // 5MB limit
+                      request.resource.data.portfolio is list;
+    }
+    
     // App cache - shared cache for all users (including unauthenticated)
     match /appCache/{cacheKey} {
       // Read: All users (including unauthenticated viewers)

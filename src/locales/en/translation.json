@@ -29,7 +29,8 @@
     "sma": "SMA:",
     "conditions": "Conditions",
     "condition": "Condition",
-    "thresholdIndustry": "Threshold INDUSTRY"
+    "thresholdIndustry": "Threshold INDUSTRY",
+    "personalPortfolio": "Personal Portfolio"
   },
   "conditions": {
     "dataSource": "Data Source",
@@ -50,7 +51,8 @@
     "loading": "Loading...",
     "cancel": "Cancel",
     "checking": "Checking status...",
-    "unauthorizedView": "You do not have access to this view"
+    "unauthorizedView": "You do not have access to this view",
+    "pleaseLogin": "Please log in to view your personal portfolio"
   },
   "refresh": {
     "refreshAll": "Refresh All",
@@ -354,6 +356,18 @@
     "doNotDisturb": "Do Not Disturb",
     "doNotDisturbDesc": "Silence notifications during specified hours",
     "preferencesSaveError": "Failed to save preferences"
+  },
+  "portfolio": {
+    "description": "Manage your personal stock portfolio",
+    "addItem": "Add stock",
+    "ticker": "Ticker",
+    "companyName": "Company name",
+    "companyNamePlaceholder": "Apple Inc.",
+    "add": "Add",
+    "remove": "Remove",
+    "actions": "Actions",
+    "empty": "Your portfolio is empty",
+    "emptyDescription": "Add stocks above to start building your portfolio"
   }
 }
 

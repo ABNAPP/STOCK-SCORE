@@ -57,6 +57,12 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
     items: [{ id: 'threshold-industry', label: t('navigation.thresholdIndustry') }],
     collapsible: false,
   },
+  {
+    id: 'personal-portfolio',
+    label: t('navigation.personalPortfolio'),
+    items: [{ id: 'personal-portfolio', label: t('navigation.personalPortfolio') }],
+    collapsible: false,
+  },
 ];
 
 // Icon mapping for each view
@@ -72,6 +78,8 @@ const getViewIcon = (viewId: ViewId) => {
       return ChartPieIcon;
     case 'threshold-industry':
       return BuildingOfficeIcon;
+    case 'personal-portfolio':
+      return BuildingOfficeIcon; // Using BuildingOfficeIcon as portfolio icon, can be changed later
     default:
       return null;
   }
