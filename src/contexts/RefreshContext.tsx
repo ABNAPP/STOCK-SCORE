@@ -8,6 +8,7 @@ import { useNotifications } from './NotificationContext';
 import { useTranslation } from 'react-i18next';
 import { clearCache } from '../services/firestoreCacheService';
 import { useLoadingProgress } from './LoadingProgressContext';
+import { requestClearApiCache } from '../utils/serviceWorkerRegistration';
 import { logger } from '../utils/logger';
 
 interface RefreshContextType {
@@ -32,7 +33,7 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
   // - useToast: Requires ToastProvider (set in main.tsx)
   // - useLoadingProgress: Requires LoadingProgressProvider (parent in App.tsx)
   const { t } = useTranslation();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showWarning } = useToast();
   const { createNotification } = useNotifications();
   const { reset: resetProgress } = useLoadingProgress();
   
@@ -51,20 +52,36 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
       
       // Clear cache before refreshing to force fresh data (invalidate Firestore cache)
       logger.debug('Refresh Now: Clearing Firestore cache', { component: 'RefreshContext', operation: 'refreshAll' });
-      try {
-        await clearCache();
+      const { cleared } = await clearCache();
+      if (cleared) {
         logger.info('Refresh Now: Firestore cache cleared successfully', { component: 'RefreshContext', operation: 'refreshAll' });
-      } catch (cacheError) {
-        logger.warn('Refresh Now: Failed to clear cache, continuing anyway', { 
-          component: 'RefreshContext', 
+      } else {
+        logger.warn('Refresh Now: Firestore cache could not be cleared (e.g. insufficient permissions)', {
+          component: 'RefreshContext',
           operation: 'refreshAll',
-          error: cacheError 
         });
-        // Continue anyway - cache will expire via TTL
+        const cacheClearWarning = t('toast.refreshCacheClearWarning', 'Cache could not be cleared; you may need editor rights. Data will still refresh where possible.');
+        showWarning(cacheClearWarning);
+        createNotification('warning', 'Cache Clear Skipped', cacheClearWarning, {
+          showDesktop: true,
+          persistent: false,
+        });
       }
       
       // Reset progress tracking
       resetProgress();
+      
+      // Clear Service Worker API cache so refetch hits network
+      try {
+        await requestClearApiCache();
+        logger.debug('Refresh Now: Service Worker API cache cleared', { component: 'RefreshContext', operation: 'refreshAll' });
+      } catch (swError) {
+        logger.warn('Refresh Now: Failed to clear SW cache, continuing with refetch', {
+          component: 'RefreshContext',
+          operation: 'refreshAll',
+          error: swError,
+        });
+      }
       
       logger.debug('Refresh Now: Starting data refetch with forceRefresh=true', { component: 'RefreshContext', operation: 'refreshAll' });
       
@@ -156,6 +173,7 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
     peIndustry.refetch,
     showSuccess,
     showError,
+    showWarning,
     createNotification,
     t,
     resetProgress,

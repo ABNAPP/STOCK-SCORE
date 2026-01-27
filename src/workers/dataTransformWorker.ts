@@ -24,12 +24,6 @@ interface TransformMessage {
   industryPe1Map?: Record<string, number>;
   industryPe2Map?: Record<string, number>;
   smaDataMap?: Record<string, { sma100: number | null; sma200: number | null; smaCross: string | null }>;
-  // For Threshold Industry transformer, include industry maps
-  industryIRRMap?: Record<string, number>;
-  industryLeverageF2Map?: Record<string, { greenMax: number; redMin: number }>;
-  industryRO40Map?: Record<string, { min: number; max: number }>;
-  industryCashSdebtMap?: Record<string, { min: number; max: number }>;
-  industryCurrentRatioMap?: Record<string, { min: number; max: number }>;
 }
 
 interface ProgressMessage {
@@ -448,120 +442,8 @@ function transformScoreBoardData(
   return scoreBoardData;
 }
 
-// For Threshold Industry, we need the industry threshold maps
-// We'll pass them as part of the message data
-function transformThresholdIndustryData(
-  results: { data: DataRow[]; meta: { fields: string[] | null } },
-  industryIRRMap: Record<string, number>,
-  industryLeverageF2Map: Record<string, { greenMax: number; redMin: number }>,
-  industryRO40Map: Record<string, { min: number; max: number }>,
-  industryCashSdebtMap: Record<string, { min: number; max: number }>,
-  industryCurrentRatioMap: Record<string, { min: number; max: number }>
-): unknown[] {
-  // Extract unique industries
-  const industrySet = new Set<string>();
-
-  results.data.forEach((row: DataRow) => {
-    const industry = getValue(['INDUSTRY', 'Industry', 'industry'], row);
-    
-    // Filter out invalid values
-    if (isValidValue(industry)) {
-      industrySet.add(industry);
-    }
-  });
-
-  // Convert Set to sorted array of ThresholdIndustryData
-  const thresholdIndustryData = Array.from(industrySet)
-    .sort()
-    .map((industry) => {
-      // Find IRR value
-      let irrValue = 0;
-      const industryLower = industry.toLowerCase();
-      if (industryIRRMap[industry]) {
-        irrValue = industryIRRMap[industry];
-      } else {
-        // Try case-insensitive match
-        for (const [key, value] of Object.entries(industryIRRMap)) {
-          if (key.toLowerCase() === industryLower) {
-            irrValue = value;
-            break;
-          }
-        }
-      }
-
-      // Find Leverage F2 values
-      let leverageF2Values = { min: 0, max: 0 };
-      if (industryLeverageF2Map[industry]) {
-        const { greenMax, redMin } = industryLeverageF2Map[industry];
-        leverageF2Values = { min: greenMax, max: redMin };
-      } else {
-        // Try case-insensitive match
-        for (const [key, value] of Object.entries(industryLeverageF2Map)) {
-          if (key.toLowerCase() === industryLower) {
-            leverageF2Values = { min: value.greenMax, max: value.redMin };
-            break;
-          }
-        }
-      }
-
-      // Find RO40 values
-      let ro40Values = { min: 0, max: 0 };
-      if (industryRO40Map[industry]) {
-        ro40Values = industryRO40Map[industry];
-      } else {
-        // Try case-insensitive match
-        for (const [key, value] of Object.entries(industryRO40Map)) {
-          if (key.toLowerCase() === industryLower) {
-            ro40Values = value;
-            break;
-          }
-        }
-      }
-
-      // Find Cash/SDebt values
-      let cashSdebtValues = { min: 0, max: 0 };
-      if (industryCashSdebtMap[industry]) {
-        cashSdebtValues = industryCashSdebtMap[industry];
-      } else {
-        // Try case-insensitive match
-        for (const [key, value] of Object.entries(industryCashSdebtMap)) {
-          if (key.toLowerCase() === industryLower) {
-            cashSdebtValues = value;
-            break;
-          }
-        }
-      }
-
-      // Find Current Ratio values
-      let currentRatioValues = { min: 0, max: 0 };
-      if (industryCurrentRatioMap[industry]) {
-        currentRatioValues = industryCurrentRatioMap[industry];
-      } else {
-        // Try case-insensitive match
-        for (const [key, value] of Object.entries(industryCurrentRatioMap)) {
-          if (key.toLowerCase() === industryLower) {
-            currentRatioValues = value;
-            break;
-          }
-        }
-      }
-
-      return {
-        industry: industry,
-        irr: irrValue,
-        leverageF2Min: leverageF2Values.min,
-        leverageF2Max: leverageF2Values.max,
-        ro40Min: ro40Values.min,
-        ro40Max: ro40Values.max,
-        cashSdebtMin: cashSdebtValues.min,
-        cashSdebtMax: cashSdebtValues.max,
-        currentRatioMin: currentRatioValues.min,
-        currentRatioMax: currentRatioValues.max,
-      };
-    });
-  
-  return thresholdIndustryData;
-}
+// Threshold Industry uses large industry maps and runs on main thread only.
+// getTransformerId returns null for threshold-industry; no worker path.
 
 // ============================================================================
 // Transformer Registry
@@ -574,7 +456,6 @@ const transformers: Record<string, TransformerFunction> = {
   'pe-industry': transformPEIndustryData,
   'sma': transformSMAData,
   'score-board': transformScoreBoardData,
-  'threshold-industry': transformThresholdIndustryData,
 };
 
 // ============================================================================
@@ -670,20 +551,6 @@ self.onmessage = function(e: MessageEvent<TransformMessage>) {
         message.industryPe1Map,
         message.industryPe2Map,
         message.smaDataMap
-      ) as unknown[];
-    } else if (message.transformerId === 'threshold-industry') {
-      // Threshold Industry needs industry maps - pass them as additionalData
-      if (!message.industryIRRMap || !message.industryLeverageF2Map || !message.industryRO40Map || 
-          !message.industryCashSdebtMap || !message.industryCurrentRatioMap) {
-        throw new Error('Threshold Industry transformer requires all industry maps');
-      }
-      transformedData = transformer(
-        { data: message.data, meta: message.meta },
-        message.industryIRRMap as Record<string, number>,
-        message.industryLeverageF2Map as Record<string, { greenMax: number; redMin: number }>,
-        message.industryRO40Map as Record<string, { min: number; max: number }>,
-        message.industryCashSdebtMap as Record<string, { min: number; max: number }>,
-        message.industryCurrentRatioMap as Record<string, { min: number; max: number }>
       ) as unknown[];
     } else {
       transformedData = transformer({ data: message.data, meta: message.meta }) as unknown[];

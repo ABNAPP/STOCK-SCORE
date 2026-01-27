@@ -72,6 +72,7 @@
     "close": "Stäng",
     "refreshSuccess": "All data har uppdaterats",
     "refreshError": "Fel vid uppdatering av data",
+    "refreshCacheClearWarning": "Cache kunde inte rensas; du kan behöva redaktörsrättigheter. Data uppdateras ändå där det går.",
     "dataUpdated": "Data uppdaterad",
     "updateFailed": "Uppdatering misslyckades"
   },

@@ -97,6 +97,10 @@ export interface DeltaSyncConfig {
   onUpdate?: (data: unknown, version: number) => void;
   /** Callback function called on errors */
   onError?: (error: Error) => void;
+  /** Data type name for worker transformer (e.g. "Benjamin Graham", "Score Board"). Used with sheetName for getTransformerId. */
+  dataTypeName?: string;
+  /** Additional data for transformers that need it (e.g. industryPe1Map, industryPe2Map, smaDataMap for Score Board). */
+  additionalData?: Record<string, unknown>;
 }
 
 /**
@@ -254,8 +258,8 @@ export async function initSync<T>(
   
   // Try to use Web Worker for transformation, fallback to main thread
   let transformedData: T[];
-  const transformerId = getTransformerId(config.sheetName, config.sheetName);
-  
+  const transformerId = getTransformerId(config.dataTypeName ?? config.sheetName, config.sheetName);
+
   if (transformerId) {
     try {
       transformedData = await transformInWorker<T>(
@@ -263,7 +267,7 @@ export async function initSync<T>(
         transformerFormat.data,
         transformerFormat.meta,
         undefined, // progressCallback (delta sync doesn't use progress callbacks)
-        undefined, // additionalData
+        config.additionalData,
         transformer // fallback transformer
       );
     } catch (workerError) {

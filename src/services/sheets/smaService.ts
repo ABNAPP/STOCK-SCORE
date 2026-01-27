@@ -17,8 +17,9 @@ const SMA_CSV_URL = `https://docs.google.com/spreadsheets/d/${SMA_SHEET_ID}/expo
 
 /**
  * Transformer function for SMA data
+ * Exported for use in background sync persist.
  */
-function transformSMAData(results: { data: DataRow[]; meta: { fields: string[] | null } }): SMAData[] {
+export function transformSMAData(results: { data: DataRow[]; meta: { fields: string[] | null } }): SMAData[] {
   const smaData: SMAData[] = results.data
     .map((row: DataRow) => {
       const companyName = getValue(['Company Name', 'Company', 'company'], row);

@@ -306,7 +306,7 @@ export async function setCachedData<T>(key: string, data: T, ttl: number = DEFAU
  * @param data - Data to cache
  * @param version - Current version (changeId) from the server
  * @param isSnapshot - Whether this is a full snapshot (true) or incremental update (false)
- * @param ttl - Optional TTL for fallback compatibility with legacy cache
+ * @param ttl - TTL in ms (default: DEFAULT_TTL). Delta entries expire so cache can be pruned.
  */
 export async function setDeltaCacheEntry<T>(
   key: string,
@@ -322,11 +322,12 @@ export async function setDeltaCacheEntry<T>(
     // Get existing entry to preserve lastSnapshotAt if not a snapshot
     const existing = await getDeltaCacheEntry<T>(key);
     
+    const effectiveTtl = ttl ?? DEFAULT_TTL;
     const entry: FirestoreCacheEntry<T> = {
       data,
       version,
-      timestamp: ttl ? now : undefined,
-      ttl,
+      timestamp: now,
+      ttl: effectiveTtl,
       lastSnapshotAt: isSnapshot ? now : (existing?.lastSnapshotAt || now),
       lastUpdated: serverTimestamp() as any, // Firestore will convert this
     };
@@ -744,8 +745,9 @@ export async function runTruncatedCacheMigrations(): Promise<void> {
  * have permission, this function will silently fail (cache will expire via TTL anyway).
  * 
  * @param key - Optional cache key to clear. If not provided, clears all cache entries
+ * @returns Promise<{ cleared: boolean }> - cleared true if all requested entries were removed, false otherwise (e.g. permission-denied)
  */
-export async function clearCache(key?: string): Promise<void> {
+export async function clearCache(key?: string): Promise<{ cleared: boolean }> {
   try {
     if (key) {
       const docRef = getCacheDocRef(key);
@@ -760,84 +762,79 @@ export async function clearCache(key?: string): Promise<void> {
         operation: 'clearCache', 
         key 
       });
-    } else {
-      // Clear all cache entries
-      logger.debug('Clearing all cache entries from Firestore', { 
+      return { cleared: true };
+    }
+    // Clear all cache entries
+    logger.debug('Clearing all cache entries from Firestore', { 
+      component: 'firestoreCacheService', 
+      operation: 'clearCache' 
+    });
+    const cacheCollection = collection(db, CACHE_COLLECTION);
+    const q = query(cacheCollection);
+    const querySnapshot = await getDocs(q);
+    
+    const docCount = querySnapshot.docs.length;
+    logger.info(`Found ${docCount} cache entries to clear`, { 
+      component: 'firestoreCacheService', 
+      operation: 'clearCache',
+      docCount 
+    });
+    
+    if (docCount === 0) {
+      logger.debug('No cache entries found to clear', { 
         component: 'firestoreCacheService', 
         operation: 'clearCache' 
       });
-      const cacheCollection = collection(db, CACHE_COLLECTION);
-      const q = query(cacheCollection);
-      const querySnapshot = await getDocs(q);
-      
-      const docCount = querySnapshot.docs.length;
-      logger.info(`Found ${docCount} cache entries to clear`, { 
-        component: 'firestoreCacheService', 
-        operation: 'clearCache',
-        docCount 
-      });
-      
-      if (docCount === 0) {
-        logger.debug('No cache entries found to clear', { 
-          component: 'firestoreCacheService', 
-          operation: 'clearCache' 
-        });
-        return;
-      }
-      
-      const deletePromises = querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
-      const deleteResults = await Promise.allSettled(deletePromises);
-      
-      // Count successful and failed deletions
-      const successful = deleteResults.filter(r => r.status === 'fulfilled').length;
-      const failed = deleteResults.filter(r => r.status === 'rejected').length;
-      
-      logger.info('Cache clearing completed', { 
-        component: 'firestoreCacheService', 
-        operation: 'clearCache',
-        total: docCount,
-        successful,
-        failed 
-      });
-      
-      if (failed > 0) {
-        const failedDocs = deleteResults
-          .map((result, index) => result.status === 'rejected' ? querySnapshot.docs[index].id : null)
-          .filter(Boolean);
-        logger.warn('Some cache entries failed to delete', { 
-          component: 'firestoreCacheService', 
-          operation: 'clearCache',
-          failedCount: failed,
-          failedDocs 
-        });
-      }
+      return { cleared: true };
     }
+    
+    const deletePromises = querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
+    const deleteResults = await Promise.allSettled(deletePromises);
+    
+    const successful = deleteResults.filter(r => r.status === 'fulfilled').length;
+    const failed = deleteResults.filter(r => r.status === 'rejected').length;
+    
+    logger.info('Cache clearing completed', { 
+      component: 'firestoreCacheService', 
+      operation: 'clearCache',
+      total: docCount,
+      successful,
+      failed 
+    });
+    
+    if (failed > 0) {
+      const failedDocs = deleteResults
+        .map((result, index) => result.status === 'rejected' ? querySnapshot.docs[index].id : null)
+        .filter(Boolean);
+      logger.warn('Some cache entries failed to delete', { 
+        component: 'firestoreCacheService', 
+        operation: 'clearCache',
+        failedCount: failed,
+        failedDocs 
+      });
+      return { cleared: false };
+    }
+    return { cleared: true };
   } catch (error: any) {
-    // Check if this is a permission-denied error
-    // This is expected for non-editor users (viewer1, viewer2)
-    // Cache will expire naturally via TTL, so this is not critical
     const isPermissionError = error?.code === 'permission-denied' || 
                               (error?.name === 'FirebaseError' && error?.code === 'permission-denied');
     
     if (isPermissionError) {
-      // Log permission errors at info level so they're visible during refresh
       logger.info('Cache clear skipped (insufficient permissions - cache will expire via TTL)', { 
         component: 'firestoreCacheService', 
         operation: 'clearCache', 
         key,
         note: 'This is expected for non-editor users. Cache will expire naturally via TTL.'
       });
-      return; // Don't throw - this is expected for non-editor users
+      return { cleared: false };
     }
     
-    // For other errors, log a warning but don't throw
-    // Cache clearing is not critical to app functionality
     logger.warn('Failed to clear cache', { 
       component: 'firestoreCacheService', 
       operation: 'clearCache', 
       key, 
       error 
     });
-    // Don't throw - allow refresh to continue even if cache clear fails
+    return { cleared: false };
   }
 }

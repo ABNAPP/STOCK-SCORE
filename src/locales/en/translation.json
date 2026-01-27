@@ -72,6 +72,7 @@
     "close": "Close",
     "refreshSuccess": "All data has been updated",
     "refreshError": "Error updating data",
+    "refreshCacheClearWarning": "Cache could not be cleared; you may need editor rights. Data will still refresh where possible.",
     "dataUpdated": "Data updated",
     "updateFailed": "Update failed"
   },

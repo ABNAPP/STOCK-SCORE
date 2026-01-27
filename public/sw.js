@@ -112,8 +112,8 @@ self.addEventListener('message', (event) => {
   
   if (event.data && event.data.type === 'SYNC_REQUEST') {
     // Handle sync request from main app
-    const { sheetName, apiBaseUrl } = event.data;
-    handleBackgroundSync(sheetName, apiBaseUrl, event.ports[0]);
+    const { sheetName, apiBaseUrl, token } = event.data;
+    handleBackgroundSync(sheetName, apiBaseUrl, event.ports[0], token);
   }
   
   if (event.data && event.data.type === 'CHECK_SYNC_STATUS') {
@@ -123,20 +123,36 @@ self.addEventListener('message', (event) => {
       isSyncing: false, // We'll implement proper coordination later
     });
   }
+
+  if (event.data && event.data.type === 'CLEAR_API_CACHE') {
+    const port = event.ports && event.ports[0];
+    caches.delete(CACHE_NAME)
+      .then(() => {
+        console.log('[Service Worker] API cache cleared:', CACHE_NAME);
+        if (port) port.postMessage({ type: 'CLEAR_API_CACHE_DONE' });
+      })
+      .catch((err) => {
+        console.warn('[Service Worker] Failed to clear API cache:', err);
+        if (port) port.postMessage({ type: 'CLEAR_API_CACHE_DONE' });
+      });
+  }
 });
 
 // Background sync handler
-async function handleBackgroundSync(sheetName, apiBaseUrl, port) {
+async function handleBackgroundSync(sheetName, apiBaseUrl, port, token) {
   try {
     // Check if main app is already syncing (coordination)
     // For now, we'll just log - proper coordination will be implemented
     console.log('[Service Worker] Background sync requested for:', sheetName);
-    
+
     // Build snapshot URL
     const url = new URL(apiBaseUrl);
     url.searchParams.set('action', 'snapshot');
     url.searchParams.set('sheet', sheetName);
-    
+    if (token) {
+      url.searchParams.set('token', token);
+    }
+
     // Fetch snapshot
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -173,26 +189,6 @@ async function handleBackgroundSync(sheetName, apiBaseUrl, port) {
   }
 }
 
-// Background sync event (if supported)
-self.addEventListener('sync', (event) => {
-  console.log('[Service Worker] Background sync event:', event.tag);
-  
-  if (event.tag.startsWith('sync-')) {
-    event.waitUntil(
-      // Handle background sync
-      Promise.resolve()
-    );
-  }
-});
-
-// Periodic background sync (if supported)
-self.addEventListener('periodicsync', (event) => {
-  console.log('[Service Worker] Periodic sync event:', event.tag);
-  
-  if (event.tag === 'data-sync') {
-    event.waitUntil(
-      // Handle periodic sync
-      Promise.resolve()
-    );
-  }
-});
+// Background Sync API (sync) and Periodic Background Sync (periodicsync) are not used.
+// Sync is triggered via visibilitychange + SYNC_REQUEST messages from the main app.
+// To use them later, wire these listeners to the same handleBackgroundSync flow.

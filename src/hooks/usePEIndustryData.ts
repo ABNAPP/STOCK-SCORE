@@ -83,6 +83,7 @@ export function usePEIndustryData() {
           const config: DeltaSyncConfig = {
             sheetName: SHEET_NAME,
             apiBaseUrl: APPS_SCRIPT_URL,
+            dataTypeName: 'PE Industry',
           };
 
           // Load initial snapshot or use cached data
@@ -262,6 +263,7 @@ export function usePEIndustryData() {
       const config: DeltaSyncConfig = {
         sheetName: SHEET_NAME,
         apiBaseUrl: APPS_SCRIPT_URL,
+        dataTypeName: 'PE Industry',
       };
 
       const changesResponse = await pollChanges(config, currentVersionRef.current);
@@ -334,7 +336,7 @@ export function usePEIndustryData() {
           previousDataRef.current = cachedData;
           currentVersionRef.current = deltaCacheEntry?.version || 0;
           setLoading(false);
-          // Don't fetch if we have valid cache - hard cache, no background updates
+          // Don't fetch if we have valid cache - hard cache, no initial fetch; polling still updates in background
           return;
         }
         // No cache, fetch fresh data

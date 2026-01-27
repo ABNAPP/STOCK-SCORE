@@ -107,32 +107,100 @@ export function sendMessageToServiceWorker(message: unknown): void {
   navigator.serviceWorker.controller.postMessage(message);
 }
 
+const SYNC_REQUEST_TIMEOUT_MS = 45_000;
+
 /**
  * Request background sync from Service Worker
+ * @param sheetName - Sheet to sync (e.g. DashBoard, SMA)
+ * @param apiBaseUrl - Apps Script API base URL
+ * @param token - Optional API token (e.g. VITE_APPS_SCRIPT_TOKEN)
  */
-export function requestBackgroundSync(sheetName: string, apiBaseUrl: string): Promise<unknown> {
+export function requestBackgroundSync(
+  sheetName: string,
+  apiBaseUrl: string,
+  token?: string
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
       reject(new Error('Service Worker not available'));
       return;
     }
 
+    let settled = false;
     const messageChannel = new MessageChannel();
-    
+
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      messageChannel.port1.onmessage = null;
+      reject(new Error(`Background sync timeout for ${sheetName} (${SYNC_REQUEST_TIMEOUT_MS}ms)`));
+    }, SYNC_REQUEST_TIMEOUT_MS);
+
     messageChannel.port1.onmessage = (event) => {
-      if (event.data.type === 'SYNC_COMPLETE') {
+      if (settled) return;
+      if (event.data?.type === 'SYNC_COMPLETE') {
+        settled = true;
+        clearTimeout(timeoutId);
+        messageChannel.port1.onmessage = null;
         resolve(event.data);
-      } else if (event.data.type === 'SYNC_ERROR') {
+      } else if (event.data?.type === 'SYNC_ERROR') {
+        settled = true;
+        clearTimeout(timeoutId);
+        messageChannel.port1.onmessage = null;
         reject(new Error(event.data.error));
       }
     };
 
+    const payload: { type: string; sheetName: string; apiBaseUrl: string; token?: string } = {
+      type: 'SYNC_REQUEST',
+      sheetName,
+      apiBaseUrl,
+    };
+    if (token) payload.token = token;
+
+    navigator.serviceWorker.controller.postMessage(payload, [messageChannel.port2]);
+  });
+}
+
+const CLEAR_API_CACHE_TIMEOUT_MS = 5_000;
+
+/**
+ * Request Service Worker to clear API cache (used before Refresh Now refetch).
+ * Resolves immediately if SW is not available.
+ */
+export function requestClearApiCache(): Promise<void> {
+  return new Promise((resolve) => {
+    if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+      resolve();
+      return;
+    }
+
+    let settled = false;
+    const messageChannel = new MessageChannel();
+
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      messageChannel.port1.onmessage = null;
+      logger.warn('Clear API cache timeout; continuing with refetch', {
+        component: 'serviceWorkerRegistration',
+        operation: 'requestClearApiCache',
+      });
+      resolve();
+    }, CLEAR_API_CACHE_TIMEOUT_MS);
+
+    messageChannel.port1.onmessage = (event) => {
+      if (settled) return;
+      if (event.data?.type === 'CLEAR_API_CACHE_DONE') {
+        settled = true;
+        clearTimeout(timeoutId);
+        messageChannel.port1.onmessage = null;
+        resolve();
+      }
+    };
+
     navigator.serviceWorker.controller.postMessage(
-      {
-        type: 'SYNC_REQUEST',
-        sheetName,
-        apiBaseUrl,
-      },
+      { type: 'CLEAR_API_CACHE' },
       [messageChannel.port2]
     );
   });

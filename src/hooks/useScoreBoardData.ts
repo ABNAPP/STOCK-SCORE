@@ -125,8 +125,29 @@ export function useScoreBoardData() {
 
     // Create transformer with the maps
     const transformer = createScoreBoardTransformer(industryPe1Map, industryPe2Map, smaDataMap);
-    
-    return transformer;
+
+    // Convert Maps to plain objects for worker serialization (delta sync / initSync)
+    const industryPe1MapObj: Record<string, number> = {};
+    industryPe1Map.forEach((value, key) => {
+      industryPe1MapObj[key] = value;
+    });
+    const industryPe2MapObj: Record<string, number> = {};
+    industryPe2Map.forEach((value, key) => {
+      industryPe2MapObj[key] = value;
+    });
+    const smaDataMapObj: Record<string, { sma100: number | null; sma200: number | null; smaCross: string | null }> = {};
+    smaDataMap.forEach((value, key) => {
+      smaDataMapObj[key] = value;
+    });
+
+    return {
+      transformer,
+      additionalData: {
+        industryPe1Map: industryPe1MapObj,
+        industryPe2Map: industryPe2MapObj,
+        smaDataMap: smaDataMapObj,
+      },
+    };
   }, []);
 
   // Load data using delta-sync or fallback to regular fetch
@@ -148,13 +169,15 @@ export function useScoreBoardData() {
       // Try delta-sync if enabled
       if (isDeltaSyncEnabled() && APPS_SCRIPT_URL && !forceRefresh) {
         try {
+          // Fetch dependencies first (PE Industry, SMA) for transformer and worker additionalData
+          const { transformer, additionalData } = await fetchDependenciesAndCreateTransformer(forceRefresh);
+
           const config: DeltaSyncConfig = {
             sheetName: SHEET_NAME,
             apiBaseUrl: APPS_SCRIPT_URL,
+            dataTypeName: 'Score Board',
+            additionalData,
           };
-
-          // Fetch dependencies first
-          const transformer = await fetchDependenciesAndCreateTransformer(forceRefresh);
 
           // Load initial snapshot or use cached data
           const result = await initSync<ScoreBoardData>(
@@ -334,6 +357,7 @@ export function useScoreBoardData() {
       const config: DeltaSyncConfig = {
         sheetName: SHEET_NAME,
         apiBaseUrl: APPS_SCRIPT_URL,
+        dataTypeName: 'Score Board',
       };
 
       const changesResponse = await pollChanges(config, currentVersionRef.current);
@@ -341,9 +365,9 @@ export function useScoreBoardData() {
 
       if (cacheResult.needsReload) {
         // Changes detected, reload snapshot
-        // First fetch dependencies
-        const transformer = await fetchDependenciesAndCreateTransformer(false);
-        
+        // First fetch dependencies (transformer has maps closed over)
+        const { transformer } = await fetchDependenciesAndCreateTransformer(false);
+
         // Load snapshot
         const snapshot = await loadSnapshot(config);
         const transformerFormat = snapshotToTransformerFormat(snapshot);
@@ -410,7 +434,7 @@ export function useScoreBoardData() {
           previousDataRef.current = cachedData;
           currentVersionRef.current = deltaCacheEntry?.version || 0;
           setLoading(false);
-          // Don't fetch if we have valid cache - hard cache, no background updates
+          // Don't fetch if we have valid cache - hard cache, no initial fetch; polling still updates in background
           return;
         }
         // No cache, fetch fresh data

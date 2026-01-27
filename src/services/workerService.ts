@@ -24,6 +24,9 @@ const pendingJobs = new Map<string, {
   progressCallback?: ProgressCallback;
 }>();
 
+// Timeout IDs per job – cleared on complete/error to avoid timer leak
+const jobTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
 /**
  * Load worker instance (lazy loading)
  */
@@ -61,12 +64,22 @@ async function loadWorker(): Promise<Worker> {
         } else if (message.type === 'complete') {
           const job = pendingJobs.get(message.jobId);
           if (job) {
+            const tid = jobTimeouts.get(message.jobId);
+            if (tid != null) {
+              clearTimeout(tid);
+              jobTimeouts.delete(message.jobId);
+            }
             pendingJobs.delete(message.jobId);
             job.resolve(message.data);
           }
         } else if (message.type === 'error') {
           const job = pendingJobs.get(message.jobId);
           if (job) {
+            const tid = jobTimeouts.get(message.jobId);
+            if (tid != null) {
+              clearTimeout(tid);
+              jobTimeouts.delete(message.jobId);
+            }
             pendingJobs.delete(message.jobId);
             job.reject(new Error(message.error));
           }
@@ -109,8 +122,13 @@ async function loadWorker(): Promise<Worker> {
           return; // Early return for initialization errors
         }
         
-        // Reject all pending jobs
+        // Reject all pending jobs and clear their timeouts
         for (const [jobId, job] of pendingJobs.entries()) {
+          const tid = jobTimeouts.get(jobId);
+          if (tid != null) {
+            clearTimeout(tid);
+            jobTimeouts.delete(jobId);
+          }
           pendingJobs.delete(jobId);
           job.reject(new Error(`Worker error: ${errorMessage}`));
         }
@@ -179,8 +197,9 @@ export async function transformInWorker<T>(
       });
 
       // Timeout after 60 seconds
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         if (pendingJobs.has(jobId)) {
+          jobTimeouts.delete(jobId);
           pendingJobs.delete(jobId);
           // Fallback to main thread on timeout
           if (fallbackTransformer) {
@@ -192,6 +211,7 @@ export async function transformInWorker<T>(
           }
         }
       }, 60000);
+      jobTimeouts.set(jobId, timeoutId);
     });
   } catch (error) {
     // Fallback to main thread on error
@@ -304,8 +324,13 @@ export function terminateWorker(): void {
     workerInstance.terminate();
     workerInstance = null;
     workerLoadPromise = null;
-    // Reject all pending jobs
+    // Clear all job timeouts and reject pending jobs
     for (const [jobId, job] of pendingJobs.entries()) {
+      const tid = jobTimeouts.get(jobId);
+      if (tid != null) {
+        clearTimeout(tid);
+        jobTimeouts.delete(jobId);
+      }
       pendingJobs.delete(jobId);
       job.reject(new Error('Worker terminated'));
     }

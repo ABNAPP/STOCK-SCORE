@@ -18,8 +18,9 @@ const BENJAMIN_GRAHAM_CSV_URL = `https://docs.google.com/spreadsheets/d/${BENJAM
 
 /**
  * Transformer function for Benjamin Graham data
+ * Exported for use in background sync persist.
  */
-function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields: string[] | null } }): BenjaminGrahamData[] {
+export function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields: string[] | null } }): BenjaminGrahamData[] {
   const benjaminGrahamData = results.data
     .map((row: DataRow) => {
       const companyName = getValue(['Company Name', 'Company', 'company'], row);

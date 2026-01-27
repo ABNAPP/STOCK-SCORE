@@ -159,6 +159,7 @@ export function useBenjaminGrahamData() {
           const config: DeltaSyncConfig = {
             sheetName: SHEET_NAME,
             apiBaseUrl: APPS_SCRIPT_URL,
+            dataTypeName: 'Benjamin Graham',
           };
 
           // Load initial snapshot or use cached data
@@ -338,6 +339,7 @@ export function useBenjaminGrahamData() {
       const config: DeltaSyncConfig = {
         sheetName: SHEET_NAME,
         apiBaseUrl: APPS_SCRIPT_URL,
+        dataTypeName: 'Benjamin Graham',
       };
 
       const changes = await pollChanges(config, currentVersionRef.current);
@@ -410,7 +412,7 @@ export function useBenjaminGrahamData() {
           previousDataRef.current = cachedData;
           currentVersionRef.current = deltaCacheEntry?.version || 0;
           setLoading(false);
-          // Don't fetch if we have valid cache - hard cache, no background updates
+          // Don't fetch if we have valid cache - hard cache, no initial fetch; polling still updates in background
           return;
         }
         // No cache, fetch fresh data

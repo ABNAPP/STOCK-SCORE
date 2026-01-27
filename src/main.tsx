@@ -12,6 +12,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { logger } from './utils/logger'
 import { validateEnvironmentVariables } from './utils/envValidator'
 import { registerServiceWorker } from './utils/serviceWorkerRegistration'
+import { initializeBackgroundSync } from './services/backgroundSyncService'
 
 /**
  * Filter out browser extension errors that don't affect the application
@@ -181,7 +182,7 @@ if (!rootElement) {
   throw new Error('Root element not found. Please check index.html');
 }
 
-// Register Service Worker
+// Register Service Worker and enable background sync (production only)
 if (import.meta.env.PROD) {
   registerServiceWorker().catch((error) => {
     logger.warn('Service Worker registration failed', {
@@ -189,6 +190,7 @@ if (import.meta.env.PROD) {
       error,
     });
   });
+  initializeBackgroundSync();
 }
 
 ReactDOM.createRoot(rootElement).render(
