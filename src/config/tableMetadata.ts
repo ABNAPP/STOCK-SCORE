@@ -671,6 +671,27 @@ export const tableMetadata: TableMetadata[] = [
         ]
       }
     ]
+  },
+  {
+    tableId: 'personal-portfolio',
+    columns: [
+      {
+        columnKey: 'rowNumber',
+        dataSource: 'Radnummer i tabellen',
+        conditions: [
+          'Visar radnummer (1, 2, 3, …) för identifiering',
+          'Klicka på pilen för att expandera och se fördelning per broker'
+        ]
+      },
+      {
+        columnKey: 'currency',
+        dataSource: 'Speglat från Entry/Exit-tabellen',
+        conditions: [
+          'Standardvärde är USD om currency saknas',
+          'Currency kan endast redigeras i Entry/Exit-tabellen'
+        ]
+      }
+    ]
   }
 ];
 

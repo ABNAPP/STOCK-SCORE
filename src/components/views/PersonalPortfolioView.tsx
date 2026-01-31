@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
 import { EntryExitProvider, useEntryExitValues } from '../../contexts/EntryExitContext';
-import { getUserPortfolio, addPortfolioItem, removePortfolioItem, updatePortfolioItem, getCurrencyForStock } from '../../services/personalPortfolioService';
+import { getUserPortfolio, addPortfolioItem, removePortfolioItem, updatePortfolioItem, getCurrencyForStock, computeAveragePriceUSD } from '../../services/personalPortfolioService';
 import { getExchangeRate, refreshCurrencyRatesCache } from '../../services/currencyService';
-import { PortfolioItem } from '../../types/portfolio';
+import { PortfolioItem, PortfolioPosition } from '../../types/portfolio';
 import { usePortfolioSearch, StockSearchResult } from '../../hooks/usePortfolioSearch';
 import { useDebounce } from '../../hooks/useDebounce';
 import { TableSkeleton } from '../SkeletonLoader';
@@ -14,6 +14,7 @@ import BaseTable, { ColumnDefinition, HeaderRenderProps } from '../BaseTable';
 import ColumnFilterMenu from '../ColumnFilterMenu';
 import ColumnTooltip from '../ColumnTooltip';
 import { getColumnMetadata } from '../../config/tableMetadata';
+import { DEFAULT_BROKERS, BROKER_OTHER } from '../../config/brokers';
 
 // Extended PortfolioItem for table display
 interface PortfolioTableItem extends PortfolioItem {
@@ -60,10 +61,10 @@ function PersonalPortfolioViewInner() {
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [investedAmount, setInvestedAmount] = useState('');
   const [investmentCurrency, setInvestmentCurrency] = useState<string>('USD');
+  const [brokerSelect, setBrokerSelect] = useState<string>(DEFAULT_BROKERS[0]);
+  const [brokerCustom, setBrokerCustom] = useState('');
   const [editingItem, setEditingItem] = useState<PortfolioTableItem | null>(null);
-  const [editQuantity, setEditQuantity] = useState('');
-  const [editInvestedAmount, setEditInvestedAmount] = useState('');
-  const [editInvestmentCurrency, setEditInvestmentCurrency] = useState<string>('USD');
+  const [editPositions, setEditPositions] = useState<PortfolioPosition[]>([]);
   const [editAveragePreview, setEditAveragePreview] = useState<number | null>(null);
   const [editAverageLoading, setEditAverageLoading] = useState(false);
   const [exchangeRatesByCurrency, setExchangeRatesByCurrency] = useState<Record<string, number>>({ USD: 1 });
@@ -116,57 +117,36 @@ function PersonalPortfolioViewInner() {
     loadPortfolio();
   }, [currentUser, loadPortfolio]);
 
-  // Periodic update of exchange rates and average recalculation (every 15 minutes)
+  // Periodic update of exchange rates and average recalculation from positions (every 15 minutes)
   useEffect(() => {
     if (!portfolio.length || !currentUser) return;
 
     const updateInterval = setInterval(async () => {
-      // Force refresh exchange rates (fetch fresh and update Firestore cache)
       try {
         await refreshCurrencyRatesCache();
       } catch {
         // ignore
       }
 
-      // Recalculate average prices for all portfolio items with investedAmount
-      const itemsToUpdate = portfolio.filter(
-        (item) =>
-          item.investedAmount &&
-          item.investmentCurrency &&
-          item.investmentCurrency !== 'USD' &&
-          item.quantity &&
-          item.quantity > 0
-      );
-
-      for (const item of itemsToUpdate) {
-        if (item.investedAmount && item.quantity && item.investmentCurrency) {
-          try {
-            const averagePerShare = item.investedAmount / item.quantity;
-            const exchangeRate = await getExchangeRate(item.investmentCurrency, 'USD');
-
-            if (exchangeRate !== null) {
-              const newAveragePrice = averagePerShare * exchangeRate;
-
-              // Update if different (avoid unnecessary writes)
-              if (
-                item.averagePrice === null ||
-                item.averagePrice === undefined ||
-                Math.abs(item.averagePrice - newAveragePrice) > 0.01
-              ) {
-                await updatePortfolioItem(currentUser.uid, item.ticker, {
-                  averagePrice: newAveragePrice,
-                });
-              }
-            }
-          } catch {
-            // ignore errors for individual items
+      const itemsWithPositions = portfolio.filter((item) => item.positions && item.positions.length > 0);
+      for (const item of itemsWithPositions) {
+        try {
+          const newAveragePrice = await computeAveragePriceUSD(item.positions!);
+          const currentAvg = item.averagePrice ?? null;
+          const changed =
+            newAveragePrice === null
+              ? currentAvg !== null
+              : currentAvg === null || Math.abs(currentAvg - newAveragePrice) > 0.01;
+          if (changed) {
+            await updatePortfolioItem(currentUser.uid, item.ticker, { positions: item.positions });
           }
+        } catch {
+          // ignore errors for individual items
         }
       }
 
-      // Reload portfolio to reflect changes
       await loadPortfolio();
-    }, 15 * 60 * 1000); // Every 15 minutes
+    }, 15 * 60 * 1000);
 
     return () => clearInterval(updateInterval);
   }, [portfolio, currentUser, loadPortfolio]);
@@ -254,45 +234,24 @@ function PersonalPortfolioViewInner() {
     }
   }, [debouncedSearchQuery, searchResults]);
 
-  // Auto-calculate average when invested amount, currency, or quantity changes
+  // Auto-calculate aggregate average (USD) from editPositions
   useEffect(() => {
-    if (!editingItem || !editInvestedAmount.trim() || !editQuantity.trim()) {
+    if (!editingItem || editPositions.length === 0) {
       setEditAveragePreview(null);
       return;
     }
 
-    const recalculateAverage = async () => {
-      const investedAmountNum = parseFloat(editInvestedAmount);
-      const quantityNum = parseFloat(editQuantity);
-
-      if (isNaN(investedAmountNum) || investedAmountNum <= 0 || isNaN(quantityNum) || quantityNum <= 0) {
-        setEditAveragePreview(null);
-        return;
+    let cancelled = false;
+    setEditAverageLoading(true);
+    computeAveragePriceUSD(editPositions).then((avg) => {
+      if (!cancelled) {
+        setEditAveragePreview(avg);
       }
-
-      setEditAverageLoading(true);
-      try {
-        const averagePerShare = investedAmountNum / quantityNum;
-
-        if (editInvestmentCurrency === 'USD') {
-          setEditAveragePreview(averagePerShare);
-        } else {
-          const exchangeRate = await getExchangeRate(editInvestmentCurrency, 'USD');
-          if (exchangeRate !== null) {
-            setEditAveragePreview(averagePerShare * exchangeRate);
-          } else {
-            setEditAveragePreview(null);
-          }
-        }
-      } catch {
-        setEditAveragePreview(null);
-      } finally {
-        setEditAverageLoading(false);
-      }
-    };
-
-    recalculateAverage();
-  }, [editInvestedAmount, editInvestmentCurrency, editQuantity, editingItem]);
+    }).finally(() => {
+      if (!cancelled) setEditAverageLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [editingItem, editPositions]);
 
   // Handle keyboard navigation in search results
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -384,15 +343,29 @@ function PersonalPortfolioViewInner() {
         }
       }
 
+      const brokerName = brokerSelect === BROKER_OTHER ? brokerCustom.trim() : brokerSelect;
+      if (!brokerName) {
+        setError(t('portfolio.brokerRequired', 'Ange broker eller välj från listan'));
+        return;
+      }
+
       const item: PortfolioItem = {
         ticker: selectedStock.ticker,
         companyName: selectedStock.companyName,
         quantity: quantityNum,
-        currency: currency,
+        currency,
         price: selectedStock.price,
         averagePrice: calculatedAveragePrice,
-        investedAmount: investedAmountValue,
-        investmentCurrency: investmentCurrencyValue,
+        investedAmount: investedAmountValue ?? undefined,
+        investmentCurrency: investmentCurrencyValue ?? undefined,
+        positions: [
+          {
+            broker: brokerName,
+            quantity: quantityNum,
+            investedAmount: investedAmountValue ?? undefined,
+            investmentCurrency: investmentCurrencyValue ?? 'USD',
+          },
+        ],
       };
 
       await addPortfolioItem(currentUser.uid, item);
@@ -403,6 +376,8 @@ function PersonalPortfolioViewInner() {
       setQuantity('');
       setInvestedAmount('');
       setInvestmentCurrency('USD');
+      setBrokerSelect(DEFAULT_BROKERS[0]);
+      setBrokerCustom('');
       setShowSearchResults(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add item';
@@ -425,74 +400,40 @@ function PersonalPortfolioViewInner() {
   const handleUpdateItem = async () => {
     if (!currentUser || !editingItem) return;
 
-    const quantityNum = parseFloat(editQuantity);
-    if (isNaN(quantityNum) || quantityNum <= 0) {
+    if (editPositions.length === 0) {
+      setError(t('portfolio.atLeastOnePosition', 'Minst en position krävs'));
+      return;
+    }
+    const invalid = editPositions.some((p) => typeof p.quantity !== 'number' || p.quantity < 0);
+    if (invalid) {
       setError(t('portfolio.quantityInvalid', 'Ogiltigt antal'));
       return;
     }
 
     try {
       setError(null);
-      let calculatedAveragePrice: number | null = null;
-      let investedAmountValue: number | null = null;
-      let investmentCurrencyValue: string | null = null;
-
-      if (editInvestedAmount.trim()) {
-        const investedAmountNum = parseFloat(editInvestedAmount);
-        if (!isNaN(investedAmountNum) && investedAmountNum > 0) {
-          investedAmountValue = investedAmountNum;
-          investmentCurrencyValue = editInvestmentCurrency;
-          const averagePerShare = investedAmountNum / quantityNum;
-          if (editInvestmentCurrency === 'USD') {
-            calculatedAveragePrice = averagePerShare;
-          } else {
-            const exchangeRate = await getExchangeRate(editInvestmentCurrency, 'USD');
-            if (exchangeRate !== null) {
-              calculatedAveragePrice = averagePerShare * exchangeRate;
-            } else {
-              calculatedAveragePrice = editingItem.price ?? null;
-              setError(t('portfolio.exchangeRateUnavailable', 'Valutakurs kunde inte hämtas. Använder nuvarande pris.'));
-            }
-          }
-        }
-      }
-
-      if (calculatedAveragePrice === null) {
-        const editCurrency = getCurrencyForStock(
-          editingItem.ticker,
-          editingItem.companyName,
-          entryExitValues
-        );
-        if (editCurrency === 'USD' || editingItem.price == null) {
-          calculatedAveragePrice = editingItem.price ?? null;
-        } else {
-          const rate = await getExchangeRate(editCurrency, 'USD');
-          if (rate !== null) {
-            calculatedAveragePrice = editingItem.price * rate;
-          } else {
-            calculatedAveragePrice = editingItem.price;
-            setError(t('portfolio.exchangeRateUnavailable', 'Valutakurs kunde inte hämtas. Använder nuvarande pris.'));
-          }
-        }
-      }
-
-      await updatePortfolioItem(currentUser.uid, editingItem.ticker, {
-        quantity: quantityNum,
-        averagePrice: calculatedAveragePrice,
-        investedAmount: investedAmountValue,
-        investmentCurrency: investmentCurrencyValue,
-      });
+      await updatePortfolioItem(currentUser.uid, editingItem.ticker, { positions: editPositions });
       await loadPortfolio();
       setEditingItem(null);
-      setEditQuantity('');
-      setEditInvestedAmount('');
-      setEditInvestmentCurrency('USD');
+      setEditPositions([]);
       setEditAveragePreview(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update item';
       setError(errorMessage);
     }
   };
+
+  const updateEditPosition = useCallback((index: number, updates: Partial<PortfolioPosition>) => {
+    setEditPositions((prev) => prev.map((p, i) => (i === index ? { ...p, ...updates } : p)));
+  }, []);
+
+  const removeEditPosition = useCallback((index: number) => {
+    setEditPositions((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+  }, []);
+
+  const addEditPosition = useCallback(() => {
+    setEditPositions((prev) => [...prev, { broker: DEFAULT_BROKERS[0], quantity: 0, investedAmount: undefined, investmentCurrency: 'USD' }]);
+  }, []);
 
   const formatPrice = (price: number | null): string => {
     if (price === null) return '-';
@@ -510,7 +451,7 @@ function PersonalPortfolioViewInner() {
 
   // Transform portfolio data and compute total market value (both in USD)
   // CURRENT PRICE: lookup from benjaminGrahamData (same source as Entry/Exit Price), fallback to stored item.price
-  const { transformedPortfolio, totalMarketValue } = useMemo(() => {
+  const { transformedPortfolio, totalMarketValue, totalInvested } = useMemo(() => {
     const bgData = benjaminGrahamData ?? [];
     const withUSD = portfolio.map((item, index) => {
       const match = bgData.find(
@@ -555,6 +496,7 @@ function PersonalPortfolioViewInner() {
       const profitLoss = invested != null && marketValue != null ? marketValue - invested : null;
       const profitLossPercent =
         invested != null && invested !== 0 && profitLoss != null ? (profitLoss / invested) * 100 : null;
+      // Market Weight (%) = this stock's market value / total portfolio market value
       const marketWeight = total > 0 && marketValue != null ? (marketValue / total) * 100 : null;
       return {
         ...x,
@@ -565,11 +507,28 @@ function PersonalPortfolioViewInner() {
         marketWeight,
       };
     });
-    return { transformedPortfolio: transformed, totalMarketValue: total };
+    const totalInvested = transformed.reduce((sum, x) => {
+      if (x.invested != null && x.invested > 0) return sum + x.invested;
+      return sum;
+    }, 0);
+    return { transformedPortfolio: transformed, totalMarketValue: total, totalInvested };
   }, [portfolio, benjaminGrahamData, entryExitValues, exchangeRatesByCurrency]);
 
+  // Row key for expand; must match getRowKey passed to BaseTable
+  const getRowKey = useCallback((item: PortfolioTableItem, index: number) => `${item.ticker}-${index}`, []);
+
   // Render cell content
-  const renderCell = useCallback((item: PortfolioTableItem, column: ColumnDefinition<PortfolioTableItem>, index: number, globalIndex: number) => {
+  const renderCell = useCallback((
+    item: PortfolioTableItem,
+    column: ColumnDefinition<PortfolioTableItem>,
+    index: number,
+    globalIndex: number,
+    expandedRows?: { [key: string]: boolean },
+    toggleRow?: (rowKey: string) => void
+  ) => {
+    const rowKey = getRowKey(item, globalIndex);
+    const isExpanded = expandedRows?.[rowKey] ?? false;
+
     // Get currency from entryExitValues in real-time
     const currency = getCurrencyForStock(
       item.ticker,
@@ -579,7 +538,32 @@ function PersonalPortfolioViewInner() {
 
     switch (column.key) {
       case 'rowNumber':
-        return globalIndex + 1;
+        return (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                toggleRow?.(rowKey);
+              }}
+              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              aria-label={isExpanded ? t('aria.collapseRow', 'Fäll ihop rad') : t('aria.expandRow', 'Expandera rad')}
+              aria-expanded={isExpanded}
+              title={isExpanded ? t('aria.collapseRow', 'Fäll ihop') : t('aria.expandRow', 'Expandera')}
+            >
+              <svg
+                className={`w-4 h-4 text-gray-600 dark:text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <span>{globalIndex + 1}</span>
+          </div>
+        );
       case 'companyName':
         return <span className="font-medium">{item.companyName}</span>;
       case 'ticker':
@@ -642,9 +626,10 @@ function PersonalPortfolioViewInner() {
             <button
               onClick={() => {
                 setEditingItem(item);
-                setEditQuantity(item.quantity?.toString() ?? '');
-                setEditInvestedAmount(item.investedAmount?.toString() ?? '');
-                setEditInvestmentCurrency(item.investmentCurrency ?? 'USD');
+                const positions = item.positions && item.positions.length > 0
+                  ? item.positions.map((p) => ({ ...p }))
+                  : [{ broker: '—', quantity: item.quantity, investedAmount: item.investedAmount ?? undefined, investmentCurrency: item.investmentCurrency ?? 'USD' }];
+                setEditPositions(positions);
               }}
               className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-colors min-h-[44px] min-w-[44px] touch-manipulation px-3 py-1 rounded"
               aria-label={t('portfolio.edit', 'Redigera')}
@@ -663,7 +648,40 @@ function PersonalPortfolioViewInner() {
       default:
         return null;
     }
-  }, [entryExitValues, formatPrice, formatUSD, t, handleRemoveItem]);
+  }, [entryExitValues, formatPrice, formatUSD, t, handleRemoveItem, getRowKey]);
+
+  // Expanded row: per-broker breakdown
+  const renderExpandedRow = useCallback((item: PortfolioTableItem) => {
+    const positions = item.positions && item.positions.length > 0 ? item.positions : [];
+    return (
+      <div className="px-6 py-4">
+        <table className="w-full text-sm text-left text-gray-700 dark:text-gray-300">
+          <thead>
+            <tr className="border-b border-gray-200 dark:border-gray-600">
+              <th className="py-2 pr-4 font-semibold">{t('portfolio.broker', 'Broker')}</th>
+              <th className="py-2 pr-4 font-semibold">{t('portfolio.quantity', 'Antal')}</th>
+              <th className="py-2 pr-4 font-semibold">{t('portfolio.investedAmount', 'Investerat belopp')}</th>
+              <th className="py-2 font-semibold">{t('portfolio.investmentCurrency', 'Valuta')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {positions.map((pos, i) => (
+              <tr key={`${pos.broker}-${i}`} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                <td className="py-2 pr-4">{pos.broker}</td>
+                <td className="py-2 pr-4">{pos.quantity}</td>
+                <td className="py-2 pr-4">
+                  {pos.investedAmount != null && pos.investedAmount > 0
+                    ? formatCurrency(pos.investedAmount, pos.investmentCurrency || 'USD')
+                    : '-'}
+                </td>
+                <td className="py-2">{pos.investmentCurrency || 'USD'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }, [t, formatCurrency]);
 
   // Custom header renderer with ColumnFilterMenu
   const renderHeader = useCallback((props: HeaderRenderProps<PortfolioTableItem>) => {
@@ -962,6 +980,31 @@ function PersonalPortfolioViewInner() {
                   </div>
                 )}
               </div>
+
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t('portfolio.broker', 'Broker')} *
+                </label>
+                <select
+                  value={brokerSelect}
+                  onChange={(e) => setBrokerSelect(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {DEFAULT_BROKERS.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                  <option value={BROKER_OTHER}>{t('portfolio.brokerOther', 'Annan')}</option>
+                </select>
+                {brokerSelect === BROKER_OTHER && (
+                  <input
+                    type="text"
+                    value={brokerCustom}
+                    onChange={(e) => setBrokerCustom(e.target.value)}
+                    placeholder={t('portfolio.brokerCustomPlaceholder', 'Skriv brokernamn')}
+                    className="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                )}
+              </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1036,65 +1079,94 @@ function PersonalPortfolioViewInner() {
           </div>
         </div>
 
-        {/* Edit Modal */}
+        {/* Edit Modal – positions per broker */}
         {editingItem && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="edit-investment-title">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-              <h3 id="edit-investment-title" className="text-lg font-semibold text-black dark:text-white mb-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-8" role="dialog" aria-modal="true" aria-labelledby="edit-investment-title">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 shadow-xl my-auto">
+              <h3 id="edit-investment-title" className="text-lg font-semibold text-black dark:text-white mb-2">
                 {t('portfolio.editInvestment', 'Redigera investering')}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 {editingItem.companyName} ({editingItem.ticker})
               </p>
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('portfolio.quantity', 'Antal')} *
-                </label>
-                <input
-                  type="number"
-                  value={editQuantity}
-                  onChange={(e) => setEditQuantity(e.target.value)}
-                  min="0"
-                  step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="space-y-4 mb-4 max-h-[50vh] overflow-y-auto">
+                {editPositions.map((pos, index) => (
+                  <div key={`pos-${index}`} className="p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700/50 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 shrink-0 w-20">{t('portfolio.broker', 'Broker')}</label>
+                      <input
+                        type="text"
+                        value={pos.broker}
+                        onChange={(e) => updateEditPosition(index, { broker: e.target.value })}
+                        className="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-500 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeEditPosition(index)}
+                        disabled={editPositions.length <= 1}
+                        className="shrink-0 px-2 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label={t('portfolio.removePosition', 'Ta bort position')}
+                      >
+                        {t('portfolio.removePosition', 'Ta bort')}
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <div className="flex items-center gap-1">
+                        <label className="text-xs text-gray-600 dark:text-gray-400">{t('portfolio.quantity', 'Antal')}</label>
+                        <input
+                          type="number"
+                          value={pos.quantity}
+                          onChange={(e) => updateEditPosition(index, { quantity: parseFloat(e.target.value) || 0 })}
+                          min="0"
+                          step="0.01"
+                          className="w-24 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-500 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <label className="text-xs text-gray-600 dark:text-gray-400">{t('portfolio.investedAmount', 'Investerat')}</label>
+                        <input
+                          type="number"
+                          value={pos.investedAmount ?? ''}
+                          onChange={(e) => updateEditPosition(index, { investedAmount: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                          min="0"
+                          step="0.01"
+                          placeholder="—"
+                          className="w-28 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-500 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <label className="text-xs text-gray-600 dark:text-gray-400">{t('portfolio.investmentCurrency', 'Valuta')}</label>
+                        <select
+                          value={pos.investmentCurrency ?? 'USD'}
+                          onChange={(e) => updateEditPosition(index, { investmentCurrency: e.target.value })}
+                          className="px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-500 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
+                        >
+                          <option value="USD">USD</option>
+                          <option value="SEK">SEK</option>
+                          <option value="EUR">EUR</option>
+                          <option value="GBP">GBP</option>
+                          <option value="DKK">DKK</option>
+                          <option value="NOK">NOK</option>
+                          <option value="CHF">CHF</option>
+                          <option value="AUD">AUD</option>
+                          <option value="CAD">CAD</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('portfolio.investedAmount', 'Investerat belopp')}
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={editInvestedAmount}
-                    onChange={(e) => setEditInvestedAmount(e.target.value)}
-                    placeholder={t('portfolio.investedAmountPlaceholder', 'T.ex. 10000')}
-                    min="0"
-                    step="0.01"
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <select
-                    value={editInvestmentCurrency}
-                    onChange={(e) => setEditInvestmentCurrency(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="USD">USD</option>
-                    <option value="SEK">SEK</option>
-                    <option value="EUR">EUR</option>
-                    <option value="GBP">GBP</option>
-                    <option value="DKK">DKK</option>
-                    <option value="NOK">NOK</option>
-                    <option value="CHF">CHF</option>
-                    <option value="AUD">AUD</option>
-                    <option value="CAD">CAD</option>
-                  </select>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {t('portfolio.investedAmountHelp', 'Totalt investerat belopp. Om tomt används nuvarande pris.')}
-                </p>
+              <div className="mb-4">
+                <button
+                  type="button"
+                  onClick={addEditPosition}
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {t('portfolio.addPosition', 'Lägg till position')}
+                </button>
               </div>
               {editAveragePreview !== null && (
-                <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                   <p className="text-sm text-gray-700 dark:text-gray-300">
                     <span className="font-medium">{t('portfolio.calculatedAverage', 'Beräknat genomsnitt:')}</span>{' '}
                     {editAverageLoading ? (
@@ -1105,7 +1177,7 @@ function PersonalPortfolioViewInner() {
                   </p>
                 </div>
               )}
-              <div className="flex gap-2 mt-4">
+              <div className="flex gap-2">
                 <button
                   onClick={handleUpdateItem}
                   className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors min-h-[44px] touch-manipulation"
@@ -1115,9 +1187,7 @@ function PersonalPortfolioViewInner() {
                 <button
                   onClick={() => {
                     setEditingItem(null);
-                    setEditQuantity('');
-                    setEditInvestedAmount('');
-                    setEditInvestmentCurrency('USD');
+                    setEditPositions([]);
                     setEditAveragePreview(null);
                   }}
                   className="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-black dark:text-white rounded-md transition-colors min-h-[44px] touch-manipulation"
@@ -1125,6 +1195,28 @@ function PersonalPortfolioViewInner() {
                   {t('common.cancel', 'Avbryt')}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Summary: Total Invested and Market Value */}
+        {!loading && portfolio.length > 0 && (
+          <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 flex-shrink-0 flex flex-wrap items-center gap-6">
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                {t('portfolio.totalInvested', 'Total Invested ($)')}:
+              </span>
+              <span className="text-lg font-semibold text-black dark:text-white">
+                {formatUSD(totalInvested)}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                {t('portfolio.totalMarketValue', 'Market Value ($)')}:
+              </span>
+              <span className="text-lg font-semibold text-black dark:text-white">
+                {formatUSD(totalMarketValue)}
+              </span>
             </div>
           </div>
         )}
@@ -1170,7 +1262,8 @@ function PersonalPortfolioViewInner() {
                   {/* Remove button will be handled in renderCell for actions column */}
                 </div>
               }
-              getRowKey={(item, index) => `${item.ticker}-${index}`}
+              getRowKey={getRowKey}
+              renderExpandedRow={renderExpandedRow}
             />
           </div>
         )}

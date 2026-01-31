@@ -43,9 +43,13 @@ export default function AdminView() {
         });
         setSelectedViews(initial);
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const message =
+        error && typeof error === 'object' && 'message' in error && typeof (error as { message: unknown }).message === 'string'
+          ? (error as { message: string }).message
+          : t('admin.error') || 'Failed to load users';
       logger.error('Error loading users', error, { component: 'AdminView', operation: 'loadUsers' });
-      showToast(t('admin.error') || 'Failed to load users', 'error');
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }

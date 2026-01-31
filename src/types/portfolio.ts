@@ -1,21 +1,30 @@
 /**
  * Portfolio Types
- * 
+ *
  * Type definitions for Personal Portfolio feature.
- * Columns and additional fields will be defined step by step.
+ * Supports multi-broker positions per ticker with optional migration from legacy single-position items.
  */
+
+/** Single position at one broker (quantity, invested amount and currency). */
+export interface PortfolioPosition {
+  broker: string;
+  quantity: number;
+  investedAmount?: number | null;
+  investmentCurrency?: string | null;
+}
 
 export interface PortfolioItem {
   ticker: string;
   companyName: string;
-  quantity: number; // Antal - manuell input
+  quantity: number; // Total quantity (sum of positions), kept for backward compatibility
   currency: string; // Aktiens currency (från EntryExitValues)
   price: number | null; // Från benjaminGrahamData
-  averagePrice: number | null; // Average purchase price in USD (calculated)
-  investedAmount?: number | null; // Total invested amount in investment currency (optional for backward compatibility)
-  investmentCurrency?: string | null; // Currency used for investment (e.g., 'SEK', 'EUR') (optional for backward compatibility)
-  // Extensible: Additional columns can be added here in the future
-  [key: string]: unknown; // Allow for future extensibility
+  averagePrice: number | null; // Average purchase price in USD (calculated from positions)
+  investedAmount?: number | null; // Legacy / derived; prefer positions for per-broker data
+  investmentCurrency?: string | null; // Legacy; prefer positions
+  /** Per-broker positions; if missing, item is normalized from quantity/investedAmount/investmentCurrency */
+  positions?: PortfolioPosition[];
+  [key: string]: unknown;
 }
 
 export interface UserPortfolio {

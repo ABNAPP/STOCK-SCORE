@@ -121,3 +121,12 @@ rm -rf temp-set-admin
 - Du ska INTE längre se "Waiting for Approval"-meddelandet
 - Du ska se "Admin-panel" knappen i headern (lila knapp, endast för admin)
 - Du ska kunna öppna Admin-panel och godkänna/neka registreringar
+
+### Fel: "Error loading users" / FirebaseError: internal
+När du öppnar Admin-panelen och får ett fel vid laddning av användarlistan visas nu det faktiska felmeddelandet från servern i en toast – använd det för att felsöka.
+
+Vanliga orsaker:
+1. **User must be admin** – Du är inloggad men din användare har inte admin-roll. Sätt admin enligt Steg 1–5 ovan och logga ut/in igen.
+2. **Cloud Functions inte deployade** – Funktionen `listUsers` måste vara deployad. Kör t.ex. `firebase deploy --only functions` från projektets root.
+3. **Fel region** – Om dina functions är deployade i en annan region (t.ex. europe-west1) måste klienten använda samma region (konfigurera i `src/config/firebase.ts` om så är fallet).
+4. **Firebase Auth / API** – Kontrollera att Authentication är aktiverat i Firebase Console och att Cloud Functions-loggen (Firebase Console → Functions → Logs) visar det underliggande felet när du anropar listUsers.
