@@ -6,6 +6,8 @@
  */
 
 import type { DataRow, ProgressCallback } from './sheets/types';
+// Vite ?worker import ensures the worker is compiled to .js in build (avoids .ts → video/mp2t MIME on Vercel)
+import DataTransformWorker from '../workers/dataTransformWorker.ts?worker';
 
 // Check if Web Workers are supported
 const WORKERS_SUPPORTED = typeof Worker !== 'undefined';
@@ -41,10 +43,7 @@ async function loadWorker(): Promise<Worker> {
 
   workerLoadPromise = new Promise((resolve, reject) => {
     try {
-      // Use Vite's worker import syntax
-      // Note: Vite will automatically handle the worker compilation when using new URL()
-      const workerUrl = new URL('../workers/dataTransformWorker.ts', import.meta.url);
-      const worker = new Worker(workerUrl, { type: 'module' });
+      const worker = new DataTransformWorker();
 
       // Set up message handler
       worker.onmessage = (e: MessageEvent) => {
