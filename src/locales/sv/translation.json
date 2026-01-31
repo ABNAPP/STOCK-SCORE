@@ -388,6 +388,8 @@
     "updateInvestment": "Uppdatera investering",
     "totalInvested": "Totalt investerat ($)",
     "totalMarketValue": "Marknadsvärde ($)",
+    "showCurrencyAndPrice": "Visa valuta och nuvarande pris",
+    "hideCurrencyAndPrice": "Dölj valuta och nuvarande pris",
     "broker": "Broker",
     "brokerOther": "Annan",
     "brokerCustomPlaceholder": "Skriv brokernamn",

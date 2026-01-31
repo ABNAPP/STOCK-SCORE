@@ -93,8 +93,8 @@ export interface BaseTableProps<T> {
   emptyMessage?: string;
   minTableWidth?: string;
   
-  // Custom header content (for additional buttons, etc.)
-  headerActions?: ReactNode;
+  // Custom header content (for additional buttons, etc.). May be a render-prop to access toggleColumn/isColumnVisible.
+  headerActions?: ReactNode | ((api: { toggleColumn: (key: string) => void; isColumnVisible: (key: string) => boolean }) => ReactNode);
   
   // Custom row key generator
   getRowKey?: (item: T, index: number) => string;
@@ -853,7 +853,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                 {t('shareableLinks.share', 'Share')}
               </Button>
             )}
-            {headerActions}
+            {typeof headerActions === 'function' ? headerActions({ toggleColumn, isColumnVisible }) : headerActions}
           </div>
         </div>
         

@@ -388,6 +388,8 @@
     "updateInvestment": "Update investment",
     "totalInvested": "Total Invested ($)",
     "totalMarketValue": "Market Value ($)",
+    "showCurrencyAndPrice": "Show currency and current price",
+    "hideCurrencyAndPrice": "Hide currency and current price",
     "broker": "Broker",
     "brokerOther": "Other",
     "brokerCustomPlaceholder": "Enter broker name",

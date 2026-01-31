@@ -29,6 +29,10 @@ export function useColumnVisibility({ tableId, columns }: UseColumnVisibilityPro
             ? parsed[col.key] 
             : (col.defaultVisible !== false);
         });
+        if (tableId === 'personal-portfolio') {
+          visibility['currency'] = false;
+          visibility['currentPrice'] = false;
+        }
         return visibility;
       }
     } catch (error) {
@@ -40,8 +44,12 @@ export function useColumnVisibility({ tableId, columns }: UseColumnVisibilityPro
     columns.forEach(col => {
       visibility[col.key] = col.defaultVisible !== false;
     });
+    if (tableId === 'personal-portfolio') {
+      visibility['currency'] = false;
+      visibility['currentPrice'] = false;
+    }
     return visibility;
-  }, [storageKey, columns]);
+  }, [storageKey, tableId, columns]);
 
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(getInitialVisibility);
 

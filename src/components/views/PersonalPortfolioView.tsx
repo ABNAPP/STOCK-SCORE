@@ -32,8 +32,8 @@ const PORTFOLIO_COLUMNS: ColumnDefinition<PortfolioTableItem>[] = [
   { key: 'rowNumber', label: 'Antal', required: true, sticky: true, sortable: false },
   { key: 'companyName', label: 'Company Name', required: true, sticky: true, sortable: true },
   { key: 'ticker', label: 'Ticker', required: true, sticky: true, sortable: true },
-  { key: 'currency', label: 'Currency', required: true, sticky: true, sortable: true, align: 'center' },
-  { key: 'currentPrice', label: 'Current Price', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'currency', label: 'Currency', defaultVisible: false, sticky: true, sortable: true, align: 'center' },
+  { key: 'currentPrice', label: 'Current Price', defaultVisible: false, sortable: true, align: 'center' },
   { key: 'currentPriceUSD', label: 'Current Price($)', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'quantity', label: 'Quantity', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'average', label: 'Average ($)', defaultVisible: true, sortable: true, align: 'center' },
@@ -1250,18 +1250,33 @@ function PersonalPortfolioViewInner() {
               renderHeader={renderHeader}
               searchFields={['companyName', 'ticker']}
               searchPlaceholder={t('portfolio.searchPlaceholder', 'Sök på ticker eller företagsnamn...')}
-              defaultSortKey="rowNumber"
-              defaultSortDirection="asc"
+              defaultSortKey="marketWeight"
+              defaultSortDirection="desc"
               stickyColumns={['rowNumber', 'companyName', 'ticker', 'currency']}
               enablePagination={false}
               enableVirtualScroll={false}
               ariaLabel={t('portfolio.description', 'Personal Portfolio')}
               emptyMessage={t('portfolio.empty', 'Din portfölj är tom')}
-              headerActions={
-                <div className="flex items-center gap-2">
-                  {/* Remove button will be handled in renderCell for actions column */}
-                </div>
-              }
+              headerActions={({ toggleColumn, isColumnVisible }) => {
+                const bothVisible = isColumnVisible('currency') && isColumnVisible('currentPrice');
+                const handleToggle = () => {
+                  toggleColumn('currency');
+                  toggleColumn('currentPrice');
+                };
+                return (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleToggle}
+                      className="flex items-center justify-center w-9 h-9 text-lg font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors min-h-[44px] min-w-[44px] touch-manipulation"
+                      aria-label={bothVisible ? t('portfolio.hideCurrencyAndPrice', 'Dölj valuta och nuvarande pris') : t('portfolio.showCurrencyAndPrice', 'Visa valuta och nuvarande pris')}
+                      title={bothVisible ? t('portfolio.hideCurrencyAndPrice', 'Dölj valuta och nuvarande pris') : t('portfolio.showCurrencyAndPrice', 'Visa valuta och nuvarande pris')}
+                    >
+                      {bothVisible ? '−' : '+'}
+                    </button>
+                  </div>
+                );
+              }}
               getRowKey={getRowKey}
               renderExpandedRow={renderExpandedRow}
             />
