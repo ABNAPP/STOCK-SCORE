@@ -20,9 +20,8 @@ const DELTA_SYNC_ENABLED = import.meta.env.VITE_DELTA_SYNC_ENABLED !== 'false'; 
 const POLL_INTERVAL_MINUTES = parseInt(import.meta.env.VITE_DELTA_SYNC_POLL_MINUTES || '15', 10);
 const API_TOKEN = import.meta.env.VITE_APPS_SCRIPT_TOKEN || ''; // Optional token
 // Request timeout: Configurable via environment variable
-// Delta sync uses a longer timeout since it may need to fetch large snapshots
-// Reduced default from 60s to 30s to fail faster and fallback to CSV method sooner
-const DELTA_SYNC_TIMEOUT_SECONDS = parseInt(import.meta.env.VITE_DELTA_SYNC_TIMEOUT_SECONDS || '30', 10); // Default: 30 seconds for delta sync
+// Delta sync uses a longer timeout since it may need to fetch large snapshots (e.g. Apps Script cold start)
+const DELTA_SYNC_TIMEOUT_SECONDS = parseInt(import.meta.env.VITE_DELTA_SYNC_TIMEOUT_SECONDS || '45', 10); // Default: 45 seconds for delta sync
 const DELTA_SYNC_TIMEOUT = DELTA_SYNC_TIMEOUT_SECONDS * 1000;
 // Regular fetch timeout (used by fetchService) - shorter for faster feedback
 const FETCH_TIMEOUT_SECONDS = parseInt(import.meta.env.VITE_FETCH_TIMEOUT_SECONDS || '30', 10);
@@ -314,7 +313,7 @@ export async function loadSnapshot(config: DeltaSyncConfig): Promise<SnapshotRes
   const url = buildSnapshotUrl(config);
   
   try {
-    // Use longer timeout for delta sync snapshot requests (30 seconds default, configurable via VITE_DELTA_SYNC_TIMEOUT_SECONDS)
+    // Use longer timeout for delta sync snapshot requests (45 seconds default, configurable via VITE_DELTA_SYNC_TIMEOUT_SECONDS)
     const rawResponse = await fetchWithRetry<unknown>(
       url,
       {
@@ -393,11 +392,20 @@ export async function loadSnapshot(config: DeltaSyncConfig): Promise<SnapshotRes
     return response;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(
-      `Failed to load snapshot for sheet "${config.sheetName}"`,
-      error,
-      { component: 'deltaSyncService', operation: 'loadSnapshot', sheetName: config.sheetName, url }
-    );
+    const isTimeout = errorMessage.includes('timeout') || errorMessage.includes('Request timeout');
+    // Log timeout as warning (app falls back to regular fetch); other failures as error
+    if (isTimeout) {
+      logger.warn(
+        `Snapshot request timed out for sheet "${config.sheetName}" (will use fallback if available)`,
+        { component: 'deltaSyncService', operation: 'loadSnapshot', sheetName: config.sheetName, url }
+      );
+    } else {
+      logger.error(
+        `Failed to load snapshot for sheet "${config.sheetName}"`,
+        error,
+        { component: 'deltaSyncService', operation: 'loadSnapshot', sheetName: config.sheetName, url }
+      );
+    }
     throw error;
   }
 }
@@ -605,17 +613,20 @@ async function fetchWithRetry<T>(
   } catch (error: unknown) {
     clearTimeout(timeoutId);
     
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Request timeout after ${timeout}ms`);
-    }
+    const isTimeout = error instanceof Error && error.name === 'AbortError';
 
-    // Retry on network errors or 5xx errors
-    if (retries > 0 && (error instanceof TypeError || (error instanceof Error && error.message.includes('HTTP 5')))) {
+    // Retry on timeout, network errors, or 5xx errors
+    if (retries > 0 && (isTimeout || error instanceof TypeError || (error instanceof Error && error.message.includes('HTTP 5')))) {
       const delay = INITIAL_RETRY_DELAY * Math.pow(2, MAX_RETRIES - retries);
-      logger.warn(`Request failed, retrying in ${delay}ms... (${retries} retries left)`, { component: 'deltaSyncService', retries, delay });
+      const reason = isTimeout ? 'timeout' : 'request failure';
+      logger.warn(`Request ${reason}, retrying in ${delay}ms... (${retries} retries left)`, { component: 'deltaSyncService', retries, delay });
       
       await new Promise(resolve => setTimeout(resolve, delay));
-      return fetchWithRetry<T>(url, options, retries - 1);
+      return fetchWithRetry<T>(url, options, retries - 1, timeout);
+    }
+
+    if (isTimeout) {
+      throw new Error(`Request timeout after ${timeout}ms`);
     }
 
     throw error;

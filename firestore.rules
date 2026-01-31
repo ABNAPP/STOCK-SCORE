@@ -109,6 +109,17 @@ service cloud.firestore {
       allow write: if request.auth != null && isAdmin();
     }
     
+    // Currency rates cache - any authenticated user can read/write (first user to need fresh rates populates for all)
+    match /appCache/currency_rates_usd {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null &&
+                              request.resource.data.size() <= 10485760 &&
+                              request.resource.data.data != null &&
+                              request.resource.data.timestamp is number &&
+                              request.resource.data.ttl is number;
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
     // App cache - shared cache for authenticated users
     match /appCache/{cacheKey} {
       // Read: Authenticated users only

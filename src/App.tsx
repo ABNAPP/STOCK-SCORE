@@ -54,15 +54,15 @@ function migrateFromLocalStorageCache() {
       return; // Already migrated
     }
     
-    // Clear all cache keys (those starting with 'cache:')
-    const keysToRemove: string[] = [];
+    // Clear all cache keys (those starting with 'cache:') plus legacy currency cache
+    const keysToRemove: string[] = ['currency_rates_usd'];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith('cache:')) {
         keysToRemove.push(key);
       }
     }
-    
+
     keysToRemove.forEach(key => localStorage.removeItem(key));
     localStorage.setItem(MIGRATION_FLAG, 'true');
     

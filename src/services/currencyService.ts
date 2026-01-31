@@ -7,18 +7,18 @@
  * 3. FINNHUB
  * 4. Alpha Vantage
  * 5. ExchangeRate-API (fallback, no key)
- * Rates are cached (15 hours TTL) to minimize requests.
+ * Rates are cached in Firestore (15 hours TTL) to minimize requests.
  */
 
 import { getApiKeys } from '../config/apiKeys';
+import { getCachedData, setCachedData } from './firestoreCacheService';
+import { CACHE_KEYS } from './cacheKeys';
 
 const EXCHANGE_RATE_API_URL = 'https://open.er-api.com/v6/latest/USD';
-const CACHE_KEY = 'currency_rates_usd';
 const CACHE_TTL_MS = 15 * 60 * 60 * 1000; // 15 hours
 
-interface CachedRates {
+interface CurrencyRatesData {
   rates: Record<string, number>;
-  fetchedAt: number;
   source: string;
 }
 
@@ -65,12 +65,20 @@ export async function getExchangeRate(
 }
 
 /**
+ * Force refresh the currency rates cache by fetching from APIs and writing to Firestore.
+ * Call before getExchangeRate when fresh rates are needed (e.g. every 15 minutes in Personal Portfolio).
+ */
+export async function refreshCurrencyRatesCache(): Promise<void> {
+  await getRatesWithFallback(true);
+}
+
+/**
  * Try APIs in priority order until one succeeds
  */
-async function getRatesWithFallback(): Promise<Record<string, number> | null> {
-  const cached = getCachedRates();
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return cached.rates;
+async function getRatesWithFallback(forceRefresh?: boolean): Promise<Record<string, number> | null> {
+  if (!forceRefresh) {
+    const cached = await getCachedRates();
+    if (cached) return cached.rates;
   }
 
   const apiKeys = getApiKeys();
@@ -79,7 +87,7 @@ async function getRatesWithFallback(): Promise<Record<string, number> | null> {
     const rates = await fetchEODHDRates(apiKeys.eodhd);
     if (rates) {
       const merged = await mergeMissingMajorCurrencies(rates);
-      setCachedRates(merged, 'eodhd');
+      await setCachedRates(merged, 'eodhd');
       return merged;
     }
   }
@@ -88,7 +96,7 @@ async function getRatesWithFallback(): Promise<Record<string, number> | null> {
     const rates = await fetchMarketStackRates(apiKeys.marketstack);
     if (rates) {
       const merged = await mergeMissingMajorCurrencies(rates);
-      setCachedRates(merged, 'marketstack');
+      await setCachedRates(merged, 'marketstack');
       return merged;
     }
   }
@@ -97,7 +105,7 @@ async function getRatesWithFallback(): Promise<Record<string, number> | null> {
     const rates = await fetchFinnhubRates(apiKeys.finnhub);
     if (rates) {
       const merged = await mergeMissingMajorCurrencies(rates);
-      setCachedRates(merged, 'finnhub');
+      await setCachedRates(merged, 'finnhub');
       return merged;
     }
   }
@@ -106,14 +114,14 @@ async function getRatesWithFallback(): Promise<Record<string, number> | null> {
     const rates = await fetchAlphaVantageRates(apiKeys.alphaVantage);
     if (rates) {
       const merged = await mergeMissingMajorCurrencies(rates);
-      setCachedRates(merged, 'alphavantage');
+      await setCachedRates(merged, 'alphavantage');
       return merged;
     }
   }
 
   const rates = await fetchExchangeRateAPIRates();
   if (rates) {
-    setCachedRates(rates, 'exchangerate-api');
+    await setCachedRates(rates, 'exchangerate-api');
     return rates;
   }
 
@@ -141,6 +149,19 @@ async function mergeMissingMajorCurrencies(
     }
   }
   return merged;
+}
+
+async function getCachedRates(): Promise<CurrencyRatesData | null> {
+  return getCachedData<CurrencyRatesData>(CACHE_KEYS.CURRENCY_RATES_USD);
+}
+
+async function setCachedRates(rates: Record<string, number>, source: string): Promise<void> {
+  try {
+    const data: CurrencyRatesData = { rates, source };
+    await setCachedData(CACHE_KEYS.CURRENCY_RATES_USD, data, CACHE_TTL_MS);
+  } catch {
+    // Cache write failed (e.g. permission); API response still used for current call
+  }
 }
 
 async function fetchEODHDRates(apiKey: string): Promise<Record<string, number> | null> {
@@ -229,26 +250,5 @@ async function fetchExchangeRateAPIRates(): Promise<Record<string, number> | nul
     return data.rates;
   } catch {
     return null;
-  }
-}
-
-function getCachedRates(): CachedRates | null {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as CachedRates;
-    if (Date.now() - parsed.fetchedAt > CACHE_TTL_MS) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function setCachedRates(rates: Record<string, number>, source: string): void {
-  try {
-    const data: CachedRates = { rates, fetchedAt: Date.now(), source };
-    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-  } catch {
-    // ignore
   }
 }

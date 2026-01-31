@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
 import { EntryExitProvider, useEntryExitValues } from '../../contexts/EntryExitContext';
 import { getUserPortfolio, addPortfolioItem, removePortfolioItem, updatePortfolioItem, getCurrencyForStock } from '../../services/personalPortfolioService';
-import { getExchangeRate } from '../../services/currencyService';
+import { getExchangeRate, refreshCurrencyRatesCache } from '../../services/currencyService';
 import { PortfolioItem } from '../../types/portfolio';
 import { usePortfolioSearch, StockSearchResult } from '../../hooks/usePortfolioSearch';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -121,9 +121,9 @@ function PersonalPortfolioViewInner() {
     if (!portfolio.length || !currentUser) return;
 
     const updateInterval = setInterval(async () => {
-      // Force refresh exchange rates (bypass cache by clearing it)
+      // Force refresh exchange rates (fetch fresh and update Firestore cache)
       try {
-        localStorage.removeItem('currency_rates_usd');
+        await refreshCurrencyRatesCache();
       } catch {
         // ignore
       }
