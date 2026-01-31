@@ -509,9 +509,14 @@ function PersonalPortfolioViewInner() {
   };
 
   // Transform portfolio data and compute total market value (both in USD)
+  // CURRENT PRICE: lookup from benjaminGrahamData (same source as Entry/Exit Price), fallback to stored item.price
   const { transformedPortfolio, totalMarketValue } = useMemo(() => {
+    const bgData = benjaminGrahamData ?? [];
     const withUSD = portfolio.map((item, index) => {
-      const currentPrice = item.price;
+      const match = bgData.find(
+        (bg) => bg.ticker === item.ticker && bg.companyName === item.companyName
+      );
+      const currentPrice = match?.price ?? item.price;
       const quantity = item.quantity;
       const averagePrice = item.averagePrice;
       const currency = getCurrencyForStock(item.ticker, item.companyName, entryExitValues);
@@ -561,7 +566,7 @@ function PersonalPortfolioViewInner() {
       };
     });
     return { transformedPortfolio: transformed, totalMarketValue: total };
-  }, [portfolio, entryExitValues, exchangeRatesByCurrency]);
+  }, [portfolio, benjaminGrahamData, entryExitValues, exchangeRatesByCurrency]);
 
   // Render cell content
   const renderCell = useCallback((item: PortfolioTableItem, column: ColumnDefinition<PortfolioTableItem>, index: number, globalIndex: number) => {
