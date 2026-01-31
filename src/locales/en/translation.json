@@ -30,7 +30,20 @@
     "conditions": "Conditions",
     "condition": "Condition",
     "thresholdIndustry": "Threshold INDUSTRY",
-    "personalPortfolio": "Personal Portfolio"
+    "personalPortfolio": "Personal Portfolio",
+    "userManagement": "User Management"
+  },
+  "admin": {
+    "title": "User Management",
+    "description": "Grant selected users access to additional tables. All users have SCORE and Personal Portfolio by default.",
+    "users": "Users",
+    "email": "Email",
+    "role": "Role",
+    "extraTables": "Extra tables",
+    "save": "Save",
+    "saved": "Saved.",
+    "error": "Failed to save",
+    "loading": "Loading users..."
   },
   "conditions": {
     "dataSource": "Data Source",
@@ -50,9 +63,20 @@
     "close": "Close",
     "loading": "Loading...",
     "cancel": "Cancel",
+    "save": "Save",
     "checking": "Checking status...",
     "unauthorizedView": "You do not have access to this view",
     "pleaseLogin": "Please log in to view your personal portfolio"
+  },
+  "header": {
+    "apiKeys": "API Keys"
+  },
+  "apiKeys": {
+    "title": "API Keys",
+    "description": "Only admin can see and change keys. Changes are saved and used for currency exchange rates.",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "API keys saved."
   },
   "refresh": {
     "refreshAll": "Refresh All",
@@ -178,7 +202,7 @@
     "confirmPasswordPlaceholder": "Confirm your password",
     "loginSuccess": "Login successful",
     "loginFailed": "Login failed",
-    "signupSuccess": "Your registration has been submitted! Admin will review your request.",
+    "signupSuccess": "Account created.",
     "signupFailed": "Sign up failed",
     "logoutSuccess": "Logout successful",
     "logoutFailed": "Logout failed",
@@ -187,7 +211,8 @@
     "passwordMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 6 characters",
     "passwordMinLength": "At least 6 characters",
-    "alreadyHaveAccount": "Already have an account? Login",
+    "noAccount": "Don't have an account? ",
+    "alreadyHaveAccount": "Already have an account? ",
     "createAccount": "Create account",
     "forgotPassword": "Forgot password?",
     "enterEmailForReset": "Enter your email address to receive a password reset link in your inbox.",
@@ -196,15 +221,7 @@
     "resetFailed": "Failed to send reset email",
     "emailRequired": "Email address required",
     "sending": "Sending...",
-    "cancel": "Cancel",
-    "requestedRole": "Requested permission",
-    "selectRole": "Select desired permission",
-    "roleViewer1": "Viewer 1 - Full Access",
-    "roleViewer2": "Viewer 2 - Limited Access",
-    "roleEditor": "Editing access",
-    "roleViewer1Description": "You can view all tables and data except Threshold INDUSTRY",
-    "roleViewer2Description": "You can only view SCORE and SCORE BOARD tables",
-    "roleEditorDescription": "You can read and edit data (requires admin approval)"
+    "cancel": "Cancel"
   },
   "roles": {
     "viewer": "Viewer",
@@ -214,12 +231,6 @@
   "profile": {
     "title": "My Profile",
     "currentRole": "Your Role",
-    "requestUpgrade": "Request Editing Access",
-    "upgradeRequested": "Your request is pending admin approval",
-    "upgradeRequestError": "Could not send request",
-    "upgradeRequestSuccess": "Request sent! Admin will review it.",
-    "requesting": "Sending request...",
-    "noUpgradeAvailable": "You already have editing access or admin access",
     "deregister": "Deregister Account",
     "deregisterTitle": "Deregister Account",
     "deregisterWarning": "If you deregister your account, it will be permanently deleted. This action cannot be undone.",
@@ -229,18 +240,6 @@
     "deregisterSuccess": "Your account has been deleted",
     "deregisterError": "Could not delete account",
     "deregistering": "Deleting..."
-  },
-  "waitingApproval": {
-    "title": "Waiting for Approval",
-    "message": "Your registration is pending admin approval. You will gain access to the app once admin has approved your request.",
-    "submessage": "Please check your email for updates.",
-    "withdrawRequest": "Withdraw Request",
-    "confirmWithdraw": "Confirm Withdrawal",
-    "withdrawConfirmMessage": "Are you sure you want to withdraw your request? You will be logged out and can register again later.",
-    "confirmWithdrawButton": "Yes, withdraw",
-    "withdrawSuccess": "Request withdrawn successfully",
-    "withdrawError": "Could not withdraw request",
-    "withdrawing": "Withdrawing..."
   },
   "errorBoundary": {
     "configurationError": "Configuration Error",
@@ -367,7 +366,42 @@
     "remove": "Remove",
     "actions": "Actions",
     "empty": "Your portfolio is empty",
-    "emptyDescription": "Add stocks above to start building your portfolio"
+    "emptyDescription": "Add stocks above to start building your portfolio",
+    "searchPlaceholder": "Search by ticker or company name...",
+    "searchResults": "Search results",
+    "noResults": "No results found",
+    "selectStock": "Selected stock",
+    "quantity": "Quantity",
+    "quantityPlaceholder": "Enter quantity",
+    "quantityRequired": "Quantity required",
+    "quantityInvalid": "Invalid quantity",
+    "addToPortfolio": "Add to portfolio",
+    "investedAmount": "Invested amount",
+    "investedAmountPlaceholder": "E.g. 10000",
+    "investmentCurrency": "Investment currency",
+    "investedAmountHelp": "Total invested amount. If empty, current price is used.",
+    "optional": "Optional",
+    "edit": "Edit",
+    "editInvestment": "Edit investment",
+    "calculatedAverage": "Calculated average:",
+    "exchangeRateUnavailable": "Exchange rate could not be fetched. Using current price.",
+    "updateInvestment": "Update investment",
+    "columns": {
+      "rowNumber": "Number",
+      "quantity": "Quantity",
+      "companyName": "Company name",
+      "ticker": "Ticker",
+      "currency": "Currency",
+      "price": "Price",
+      "currentPrice": "Current Price",
+      "currentPriceUSD": "Current Price($)",
+      "average": "Average",
+      "invested": "Invested",
+      "marketValue": "Market Value",
+      "profitLoss": "P/L",
+      "profitLossPercent": "P/L%",
+      "marketWeight": "Market Weight"
+    }
   }
 }
 

@@ -15,7 +15,8 @@ export type ViewId =
   | 'fundamental-ro40-f2'
   | 'teknikal-tachart'
   | 'threshold-industry'
-  | 'personal-portfolio';
+  | 'personal-portfolio'
+  | 'admin';
 
 export interface NavigationItem {
   id: ViewId;

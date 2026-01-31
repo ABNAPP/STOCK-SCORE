@@ -115,7 +115,15 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
       try {
         const loaded = await loadEntryExitValues(currentUser);
         if (loaded) {
-          setServerRows(new Map(Object.entries(loaded)));
+          setServerRows((prev) => {
+            const next = new Map(Object.entries(loaded));
+            for (const [key, value] of prev) {
+              if (!next.has(key)) {
+                next.set(key, value);
+              }
+            }
+            return next;
+          });
         } else {
           // If no Firestore data, try localStorage
           const localData = loadFromStorage();

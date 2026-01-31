@@ -1,31 +1,42 @@
 import { useState, FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { sendPasswordResetEmail } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import { auth } from '../config/firebase';
+import { functions } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../contexts/ToastContext';
 
-export default function Login() {
+export interface LoginProps {
+  returnUrl?: string;
+}
+
+export default function Login(props: LoginProps) {
+  const { returnUrl } = props;
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState('');
-  const { login } = useAuth();
+  const { login, signup, refreshUserRole } = useAuth();
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
-    
     try {
       setError('');
       setLoading(true);
       await login(email, password);
       showToast(t('auth.loginSuccess'), 'success');
+      navigate(returnUrl || '/', { replace: true });
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : t('auth.loginFailed');
       setError(errorMessage);
@@ -35,10 +46,44 @@ export default function Login() {
     }
   };
 
+  const handleSignup = async (e: FormEvent) => {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      setError(t('auth.passwordMismatch') || 'Passwords do not match');
+      showToast(t('auth.passwordMismatch') || 'Passwords do not match', 'error');
+      return;
+    }
+    if (password.length < 6) {
+      setError(t('auth.passwordTooShort') || 'Password must be at least 6 characters');
+      showToast(t('auth.passwordTooShort') || 'Password must be at least 6 characters', 'error');
+      return;
+    }
+    try {
+      setError('');
+      setLoading(true);
+      const userCredential = await signup(email, password);
+      const claimViewerRole = httpsCallable(functions, 'claimViewerRole');
+      await claimViewerRole();
+      const user = userCredential.user;
+      await user.getIdToken(true);
+      await refreshUserRole();
+      showToast(t('auth.signupSuccess'), 'success');
+      navigate(returnUrl || '/', { replace: true });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : t('auth.signupFailed');
+      setError(errorMessage);
+      showToast(errorMessage, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = mode === 'login' ? handleLogin : handleSignup;
+
   const handlePasswordReset = async (e: React.MouseEvent) => {
     e.preventDefault();
     const emailToReset = resetEmail || email;
-    
+
     if (!emailToReset) {
       setError(t('auth.emailRequired') || 'Please enter your email address');
       return;
@@ -54,7 +99,8 @@ export default function Login() {
       setShowReset(false);
       setResetEmail('');
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : (t('auth.resetFailed') || 'Failed to send reset email');
+      const errorMsg =
+        err instanceof Error ? err.message : (t('auth.resetFailed') || 'Failed to send reset email');
       setError(errorMsg);
       showToast(errorMsg, 'error');
     } finally {
@@ -66,9 +112,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 px-4">
       <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
         <h2 className="text-3xl font-bold text-center mb-6 text-black dark:text-white">
-          {t('auth.login')}
+          {mode === 'login' ? t('auth.login') : t('auth.createAccount')}
         </h2>
-        
+
         {error && (
           <div className="bg-red-100 dark:bg-red-900 border border-red-400 text-red-700 dark:text-red-200 px-4 py-3 rounded mb-4">
             {error}
@@ -77,7 +123,10 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               {t('auth.email')}
             </label>
             <input
@@ -93,21 +142,26 @@ export default function Login() {
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
                 {t('auth.password')}
               </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowReset(!showReset);
-                  setResetEmail(email);
-                  setError('');
-                  setResetMessage('');
-                }}
-                className="text-sm text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
-              >
-                {t('auth.forgotPassword')}
-              </button>
+              {mode === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReset(!showReset);
+                    setResetEmail(email);
+                    setError('');
+                    setResetMessage('');
+                  }}
+                  className="text-sm text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+                >
+                  {t('auth.forgotPassword')}
+                </button>
+              )}
             </div>
             <input
               id="password"
@@ -115,10 +169,37 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={6}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder={t('auth.passwordPlaceholder')}
             />
+            {mode === 'signup' && (
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {t('auth.passwordMinLength')}
+              </p>
+            )}
           </div>
+
+          {mode === 'signup' && (
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                {t('auth.confirmPassword')}
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder={t('auth.confirmPasswordPlaceholder')}
+              />
+            </div>
+          )}
 
           {showReset && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
@@ -164,11 +245,50 @@ export default function Login() {
             disabled={loading || showReset}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 font-semibold"
           >
-            {loading ? t('auth.loggingIn') : t('auth.login')}
+            {loading
+              ? mode === 'login'
+                ? t('auth.loggingIn')
+                : t('auth.creatingAccount')
+              : mode === 'login'
+                ? t('auth.login')
+                : t('auth.createAccount')}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+          {mode === 'login' ? (
+            <>
+              {t('auth.noAccount') || "Don't have an account? "}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signup');
+                  setError('');
+                  setConfirmPassword('');
+                }}
+                className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              >
+                {t('auth.createAccount')}
+              </button>
+            </>
+          ) : (
+            <>
+              {t('auth.alreadyHaveAccount')}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('login');
+                  setError('');
+                  setConfirmPassword('');
+                }}
+                className="ml-1 text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              >
+                {t('auth.login')}
+              </button>
+            </>
+          )}
+        </p>
       </div>
     </div>
   );
 }
-

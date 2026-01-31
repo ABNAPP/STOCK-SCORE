@@ -1,30 +1,97 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUserPortfolio, saveUserPortfolio, addPortfolioItem, removePortfolioItem } from '../../services/personalPortfolioService';
+import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
+import { EntryExitProvider, useEntryExitValues } from '../../contexts/EntryExitContext';
+import { getUserPortfolio, addPortfolioItem, removePortfolioItem, updatePortfolioItem, getCurrencyForStock } from '../../services/personalPortfolioService';
+import { getExchangeRate } from '../../services/currencyService';
 import { PortfolioItem } from '../../types/portfolio';
+import { usePortfolioSearch, StockSearchResult } from '../../hooks/usePortfolioSearch';
+import { useDebounce } from '../../hooks/useDebounce';
 import { TableSkeleton } from '../SkeletonLoader';
 import ProgressIndicator from '../ProgressIndicator';
+import BaseTable, { ColumnDefinition, HeaderRenderProps } from '../BaseTable';
+import ColumnFilterMenu from '../ColumnFilterMenu';
+import ColumnTooltip from '../ColumnTooltip';
+import { getColumnMetadata } from '../../config/tableMetadata';
 
-export default function PersonalPortfolioView() {
+// Extended PortfolioItem for table display
+interface PortfolioTableItem extends PortfolioItem {
+  rowNumber?: number;
+  currentPrice?: number | null;
+  currentPriceUSD?: number | null; // New property for USD price
+  invested?: number | null;
+  marketValue?: number | null;
+  profitLoss?: number | null;
+  profitLossPercent?: number | null;
+  marketWeight?: number | null;
+}
+
+const PORTFOLIO_COLUMNS: ColumnDefinition<PortfolioTableItem>[] = [
+  { key: 'rowNumber', label: 'Antal', required: true, sticky: true, sortable: false },
+  { key: 'companyName', label: 'Company Name', required: true, sticky: true, sortable: true },
+  { key: 'ticker', label: 'Ticker', required: true, sticky: true, sortable: true },
+  { key: 'currency', label: 'Currency', required: true, sticky: true, sortable: true, align: 'center' },
+  { key: 'currentPrice', label: 'Current Price', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'currentPriceUSD', label: 'Current Price($)', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'quantity', label: 'Quantity', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'average', label: 'Average ($)', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'invested', label: 'Invested ($)', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'marketValue', label: 'Market Value ($)', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'profitLoss', label: 'P/L ($)', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'profitLossPercent', label: 'P/L%', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'marketWeight', label: 'Market Weight', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'actions', label: 'Actions', required: false, sortable: false, align: 'right' },
+];
+
+// Inner component that uses EntryExitContext
+function PersonalPortfolioViewInner() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
+  const { data: benjaminGrahamData, loading: benjaminGrahamLoading } = useBenjaminGrahamData();
+  const { entryExitValues, initializeFromData } = useEntryExitValues();
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [newTicker, setNewTicker] = useState('');
-  const [newCompanyName, setNewCompanyName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStock, setSelectedStock] = useState<StockSearchResult | null>(null);
+  const [quantity, setQuantity] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [investedAmount, setInvestedAmount] = useState('');
+  const [investmentCurrency, setInvestmentCurrency] = useState<string>('USD');
+  const [editingItem, setEditingItem] = useState<PortfolioTableItem | null>(null);
+  const [editQuantity, setEditQuantity] = useState('');
+  const [editInvestedAmount, setEditInvestedAmount] = useState('');
+  const [editInvestmentCurrency, setEditInvestmentCurrency] = useState<string>('USD');
+  const [editAveragePreview, setEditAveragePreview] = useState<number | null>(null);
+  const [editAverageLoading, setEditAverageLoading] = useState(false);
+  const [exchangeRatesByCurrency, setExchangeRatesByCurrency] = useState<Record<string, number>>({ USD: 1 });
+  const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const headerRefs = useRef<{ [key: string]: HTMLElement | null }>({});
 
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const searchResults = usePortfolioSearch(benjaminGrahamData || [], debouncedSearchQuery);
+
+  // Initialize EntryExitContext with benjaminGrahamData
   useEffect(() => {
-    if (!currentUser) {
-      setLoading(false);
-      return;
+    if (benjaminGrahamData && benjaminGrahamData.length > 0) {
+      const entryExitData = benjaminGrahamData.map((item) => ({
+        companyName: item.companyName,
+        ticker: item.ticker,
+        currency: 'USD',
+        entry1: 0,
+        entry2: 0,
+        exit1: 0,
+        exit2: 0,
+        dateOfUpdate: null,
+      }));
+      initializeFromData(entryExitData);
     }
+  }, [benjaminGrahamData, initializeFromData]);
 
-    loadPortfolio();
-  }, [currentUser]);
-
-  const loadPortfolio = async () => {
+  const loadPortfolio = useCallback(async () => {
     if (!currentUser) return;
 
     try {
@@ -38,21 +105,305 @@ export default function PersonalPortfolioView() {
     } finally {
       setLoading(false);
     }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
+    loadPortfolio();
+  }, [currentUser, loadPortfolio]);
+
+  // Periodic update of exchange rates and average recalculation (every 15 minutes)
+  useEffect(() => {
+    if (!portfolio.length || !currentUser) return;
+
+    const updateInterval = setInterval(async () => {
+      // Force refresh exchange rates (bypass cache by clearing it)
+      try {
+        localStorage.removeItem('currency_rates_usd');
+      } catch {
+        // ignore
+      }
+
+      // Recalculate average prices for all portfolio items with investedAmount
+      const itemsToUpdate = portfolio.filter(
+        (item) =>
+          item.investedAmount &&
+          item.investmentCurrency &&
+          item.investmentCurrency !== 'USD' &&
+          item.quantity &&
+          item.quantity > 0
+      );
+
+      for (const item of itemsToUpdate) {
+        if (item.investedAmount && item.quantity && item.investmentCurrency) {
+          try {
+            const averagePerShare = item.investedAmount / item.quantity;
+            const exchangeRate = await getExchangeRate(item.investmentCurrency, 'USD');
+
+            if (exchangeRate !== null) {
+              const newAveragePrice = averagePerShare * exchangeRate;
+
+              // Update if different (avoid unnecessary writes)
+              if (
+                item.averagePrice === null ||
+                item.averagePrice === undefined ||
+                Math.abs(item.averagePrice - newAveragePrice) > 0.01
+              ) {
+                await updatePortfolioItem(currentUser.uid, item.ticker, {
+                  averagePrice: newAveragePrice,
+                });
+              }
+            }
+          } catch {
+            // ignore errors for individual items
+          }
+        }
+      }
+
+      // Reload portfolio to reflect changes
+      await loadPortfolio();
+    }, 15 * 60 * 1000); // Every 15 minutes
+
+    return () => clearInterval(updateInterval);
+  }, [portfolio, currentUser, loadPortfolio]);
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSearchResults(false);
+      }
+    }
+
+    if (showSearchResults) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSearchResults]);
+
+  // Fetch exchange rates for non-USD currencies used in portfolio
+  useEffect(() => {
+    if (!portfolio.length) {
+      setExchangeRatesByCurrency({ USD: 1 });
+      return;
+    }
+    const currencies = new Set<string>();
+    for (const item of portfolio) {
+      const ccy = getCurrencyForStock(item.ticker, item.companyName, entryExitValues);
+      if (ccy !== 'USD') currencies.add(ccy);
+    }
+    if (currencies.size === 0) {
+      setExchangeRatesByCurrency({ USD: 1 });
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const rates: Record<string, number> = { USD: 1 };
+      for (const ccy of currencies) {
+        if (cancelled) return;
+        const rate = await getExchangeRate(ccy, 'USD');
+        if (rate !== null) rates[ccy] = rate;
+      }
+      if (!cancelled) setExchangeRatesByCurrency(rates);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [portfolio, entryExitValues]);
+
+  // Fetch any missing exchange rates (e.g. when entryExitValues loads after portfolio)
+  useEffect(() => {
+    if (!portfolio.length) return;
+    const missing: string[] = [];
+    for (const item of portfolio) {
+      const ccy = getCurrencyForStock(item.ticker, item.companyName, entryExitValues);
+      if (ccy !== 'USD' && exchangeRatesByCurrency[ccy] == null && !missing.includes(ccy)) {
+        missing.push(ccy);
+      }
+    }
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const next: Record<string, number> = { ...exchangeRatesByCurrency };
+      for (const ccy of missing) {
+        if (cancelled) return;
+        const rate = await getExchangeRate(ccy, 'USD');
+        if (rate !== null) next[ccy] = rate;
+      }
+      if (!cancelled) setExchangeRatesByCurrency(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [portfolio, entryExitValues, exchangeRatesByCurrency]);
+
+  // Show search results when query changes
+  useEffect(() => {
+    if (debouncedSearchQuery.trim().length >= 2 && searchResults.length > 0) {
+      setShowSearchResults(true);
+      setSelectedIndex(-1);
+    } else {
+      setShowSearchResults(false);
+    }
+  }, [debouncedSearchQuery, searchResults]);
+
+  // Auto-calculate average when invested amount, currency, or quantity changes
+  useEffect(() => {
+    if (!editingItem || !editInvestedAmount.trim() || !editQuantity.trim()) {
+      setEditAveragePreview(null);
+      return;
+    }
+
+    const recalculateAverage = async () => {
+      const investedAmountNum = parseFloat(editInvestedAmount);
+      const quantityNum = parseFloat(editQuantity);
+
+      if (isNaN(investedAmountNum) || investedAmountNum <= 0 || isNaN(quantityNum) || quantityNum <= 0) {
+        setEditAveragePreview(null);
+        return;
+      }
+
+      setEditAverageLoading(true);
+      try {
+        const averagePerShare = investedAmountNum / quantityNum;
+
+        if (editInvestmentCurrency === 'USD') {
+          setEditAveragePreview(averagePerShare);
+        } else {
+          const exchangeRate = await getExchangeRate(editInvestmentCurrency, 'USD');
+          if (exchangeRate !== null) {
+            setEditAveragePreview(averagePerShare * exchangeRate);
+          } else {
+            setEditAveragePreview(null);
+          }
+        }
+      } catch {
+        setEditAveragePreview(null);
+      } finally {
+        setEditAverageLoading(false);
+      }
+    };
+
+    recalculateAverage();
+  }, [editInvestedAmount, editInvestmentCurrency, editQuantity, editingItem]);
+
+  // Handle keyboard navigation in search results
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSearchResults || searchResults.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < searchResults.length - 1 ? prev + 1 : prev));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIndex >= 0 && selectedIndex < searchResults.length) {
+        handleSelectStock(searchResults[selectedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      setShowSearchResults(false);
+      setSelectedIndex(-1);
+    }
+  };
+
+  const handleSelectStock = (stock: StockSearchResult) => {
+    setSelectedStock(stock);
+    setSearchQuery(`${stock.ticker} - ${stock.companyName}`);
+    setShowSearchResults(false);
+    setSelectedIndex(-1);
+    // Focus quantity input
+    setTimeout(() => {
+      const quantityInput = document.getElementById('quantity-input');
+      quantityInput?.focus();
+    }, 100);
   };
 
   const handleAddItem = async () => {
-    if (!currentUser || !newTicker.trim()) return;
+    if (!currentUser || !selectedStock || !quantity.trim()) return;
+
+    const quantityNum = parseFloat(quantity);
+    if (isNaN(quantityNum) || quantityNum < 0) {
+      setError(t('portfolio.quantityInvalid', 'Ogiltigt antal'));
+      return;
+    }
 
     try {
+      setError(null);
+      const currency = getCurrencyForStock(
+        selectedStock.ticker,
+        selectedStock.companyName,
+        entryExitValues
+      );
+
+      let calculatedAveragePrice: number | null = null;
+      let investedAmountValue: number | null = null;
+      let investmentCurrencyValue: string | null = null;
+
+      if (investedAmount.trim()) {
+        const investedAmountNum = parseFloat(investedAmount);
+        if (!isNaN(investedAmountNum) && investedAmountNum > 0) {
+          investedAmountValue = investedAmountNum;
+          investmentCurrencyValue = investmentCurrency;
+          const averagePerShare = investedAmountNum / quantityNum;
+          if (investmentCurrency === 'USD') {
+            calculatedAveragePrice = averagePerShare;
+          } else {
+            const exchangeRate = await getExchangeRate(investmentCurrency, 'USD');
+            if (exchangeRate !== null) {
+              calculatedAveragePrice = averagePerShare * exchangeRate;
+            } else {
+              calculatedAveragePrice = selectedStock.price;
+              setError(t('portfolio.exchangeRateUnavailable', 'Valutakurs kunde inte hämtas. Använder nuvarande pris.'));
+            }
+          }
+        }
+      }
+
+      if (calculatedAveragePrice === null) {
+        if (currency === 'USD') {
+          calculatedAveragePrice = selectedStock.price;
+        } else if (selectedStock.price != null) {
+          const rate = await getExchangeRate(currency, 'USD');
+          if (rate !== null) {
+            calculatedAveragePrice = selectedStock.price * rate;
+          } else {
+            calculatedAveragePrice = selectedStock.price;
+            setError(t('portfolio.exchangeRateUnavailable', 'Valutakurs kunde inte hämtas. Använder nuvarande pris.'));
+          }
+        } else {
+          calculatedAveragePrice = selectedStock.price;
+        }
+      }
+
       const item: PortfolioItem = {
-        ticker: newTicker.trim().toUpperCase(),
-        companyName: newCompanyName.trim() || undefined,
+        ticker: selectedStock.ticker,
+        companyName: selectedStock.companyName,
+        quantity: quantityNum,
+        currency: currency,
+        price: selectedStock.price,
+        averagePrice: calculatedAveragePrice,
+        investedAmount: investedAmountValue,
+        investmentCurrency: investmentCurrencyValue,
       };
-      
+
       await addPortfolioItem(currentUser.uid, item);
       await loadPortfolio();
-      setNewTicker('');
-      setNewCompanyName('');
+
+      setSelectedStock(null);
+      setSearchQuery('');
+      setQuantity('');
+      setInvestedAmount('');
+      setInvestmentCurrency('USD');
+      setShowSearchResults(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add item';
       setError(errorMessage);
@@ -70,6 +421,416 @@ export default function PersonalPortfolioView() {
       setError(errorMessage);
     }
   };
+
+  const handleUpdateItem = async () => {
+    if (!currentUser || !editingItem) return;
+
+    const quantityNum = parseFloat(editQuantity);
+    if (isNaN(quantityNum) || quantityNum <= 0) {
+      setError(t('portfolio.quantityInvalid', 'Ogiltigt antal'));
+      return;
+    }
+
+    try {
+      setError(null);
+      let calculatedAveragePrice: number | null = null;
+      let investedAmountValue: number | null = null;
+      let investmentCurrencyValue: string | null = null;
+
+      if (editInvestedAmount.trim()) {
+        const investedAmountNum = parseFloat(editInvestedAmount);
+        if (!isNaN(investedAmountNum) && investedAmountNum > 0) {
+          investedAmountValue = investedAmountNum;
+          investmentCurrencyValue = editInvestmentCurrency;
+          const averagePerShare = investedAmountNum / quantityNum;
+          if (editInvestmentCurrency === 'USD') {
+            calculatedAveragePrice = averagePerShare;
+          } else {
+            const exchangeRate = await getExchangeRate(editInvestmentCurrency, 'USD');
+            if (exchangeRate !== null) {
+              calculatedAveragePrice = averagePerShare * exchangeRate;
+            } else {
+              calculatedAveragePrice = editingItem.price ?? null;
+              setError(t('portfolio.exchangeRateUnavailable', 'Valutakurs kunde inte hämtas. Använder nuvarande pris.'));
+            }
+          }
+        }
+      }
+
+      if (calculatedAveragePrice === null) {
+        const editCurrency = getCurrencyForStock(
+          editingItem.ticker,
+          editingItem.companyName,
+          entryExitValues
+        );
+        if (editCurrency === 'USD' || editingItem.price == null) {
+          calculatedAveragePrice = editingItem.price ?? null;
+        } else {
+          const rate = await getExchangeRate(editCurrency, 'USD');
+          if (rate !== null) {
+            calculatedAveragePrice = editingItem.price * rate;
+          } else {
+            calculatedAveragePrice = editingItem.price;
+            setError(t('portfolio.exchangeRateUnavailable', 'Valutakurs kunde inte hämtas. Använder nuvarande pris.'));
+          }
+        }
+      }
+
+      await updatePortfolioItem(currentUser.uid, editingItem.ticker, {
+        quantity: quantityNum,
+        averagePrice: calculatedAveragePrice,
+        investedAmount: investedAmountValue,
+        investmentCurrency: investmentCurrencyValue,
+      });
+      await loadPortfolio();
+      setEditingItem(null);
+      setEditQuantity('');
+      setEditInvestedAmount('');
+      setEditInvestmentCurrency('USD');
+      setEditAveragePreview(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update item';
+      setError(errorMessage);
+    }
+  };
+
+  const formatPrice = (price: number | null): string => {
+    if (price === null) return '-';
+    return price.toFixed(2);
+  };
+
+  const formatCurrency = (value: number, currency: string): string => {
+    return `${value.toFixed(2)} ${currency}`;
+  };
+
+  const formatUSD = (value: number | null | undefined): string => {
+    if (value === null || value === undefined) return '-';
+    return `$${value.toFixed(2)}`;
+  };
+
+  // Transform portfolio data and compute total market value (both in USD)
+  const { transformedPortfolio, totalMarketValue } = useMemo(() => {
+    const withUSD = portfolio.map((item, index) => {
+      const currentPrice = item.price;
+      const quantity = item.quantity;
+      const averagePrice = item.averagePrice;
+      const currency = getCurrencyForStock(item.ticker, item.companyName, entryExitValues);
+      let currentPriceUSD: number | null = null;
+      if (currentPrice !== null && currentPrice !== undefined) {
+        if (currency === 'USD') {
+          currentPriceUSD = currentPrice;
+        } else {
+          const rate = exchangeRatesByCurrency[currency];
+          if (rate != null) currentPriceUSD = currentPrice * rate;
+        }
+      }
+      return {
+        ...item,
+        rowNumber: index + 1,
+        currentPrice,
+        currentPriceUSD,
+        currency,
+        quantity,
+        averagePrice,
+      };
+    });
+    const total = withUSD.reduce((sum, x) => {
+      if (x.currentPriceUSD != null && x.quantity > 0) return sum + x.currentPriceUSD * x.quantity;
+      return sum;
+    }, 0);
+    const transformed: PortfolioTableItem[] = withUSD.map((x) => {
+      const invested =
+        x.averagePrice != null && x.averagePrice !== undefined && x.quantity > 0
+          ? x.averagePrice * x.quantity
+          : null;
+      const marketValue =
+        x.currentPriceUSD != null && x.currentPriceUSD !== undefined && x.quantity > 0
+          ? x.currentPriceUSD * x.quantity
+          : null;
+      const profitLoss = invested != null && marketValue != null ? marketValue - invested : null;
+      const profitLossPercent =
+        invested != null && invested !== 0 && profitLoss != null ? (profitLoss / invested) * 100 : null;
+      const marketWeight = total > 0 && marketValue != null ? (marketValue / total) * 100 : null;
+      return {
+        ...x,
+        invested,
+        marketValue,
+        profitLoss,
+        profitLossPercent,
+        marketWeight,
+      };
+    });
+    return { transformedPortfolio: transformed, totalMarketValue: total };
+  }, [portfolio, entryExitValues, exchangeRatesByCurrency]);
+
+  // Render cell content
+  const renderCell = useCallback((item: PortfolioTableItem, column: ColumnDefinition<PortfolioTableItem>, index: number, globalIndex: number) => {
+    // Get currency from entryExitValues in real-time
+    const currency = getCurrencyForStock(
+      item.ticker,
+      item.companyName,
+      entryExitValues
+    );
+
+    switch (column.key) {
+      case 'rowNumber':
+        return globalIndex + 1;
+      case 'companyName':
+        return <span className="font-medium">{item.companyName}</span>;
+      case 'ticker':
+        return <span className="text-gray-600 dark:text-gray-300">{item.ticker}</span>;
+      case 'currency':
+        return <span className="text-black dark:text-white">{currency}</span>;
+      case 'currentPrice':
+        return item.currentPrice !== null && item.currentPrice !== undefined 
+          ? <span className="text-black dark:text-white">{formatPrice(item.currentPrice)}</span>
+          : <span className="text-gray-500 dark:text-gray-400">-</span>;
+      case 'currentPriceUSD':
+        return item.currentPriceUSD !== null && item.currentPriceUSD !== undefined
+          ? <span className="text-black dark:text-white">{formatUSD(item.currentPriceUSD)}</span>
+          : <span className="text-gray-500 dark:text-gray-400">-</span>;
+      case 'quantity':
+        return <span className="text-black dark:text-white">{item.quantity}</span>;
+      case 'average':
+        return item.averagePrice !== null && item.averagePrice !== undefined
+          ? <span className="text-black dark:text-white">{formatUSD(item.averagePrice)}</span>
+          : <span className="text-gray-500 dark:text-gray-400">-</span>;
+      case 'invested':
+        return item.invested !== null && item.invested !== undefined
+          ? <span className="text-black dark:text-white">{formatUSD(item.invested)}</span>
+          : <span className="text-gray-500 dark:text-gray-400">-</span>;
+      case 'marketValue':
+        return item.marketValue !== null && item.marketValue !== undefined
+          ? <span className="text-black dark:text-white">{formatUSD(item.marketValue)}</span>
+          : <span className="text-gray-500 dark:text-gray-400">-</span>;
+      case 'profitLoss':
+        if (item.profitLoss === null || item.profitLoss === undefined) {
+          return <span className="text-gray-500 dark:text-gray-400">-</span>;
+        }
+        const profitLossColor = item.profitLoss >= 0 
+          ? 'text-green-600 dark:text-green-400' 
+          : 'text-red-600 dark:text-red-400';
+        return (
+          <span className={profitLossColor}>
+            {formatUSD(item.profitLoss)}
+          </span>
+        );
+      case 'profitLossPercent':
+        if (item.profitLossPercent === null || item.profitLossPercent === undefined) {
+          return <span className="text-gray-500 dark:text-gray-400">-</span>;
+        }
+        const percentColor = item.profitLossPercent >= 0 
+          ? 'text-green-600 dark:text-green-400' 
+          : 'text-red-600 dark:text-red-400';
+        return (
+          <span className={percentColor}>
+            {item.profitLossPercent.toFixed(2)}%
+          </span>
+        );
+      case 'marketWeight':
+        return item.marketWeight !== null && item.marketWeight !== undefined
+          ? <span className="text-black dark:text-white">{item.marketWeight.toFixed(2)}%</span>
+          : <span className="text-gray-500 dark:text-gray-400">-</span>;
+      case 'actions':
+        return (
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              onClick={() => {
+                setEditingItem(item);
+                setEditQuantity(item.quantity?.toString() ?? '');
+                setEditInvestedAmount(item.investedAmount?.toString() ?? '');
+                setEditInvestmentCurrency(item.investmentCurrency ?? 'USD');
+              }}
+              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-colors min-h-[44px] min-w-[44px] touch-manipulation px-3 py-1 rounded"
+              aria-label={t('portfolio.edit', 'Redigera')}
+            >
+              {t('portfolio.edit', 'Redigera')}
+            </button>
+            <button
+              onClick={() => handleRemoveItem(item.ticker)}
+              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors min-h-[44px] min-w-[44px] touch-manipulation px-3 py-1 rounded"
+              aria-label={t('portfolio.remove', 'Ta bort')}
+            >
+              {t('portfolio.remove', 'Ta bort')}
+            </button>
+          </div>
+        );
+      default:
+        return null;
+    }
+  }, [entryExitValues, formatPrice, formatUSD, t, handleRemoveItem]);
+
+  // Custom header renderer with ColumnFilterMenu
+  const renderHeader = useCallback((props: HeaderRenderProps<PortfolioTableItem>) => {
+    const { 
+      column, 
+      sortConfig, 
+      handleSort, 
+      getSortIcon, 
+      getStickyPosition, 
+      isColumnVisible,
+      openFilterMenuColumn,
+      setOpenFilterMenuColumn,
+      hasActiveColumnFilter,
+      getColumnUniqueValues,
+      columnFilters,
+      setColumnFilter,
+      handleColumnSort,
+      headerRefs,
+    } = props;
+    const metadata = getColumnMetadata('personal-portfolio', column.key);
+    const isSticky = column.sticky;
+    const isSorted = sortConfig.key === column.key;
+    const sortIcon = getSortIcon(column.key);
+    const stickyClass = isSticky ? `sm:sticky sm:top-0 ${getStickyPosition(column.key)} z-50` : '';
+    const isFilterMenuOpen = openFilterMenuColumn === column.key;
+    const hasActiveFilter = hasActiveColumnFilter(column.key);
+    const headerRef = headerRefs.current[column.key] || null;
+
+    const handleFilterIconClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isFilterMenuOpen) {
+        setOpenFilterMenuColumn(null);
+      } else {
+        setOpenFilterMenuColumn(column.key);
+      }
+    };
+
+    const handleSortClick = (e?: React.MouseEvent) => {
+      if (e) {
+        e.stopPropagation();
+      }
+      if (!isFilterMenuOpen) {
+        handleSort(column.key);
+      }
+    };
+
+    const filterIcon = (
+      <button
+        onClick={handleFilterIconClick}
+        className={`ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${
+          hasActiveFilter ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+        }`}
+        aria-label={`Filter ${column.label}`}
+        aria-expanded={isFilterMenuOpen}
+        title="Filter och sortering"
+        type="button"
+      >
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6h16M4 12h16M4 18h16"
+          />
+        </svg>
+      </button>
+    );
+    
+    if (!column.sortable) {
+      const headerContent = (
+        <th
+          ref={(el) => {
+            headerRefs.current[column.key] = el;
+          }}
+          className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ${stickyClass} bg-gray-50 dark:bg-gray-900`}
+          scope="col"
+          role="columnheader"
+        >
+          <div className="flex items-center justify-between relative w-full">
+            <div className="flex items-center flex-1">
+              {metadata ? (
+                <ColumnTooltip metadata={metadata}>
+                  <div className="flex items-center space-x-1">
+                    <span>{column.label}</span>
+                  </div>
+                </ColumnTooltip>
+              ) : (
+                <div className="flex items-center space-x-1">
+                  <span>{column.label}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center relative" style={{ minWidth: '40px' }}>
+              <div className="relative">
+                {filterIcon}
+                {isFilterMenuOpen && headerRef && (
+                  <ColumnFilterMenu
+                    columnKey={column.key}
+                    columnLabel={column.label}
+                    isOpen={isFilterMenuOpen}
+                    onClose={() => setOpenFilterMenuColumn(null)}
+                    filter={columnFilters[column.key]}
+                    onFilterChange={(filter) => setColumnFilter(column.key, filter)}
+                    sortConfig={sortConfig}
+                    onSort={handleColumnSort}
+                    uniqueValues={getColumnUniqueValues(column.key)}
+                    triggerRef={{ current: headerRef }}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </th>
+      );
+      return <Fragment key={column.key}>{headerContent}</Fragment>;
+    }
+
+    const headerContent = (
+      <th
+        ref={(el) => {
+          headerRefs.current[column.key] = el;
+        }}
+        onClick={handleSortClick}
+        className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-200 ${stickyClass} bg-gray-50 dark:bg-gray-900`}
+        scope="col"
+        role="columnheader"
+      >
+        <div className="flex items-center justify-between relative w-full">
+          <div className="flex items-center flex-1" onClick={handleSortClick}>
+            {metadata ? (
+              <ColumnTooltip metadata={metadata}>
+                <div className="flex items-center space-x-1">
+                  <span>{column.label}</span>
+                  {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
+                </div>
+              </ColumnTooltip>
+            ) : (
+              <div className="flex items-center space-x-1">
+                <span>{column.label}</span>
+                {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center relative" style={{ minWidth: '40px' }}>
+            <div className="relative">
+              {filterIcon}
+              {isFilterMenuOpen && headerRef && (
+                <ColumnFilterMenu
+                  columnKey={column.key}
+                  columnLabel={column.label}
+                  isOpen={isFilterMenuOpen}
+                  onClose={() => setOpenFilterMenuColumn(null)}
+                  filter={columnFilters[column.key]}
+                  onFilterChange={(filter) => setColumnFilter(column.key, filter)}
+                  sortConfig={sortConfig}
+                  onSort={handleColumnSort}
+                  uniqueValues={getColumnUniqueValues(column.key)}
+                  triggerRef={{ current: headerRef }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </th>
+    );
+    return <Fragment key={column.key}>{headerContent}</Fragment>;
+  }, []);
 
   if (!currentUser) {
     return (
@@ -107,62 +868,266 @@ export default function PersonalPortfolioView() {
           </div>
         )}
 
-        {/* Add new item form */}
+        {/* Add new item form with search */}
         <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 flex-shrink-0">
           <h2 className="text-lg font-semibold text-black dark:text-white mb-4">
             {t('portfolio.addItem', 'Lägg till aktie')}
           </h2>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t('portfolio.ticker', 'Ticker')} *
-              </label>
+          
+          {/* Search field */}
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('portfolio.searchPlaceholder', 'Sök på ticker eller företagsnamn...')}
+            </label>
+            <div ref={searchRef} className="relative">
               <input
+                ref={inputRef}
                 type="text"
-                value={newTicker}
-                onChange={(e) => setNewTicker(e.target.value)}
-                placeholder="AAPL"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAddItem();
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSelectedStock(null);
+                  setQuantity('');
+                }}
+                onFocus={() => {
+                  if (searchResults.length > 0 && debouncedSearchQuery.trim().length >= 2) {
+                    setShowSearchResults(true);
                   }
                 }}
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t('portfolio.companyName', 'Företagsnamn')}
-              </label>
-              <input
-                type="text"
-                value={newCompanyName}
-                onChange={(e) => setNewCompanyName(e.target.value)}
-                placeholder={t('portfolio.companyNamePlaceholder', 'Apple Inc.')}
+                onKeyDown={handleKeyDown}
+                placeholder={t('portfolio.searchPlaceholder', 'Sök på ticker eller företagsnamn...')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAddItem();
-                  }
-                }}
               />
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={handleAddItem}
-                disabled={!newTicker.trim() || loading}
-                className="w-full sm:w-auto px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-md transition-colors min-h-[44px] touch-manipulation"
-              >
-                {t('portfolio.add', 'Lägg till')}
-              </button>
+              
+              {/* Search results dropdown */}
+              {showSearchResults && searchResults.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
+                  {searchResults.map((result, index) => (
+                    <button
+                      key={`${result.ticker}-${index}`}
+                      type="button"
+                      onClick={() => handleSelectStock(result)}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                        index === selectedIndex ? 'bg-gray-100 dark:bg-gray-700' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-black dark:text-white">
+                            {result.companyName}
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            {result.ticker}
+                          </div>
+                        </div>
+                        {result.price !== null && (
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {formatPrice(result.price)}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              {showSearchResults && debouncedSearchQuery.trim().length >= 2 && searchResults.length === 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-4">
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                    {t('portfolio.noResults', 'Inga resultat hittades')}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Selected stock and quantity input */}
+          {selectedStock && (
+            <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+              <div className="mb-3">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t('portfolio.selectStock', 'Vald aktie')}
+                </div>
+                <div className="text-sm text-black dark:text-white">
+                  {selectedStock.companyName} ({selectedStock.ticker})
+                </div>
+                {selectedStock.price !== null && (
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    {t('portfolio.columns.currentPrice', 'Nuvarande Pris')}: {formatPrice(selectedStock.price)}
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t('portfolio.quantity', 'Antal')} *
+                </label>
+                <input
+                  id="quantity-input"
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder={t('portfolio.quantityPlaceholder', 'Ange antal')}
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && quantity.trim()) {
+                      handleAddItem();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Investment Amount and Currency */}
+          {selectedStock && (
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('portfolio.investedAmount', 'Investerat belopp')} ({t('portfolio.optional', 'Valfritt')})
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={investedAmount}
+                  onChange={(e) => setInvestedAmount(e.target.value)}
+                  placeholder={t('portfolio.investedAmountPlaceholder', 'T.ex. 10000')}
+                  min="0"
+                  step="0.01"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <select
+                  value={investmentCurrency}
+                  onChange={(e) => setInvestmentCurrency(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="USD">USD</option>
+                  <option value="SEK">SEK</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="DKK">DKK</option>
+                  <option value="NOK">NOK</option>
+                  <option value="CHF">CHF</option>
+                  <option value="AUD">AUD</option>
+                  <option value="CAD">CAD</option>
+                </select>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {t('portfolio.investedAmountHelp', 'Totalt investerat belopp. Om tomt används nuvarande pris.')}
+              </p>
+            </div>
+          )}
+
+          {/* Add button */}
+          <div className="flex justify-end">
+            <button
+              onClick={handleAddItem}
+              disabled={!selectedStock || !quantity.trim() || loading || benjaminGrahamLoading}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-md transition-colors min-h-[44px] touch-manipulation"
+            >
+              {t('portfolio.addToPortfolio', 'Lägg till i portfölj')}
+            </button>
+          </div>
         </div>
+
+        {/* Edit Modal */}
+        {editingItem && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="edit-investment-title">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+              <h3 id="edit-investment-title" className="text-lg font-semibold text-black dark:text-white mb-4">
+                {t('portfolio.editInvestment', 'Redigera investering')}
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                {editingItem.companyName} ({editingItem.ticker})
+              </p>
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t('portfolio.quantity', 'Antal')} *
+                </label>
+                <input
+                  type="number"
+                  value={editQuantity}
+                  onChange={(e) => setEditQuantity(e.target.value)}
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t('portfolio.investedAmount', 'Investerat belopp')}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={editInvestedAmount}
+                    onChange={(e) => setEditInvestedAmount(e.target.value)}
+                    placeholder={t('portfolio.investedAmountPlaceholder', 'T.ex. 10000')}
+                    min="0"
+                    step="0.01"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <select
+                    value={editInvestmentCurrency}
+                    onChange={(e) => setEditInvestmentCurrency(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="USD">USD</option>
+                    <option value="SEK">SEK</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                    <option value="DKK">DKK</option>
+                    <option value="NOK">NOK</option>
+                    <option value="CHF">CHF</option>
+                    <option value="AUD">AUD</option>
+                    <option value="CAD">CAD</option>
+                  </select>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {t('portfolio.investedAmountHelp', 'Totalt investerat belopp. Om tomt används nuvarande pris.')}
+                </p>
+              </div>
+              {editAveragePreview !== null && (
+                <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    <span className="font-medium">{t('portfolio.calculatedAverage', 'Beräknat genomsnitt:')}</span>{' '}
+                    {editAverageLoading ? (
+                      <span className="text-gray-500 dark:text-gray-400">{t('common.loading', 'Laddar...')}</span>
+                    ) : (
+                      <span className="text-blue-600 dark:text-blue-400">${editAveragePreview.toFixed(2)}</span>
+                    )}
+                  </p>
+                </div>
+              )}
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={handleUpdateItem}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors min-h-[44px] touch-manipulation"
+                >
+                  {t('common.save', 'Spara')}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingItem(null);
+                    setEditQuantity('');
+                    setEditInvestedAmount('');
+                    setEditInvestmentCurrency('USD');
+                    setEditAveragePreview(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-black dark:text-white rounded-md transition-colors min-h-[44px] touch-manipulation"
+                >
+                  {t('common.cancel', 'Avbryt')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Portfolio table */}
         {loading ? (
           <div className="flex-1 min-h-0">
-            <TableSkeleton rows={10} columns={3} />
+            <TableSkeleton rows={10} columns={7} />
           </div>
         ) : portfolio.length === 0 ? (
           <div className="flex-1 flex items-center justify-center p-8">
@@ -176,48 +1141,43 @@ export default function PersonalPortfolioView() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 min-h-0 overflow-auto">
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      {t('portfolio.ticker', 'Ticker')}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      {t('portfolio.companyName', 'Företagsnamn')}
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      {t('portfolio.actions', 'Åtgärder')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {portfolio.map((item, index) => (
-                    <tr key={`${item.ticker}-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-black dark:text-white">
-                        {item.ticker}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                        {item.companyName || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleRemoveItem(item.ticker)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors min-h-[44px] min-w-[44px] touch-manipulation px-3 py-1 rounded"
-                          aria-label={t('portfolio.remove', 'Ta bort')}
-                        >
-                          {t('portfolio.remove', 'Ta bort')}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="flex-1 min-h-0">
+            <BaseTable
+              data={transformedPortfolio}
+              loading={false}
+              error={error}
+              columns={PORTFOLIO_COLUMNS}
+              filters={[]}
+              tableId="personal-portfolio"
+              renderCell={renderCell}
+              renderHeader={renderHeader}
+              searchFields={['companyName', 'ticker']}
+              searchPlaceholder={t('portfolio.searchPlaceholder', 'Sök på ticker eller företagsnamn...')}
+              defaultSortKey="rowNumber"
+              defaultSortDirection="asc"
+              stickyColumns={['rowNumber', 'companyName', 'ticker', 'currency']}
+              enablePagination={false}
+              enableVirtualScroll={false}
+              ariaLabel={t('portfolio.description', 'Personal Portfolio')}
+              emptyMessage={t('portfolio.empty', 'Din portfölj är tom')}
+              headerActions={
+                <div className="flex items-center gap-2">
+                  {/* Remove button will be handled in renderCell for actions column */}
+                </div>
+              }
+              getRowKey={(item, index) => `${item.ticker}-${index}`}
+            />
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+export default function PersonalPortfolioView() {
+  return (
+    <EntryExitProvider>
+      <PersonalPortfolioViewInner />
+    </EntryExitProvider>
   );
 }

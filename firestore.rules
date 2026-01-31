@@ -45,7 +45,7 @@ service cloud.firestore {
              true;
     }
     
-    // Shared data - read access for all (including unauthenticated for Score data), write access only for admin
+    // Shared data - read requires authentication and role (viewer or admin), write only for admin
     match /sharedData/{document} {
       // Threshold data - only admin can read/write
       match /threshold/{thresholdId} {
@@ -54,9 +54,8 @@ service cloud.firestore {
       
       // EntryExit data - available for Score table
       match /entryExit {
-        // Read: All users (including unauthenticated viewers) can read for Score table
-        // Note: UI-level restrictions based on allowedViews will be enforced in the application
-        allow read: if true;
+        // Read: Authenticated users with role (viewer or admin)
+        allow read: if request.auth != null && hasRole();
         
         // Write: Only admin
         allow write: if request.auth != null && 
@@ -67,8 +66,8 @@ service cloud.firestore {
       
       // All other shared data
       match /{sharedDoc=**} {
-        // Read: All users (including unauthenticated viewers) for Score-related data
-        allow read: if true;
+        // Read: Authenticated users with role
+        allow read: if request.auth != null && hasRole();
         
         // Write: Only admin
         allow write: if request.auth != null && 
@@ -102,19 +101,37 @@ service cloud.firestore {
                       request.resource.data.portfolio is list;
     }
     
-    // App cache - shared cache for all users (including unauthenticated)
+    // App config - API keys
+    // Read: All authenticated users (needed for currency exchange rates)
+    // Write: Only admin (only admin can view/edit in UI)
+    match /appConfig/apiKeys {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+    
+    // App cache - shared cache for authenticated users
     match /appCache/{cacheKey} {
-      // Read: All users (including unauthenticated viewers)
-      allow read: if true;
+      // Read: Authenticated users only
+      allow read: if request.auth != null;
       
-      // Write: Only admin, with validation
+      // Delete: Only admin (no data validation needed for delete)
+      allow delete: if request.auth != null && isAdmin();
+      
+      // Create/Update: Only admin, with validation
       // Validate document structure: must have data, timestamp, and ttl
-      allow write: if request.auth != null && 
-                      isAdmin() &&
-                      request.resource.data.size() <= 10485760 && // 10MB limit
-                      request.resource.data.data != null &&
-                      request.resource.data.timestamp is number &&
-                      request.resource.data.ttl is number;
+      allow create, update: if request.auth != null && 
+                              isAdmin() &&
+                              request.resource.data.size() <= 10485760 && // 10MB limit
+                              request.resource.data.data != null &&
+                              request.resource.data.timestamp is number &&
+                              request.resource.data.ttl is number;
+    }
+    
+    // Shareable links - authenticated users can read (to load shared links); create/update/delete only by creator
+    match /shareableLinks/{linkId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.createdBy == request.auth.uid;
     }
     
     // Deny all other access by default

@@ -30,7 +30,20 @@
     "conditions": "Villkor",
     "condition": "Villkor",
     "thresholdIndustry": "Threshold INDUSTRY",
-    "personalPortfolio": "Personal Portfolio"
+    "personalPortfolio": "Personlig portfölj",
+    "userManagement": "Användarhantering"
+  },
+  "admin": {
+    "title": "Användarhantering",
+    "description": "Ge utvalda användare tillgång till fler tabeller. Alla användare har SCORE och Personlig portfölj som standard.",
+    "users": "Användare",
+    "email": "E-post",
+    "role": "Roll",
+    "extraTables": "Extra tabeller",
+    "save": "Spara",
+    "saved": "Sparat.",
+    "error": "Kunde inte spara",
+    "loading": "Laddar användare..."
   },
   "conditions": {
     "dataSource": "Datakälla",
@@ -50,9 +63,20 @@
     "close": "Stäng",
     "loading": "Laddar...",
     "cancel": "Avbryt",
+    "save": "Spara",
     "checking": "Kontrollerar status...",
     "unauthorizedView": "Du har inte tillgång till denna vy",
     "pleaseLogin": "Logga in för att visa din personliga portfölj"
+  },
+  "header": {
+    "apiKeys": "API-nycklar"
+  },
+  "apiKeys": {
+    "title": "API-nycklar",
+    "description": "Endast admin kan se och ändra. Ändringar sparas och används för valutakurser.",
+    "save": "Spara",
+    "saving": "Sparar…",
+    "saved": "API-nycklar sparade."
   },
   "refresh": {
     "refreshAll": "Uppdatera allt",
@@ -178,7 +202,7 @@
     "confirmPasswordPlaceholder": "Bekräfta ditt lösenord",
     "loginSuccess": "Inloggning lyckades",
     "loginFailed": "Inloggning misslyckades",
-    "signupSuccess": "Din registrering har skickats! Admin kommer att granska din begäran.",
+    "signupSuccess": "Kontot skapades.",
     "signupFailed": "Kontoskapande misslyckades",
     "logoutSuccess": "Utloggning lyckades",
     "logoutFailed": "Utloggning misslyckades",
@@ -187,7 +211,8 @@
     "passwordMismatch": "Lösenorden matchar inte",
     "passwordTooShort": "Lösenordet måste vara minst 6 tecken",
     "passwordMinLength": "Minst 6 tecken",
-    "alreadyHaveAccount": "Har redan konto? Logga in",
+    "noAccount": "Har du inget konto? ",
+    "alreadyHaveAccount": "Har redan konto? ",
     "createAccount": "Skapa konto",
     "forgotPassword": "Glömt lösenord?",
     "enterEmailForReset": "Ange din e-postadress för att få en återställningslänk skickad till din inkorg.",
@@ -196,15 +221,7 @@
     "resetFailed": "Kunde inte skicka återställningslänk",
     "emailRequired": "E-postadress krävs",
     "sending": "Skickar...",
-    "cancel": "Avbryt",
-    "requestedRole": "Begärd rättighet",
-    "selectRole": "Välj önskad rättighet",
-    "roleViewer1": "Visare 1 - Full tillgång",
-    "roleViewer2": "Visare 2 - Begränsad tillgång",
-    "roleEditor": "Redigeringsrättighet",
-    "roleViewer1Description": "Du kan se alla tabeller och data förutom Threshold INDUSTRY",
-    "roleViewer2Description": "Du kan endast se SCORE och SCORE BOARD tabeller",
-    "roleEditorDescription": "Du kan läsa och redigera data (kräver admin-godkännande)"
+    "cancel": "Avbryt"
   },
   "roles": {
     "viewer": "Visare",
@@ -214,34 +231,6 @@
   "profile": {
     "title": "Min profil",
     "currentRole": "Din roll",
-    "requestUpgrade": "Begär redigeringsrättighet",
-    "upgradeRequested": "Din begäran väntar på admin-godkännande",
-    "upgradeRequestError": "Kunde inte skicka begäran",
-    "upgradeRequestSuccess": "Begäran skickad! Admin kommer att granska den.",
-    "requesting": "Skickar begäran...",
-    "noUpgradeAvailable": "Du har redan redigeringsrättighet eller admin-rättighet"
-  },
-  "waitingApproval": {
-    "title": "Väntar på godkännande",
-    "message": "Din registrering väntar på admin-godkännande. Du kommer att få tillgång till appen när admin har godkänt din begäran.",
-    "submessage": "Vänligen kontrollera din e-post för uppdateringar.",
-    "withdrawRequest": "Dra tillbaka begäran",
-    "confirmWithdraw": "Bekräfta återkallelse",
-    "withdrawConfirmMessage": "Är du säker på att du vill dra tillbaka din begäran? Du kommer att loggas ut och kan registrera dig igen senare.",
-    "confirmWithdrawButton": "Ja, dra tillbaka",
-    "withdrawSuccess": "Begäran har dragits tillbaka",
-    "withdrawError": "Kunde inte dra tillbaka begäran",
-    "withdrawing": "Tar bort..."
-  },
-  "profile": {
-    "title": "Min profil",
-    "currentRole": "Din roll",
-    "requestUpgrade": "Begär redigeringsrättighet",
-    "upgradeRequested": "Din begäran väntar på admin-godkännande",
-    "upgradeRequestError": "Kunde inte skicka begäran",
-    "upgradeRequestSuccess": "Begäran skickad! Admin kommer att granska den.",
-    "requesting": "Skickar begäran...",
-    "noUpgradeAvailable": "Du har redan redigeringsrättighet eller admin-rättighet",
     "deregister": "Avregistrera konto",
     "deregisterTitle": "Avregistrera konto",
     "deregisterWarning": "Om du avregistrerar ditt konto kommer det att tas bort permanent. Denna åtgärd kan inte ångras.",
@@ -377,7 +366,42 @@
     "remove": "Ta bort",
     "actions": "Åtgärder",
     "empty": "Din portfölj är tom",
-    "emptyDescription": "Lägg till aktier ovan för att börja bygga din portfölj"
+    "emptyDescription": "Lägg till aktier ovan för att börja bygga din portfölj",
+    "searchPlaceholder": "Sök på ticker eller företagsnamn...",
+    "searchResults": "Sökresultat",
+    "noResults": "Inga resultat hittades",
+    "selectStock": "Vald aktie",
+    "quantity": "Antal",
+    "quantityPlaceholder": "Ange antal",
+    "quantityRequired": "Antal krävs",
+    "quantityInvalid": "Ogiltigt antal",
+    "addToPortfolio": "Lägg till i portfölj",
+    "investedAmount": "Investerat belopp",
+    "investedAmountPlaceholder": "T.ex. 10000",
+    "investmentCurrency": "Valuta för investering",
+    "investedAmountHelp": "Totalt investerat belopp. Om tomt används nuvarande pris.",
+    "optional": "Valfritt",
+    "edit": "Redigera",
+    "editInvestment": "Redigera investering",
+    "calculatedAverage": "Beräknat genomsnitt:",
+    "exchangeRateUnavailable": "Valutakurs kunde inte hämtas. Använder nuvarande pris.",
+    "updateInvestment": "Uppdatera investering",
+    "columns": {
+      "rowNumber": "Antal",
+      "quantity": "Antal",
+      "companyName": "Företagsnamn",
+      "ticker": "Ticker",
+      "currency": "Valuta",
+      "price": "Pris",
+      "currentPrice": "Nuvarande Pris",
+      "currentPriceUSD": "Nuvarande Pris($)",
+      "average": "Genomsnitt",
+      "invested": "Investerat",
+      "marketValue": "Marknadsvärde",
+      "profitLoss": "Vinst/Förlust",
+      "profitLossPercent": "P/L%",
+      "marketWeight": "Marknadsvikt"
+    }
   }
 }
 

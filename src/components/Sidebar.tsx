@@ -4,6 +4,7 @@ import { ViewId, NavigationSection } from '../types/navigation';
 import ConditionsSidebar from './ConditionsSidebar';
 import { useUserRole } from '../hooks/useUserRole';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { 
   TrophyIcon, 
   ChartBarIcon, 
@@ -12,8 +13,14 @@ import {
   BuildingOfficeIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  UserIcon
+  UserIcon,
+  UserGroupIcon,
+  KeyIcon
 } from '@heroicons/react/24/outline';
+import ApiKeysModal from './ApiKeysModal';
+import { setApiKeysInFirestore } from '../services/appConfigService';
+import { setApiKeysCache } from '../config/apiKeys';
+import type { ApiKeys } from '../config/apiKeys';
 
 interface SidebarProps {
   activeView: ViewId;
@@ -57,12 +64,6 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
     items: [{ id: 'threshold-industry', label: t('navigation.thresholdIndustry') }],
     collapsible: false,
   },
-  {
-    id: 'personal-portfolio',
-    label: t('navigation.personalPortfolio'),
-    items: [{ id: 'personal-portfolio', label: t('navigation.personalPortfolio') }],
-    collapsible: false,
-  },
 ];
 
 // Icon mapping for each view
@@ -78,8 +79,6 @@ const getViewIcon = (viewId: ViewId) => {
       return ChartPieIcon;
     case 'threshold-industry':
       return BuildingOfficeIcon;
-    case 'personal-portfolio':
-      return BuildingOfficeIcon; // Using BuildingOfficeIcon as portfolio icon, can be changed later
     default:
       return null;
   }
@@ -89,6 +88,7 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
   const { t } = useTranslation();
   const { canView, isAdmin } = useUserRole();
   const { currentUser } = useAuth();
+  const { showToast } = useToast();
   
   // Filter navigation sections based on user permissions
   const navigationSections = useMemo(() => {
@@ -107,6 +107,7 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
   const [expandedSubmenus, setExpandedSubmenus] = useState<Set<string>>(
     new Set()
   );
+  const [apiKeysModalOpen, setApiKeysModalOpen] = useState(false);
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections((prev) => {
@@ -134,6 +135,13 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
 
   const handleItemClick = (viewId: ViewId) => {
     onViewChange(viewId);
+  };
+
+  const handleSaveApiKeys = async (keys: ApiKeys) => {
+    await setApiKeysInFirestore(keys);
+    setApiKeysCache(keys);
+    setApiKeysModalOpen(false);
+    showToast(t('apiKeys.saved', 'API-nycklar sparade.'), 'success');
   };
 
   const isSectionExpanded = (sectionId: string) => expandedSections.has(sectionId);
@@ -267,24 +275,56 @@ export default function Sidebar({ activeView, onViewChange, onOpenConditionsModa
           )}
         </nav>
         
-        {/* Profile Button - at bottom */}
-        {currentUser && onOpenUserProfile && (
-          <div className="mt-auto pt-4 border-t border-gray-300 dark:border-gray-500">
-            <button
-              onClick={() => {
-                onOpenUserProfile();
-              }}
-              className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-3'} py-3 sm:py-2.5 ${isCollapsed ? '' : 'text-left'} text-sm rounded-md transition-colors min-h-[44px] touch-manipulation flex items-center gap-3 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-all duration-200 hover:scale-[1.02] active:scale-95`}
-              title={isCollapsed ? t('profile.title') : undefined}
-              aria-label={t('aria.userProfileButton')}
-            >
-              <UserIcon className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5'} flex-shrink-0`} />
-              {!isCollapsed && <span>{t('profile.title')}</span>}
-            </button>
+        {/* User Management, API Keys and Profile - at bottom */}
+        {currentUser && (
+          <div className="mt-auto pt-4 border-t border-gray-300 dark:border-gray-500 space-y-1">
+            {isAdmin && (
+              <button
+                onClick={() => onViewChange('admin')}
+                className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-3'} py-3 sm:py-2.5 ${isCollapsed ? '' : 'text-left'} text-sm rounded-md transition-colors min-h-[44px] touch-manipulation flex items-center gap-3 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-all duration-200 hover:scale-[1.02] active:scale-95 ${
+                  activeView === 'admin' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : ''
+                }`}
+                title={isCollapsed ? t('navigation.userManagement') : undefined}
+                aria-label={t('navigation.userManagement')}
+                aria-current={activeView === 'admin' ? 'page' : undefined}
+              >
+                <UserGroupIcon className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5'} flex-shrink-0`} />
+                {!isCollapsed && <span>{t('navigation.userManagement')}</span>}
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => setApiKeysModalOpen(true)}
+                className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-3'} py-3 sm:py-2.5 ${isCollapsed ? '' : 'text-left'} text-sm rounded-md transition-colors min-h-[44px] touch-manipulation flex items-center gap-3 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-all duration-200 hover:scale-[1.02] active:scale-95`}
+                title={isCollapsed ? t('header.apiKeys', 'API-nycklar') : undefined}
+                aria-label={t('header.apiKeys', 'API-nycklar')}
+              >
+                <KeyIcon className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5'} flex-shrink-0`} />
+                {!isCollapsed && <span>{t('header.apiKeys', 'API-nycklar')}</span>}
+              </button>
+            )}
+            {onOpenUserProfile && (
+              <button
+                onClick={() => onOpenUserProfile()}
+                className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-3'} py-3 sm:py-2.5 ${isCollapsed ? '' : 'text-left'} text-sm rounded-md transition-colors min-h-[44px] touch-manipulation flex items-center gap-3 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-all duration-200 hover:scale-[1.02] active:scale-95`}
+                title={isCollapsed ? t('profile.title') : undefined}
+                aria-label={t('aria.userProfileButton')}
+              >
+                <UserIcon className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5'} flex-shrink-0`} />
+                {!isCollapsed && <span>{t('profile.title')}</span>}
+              </button>
+            )}
           </div>
         )}
       </div>
       </nav>
+      {isAdmin && (
+        <ApiKeysModal
+          isOpen={apiKeysModalOpen}
+          onClose={() => setApiKeysModalOpen(false)}
+          onSave={handleSaveApiKeys}
+        />
+      )}
     </>
   );
 }

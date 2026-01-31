@@ -10,6 +10,7 @@ import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { logger } from '../utils/logger';
 import { PortfolioItem, UserPortfolio } from '../types/portfolio';
+import { EntryExitValues } from '../contexts/EntryExitContext';
 
 const COLLECTION_NAME = 'userPortfolios';
 const STORAGE_KEY = 'personalPortfolio';
@@ -222,4 +223,46 @@ function savePortfolioToLocalStorage(userId: string, portfolio: PortfolioItem[])
       error,
     });
   }
+}
+
+/**
+ * Get currency for a stock from EntryExitValues
+ * 
+ * Returns the currency for a stock from EntryExitValues map,
+ * or defaults to 'USD' if not found.
+ * 
+ * @param ticker - Stock ticker symbol
+ * @param companyName - Company name
+ * @param entryExitValues - Map of EntryExitValues keyed by `${ticker}-${companyName}`
+ * @returns Currency string (default: 'USD')
+ * 
+ * @example
+ * ```typescript
+ * const currency = getCurrencyForStock('AAPL', 'Apple Inc.', entryExitValues);
+ * // Returns 'USD' or the currency from EntryExitValues
+ * ```
+ */
+/** Nasdaq Nordic ticker suffixes that typically trade in SEK */
+const SEK_TICKER_SUFFIXES = ['-B', '-A'];
+
+function inferCurrencyFromTicker(ticker: string): string {
+  const upper = ticker.toUpperCase();
+  if (SEK_TICKER_SUFFIXES.some((s) => upper.endsWith(s))) {
+    return 'SEK';
+  }
+  return 'USD';
+}
+
+export function getCurrencyForStock(
+  ticker: string,
+  companyName: string,
+  entryExitValues: Map<string, EntryExitValues>
+): string {
+  const key = `${ticker}-${companyName}`;
+  const entryExitValue = entryExitValues.get(key);
+  const currency = entryExitValue?.currency;
+  if (currency && currency.trim() !== '') {
+    return currency;
+  }
+  return inferCurrencyFromTicker(ticker);
 }

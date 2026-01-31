@@ -17,6 +17,49 @@ async function verifyAdmin(context: functions.https.CallableContext): Promise<vo
   }
 }
 
+// Claim viewer role (for newly signed-up users; sets role to viewer for the calling user only)
+export const claimViewerRole = functions.https.onCall(async (_data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const uid = context.auth.uid;
+
+  try {
+    await admin.auth().setCustomUserClaims(uid, { role: 'viewer' });
+    return { success: true, message: 'Viewer role set successfully' };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error claiming viewer role:', error);
+    throw new functions.https.HttpsError('internal', errorMessage);
+  }
+});
+
+// List users (admin only) - returns uid, email, role, allowedViews from custom claims
+export const listUsers = functions.https.onCall(async (_data, context) => {
+  await verifyAdmin(context);
+
+  try {
+    const listUsersResult = await admin.auth().listUsers(1000);
+    const users = listUsersResult.users.map((userRecord) => {
+      const claims = userRecord.customClaims || {};
+      const role = (claims.role as string) || null;
+      const allowedViews = Array.isArray(claims.allowedViews) ? (claims.allowedViews as string[]) : [];
+      return {
+        uid: userRecord.uid,
+        email: userRecord.email || '',
+        role,
+        allowedViews,
+      };
+    });
+    return { users };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error listing users:', error);
+    throw new functions.https.HttpsError('internal', errorMessage);
+  }
+});
+
 // Set user role
 export const setUserRole = functions.https.onCall(async (data, context) => {
   await verifyAdmin(context);

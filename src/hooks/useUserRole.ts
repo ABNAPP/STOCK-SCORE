@@ -3,19 +3,18 @@ import { ViewId } from '../types/navigation';
 
 /**
  * Custom hook for user role management and access control
- * 
+ *
  * Provides convenient access to the current user's role and role-related
- * utilities. Simplified to two roles: viewer (default, unauthenticated) and admin.
- * 
+ * utilities. Two roles: viewer and admin. All users must be authenticated.
+ *
  * **Roles:**
- * - viewer: Default role, can view Score table. Can have additional allowedViews if authenticated.
+ * - viewer: Can view Score table and Personal Portfolio. May have additional allowedViews if granted by admin.
  * - admin: Full access to all tables and admin functions
- * 
+ *
  * **Viewer Permissions:**
- * - Unauthenticated viewer: Only Score table
- * - Authenticated viewer without permissions: Only Score table
- * - Authenticated viewer with allowedViews: Score + views specified in allowedViews
- * 
+ * - Viewer without allowedViews: Score + Personal Portfolio only
+ * - Viewer with allowedViews: Score + Personal Portfolio + views specified in allowedViews
+ *
  * @returns Object with role information and permission flags
  * @returns userRole - Current user role ('viewer' | 'admin' | null)
  * @returns isAdmin - True if user is admin
@@ -23,19 +22,6 @@ import { ViewId } from '../types/navigation';
  * @returns getAllowedViews - Function that returns allowed views for viewer, or all views for admin
  * @returns canView - Function to check if user can view a specific view
  * @returns refreshUserRole - Function to refresh user role and permissions from server
- * 
- * @example
- * ```typescript
- * const { isAdmin, canView, userRole } = useUserRole();
- * 
- * if (isAdmin) {
- *   // Show admin-only features
- * }
- * 
- * if (canView('score-board')) {
- *   // Show score-board view
- * }
- * ```
  */
 export function useUserRole() {
   const { userRole, viewerPermissions, refreshUserRole } = useAuth();
@@ -46,9 +32,8 @@ export function useUserRole() {
   /**
    * Get all allowed views for the current user
    * - Admin: Returns null (has access to all views)
-   * - Viewer with allowedViews: Returns allowedViews array
-   * - Viewer without allowedViews: Returns ['score'] only
-   * - Unauthenticated: Returns ['score'] only
+   * - Viewer with allowedViews: Score + allowedViews
+   * - Viewer without allowedViews: ['score'] only
    */
   const getAllowedViews = (): string[] | null => {
     if (isAdmin) {
@@ -61,7 +46,7 @@ export function useUserRole() {
       return Array.from(views);
     }
     
-    // Viewer without permissions or unauthenticated - only Score
+    // Viewer without extra permissions - only Score
     return ['score'];
   };
 
@@ -69,11 +54,14 @@ export function useUserRole() {
    * Check if user can view a specific view
    */
   const canView = (viewId: ViewId): boolean => {
+    // Admin view only for admin
+    if (viewId === 'admin') {
+      return isAdmin;
+    }
     // Personal Portfolio is available to all authenticated users
     if (viewId === 'personal-portfolio') {
       return hasRole; // Any authenticated user (admin or viewer)
     }
-    
     if (isAdmin) {
       return true; // Admin can view everything
     }

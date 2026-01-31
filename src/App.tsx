@@ -17,6 +17,7 @@ import { LoadingProgressProvider } from './contexts/LoadingProgressContext';
 import { useToast } from './contexts/ToastContext';
 import ToastContainer from './components/ToastContainer';
 import LoadingFallback from './components/LoadingFallback';
+import Login from './components/Login';
 import SkipLinks from './components/SkipLinks';
 import OfflineIndicator from './components/OfflineIndicator';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
@@ -24,6 +25,8 @@ import ShareableView from './components/views/ShareableView';
 import { ShareableLink } from './services/shareableLinkService';
 import { FilterValues } from './types/filters';
 import { migrateCoreBoardToScoreBoard, runTruncatedCacheMigrations } from './services/firestoreCacheService';
+import { getApiKeysFromFirestore } from './services/appConfigService';
+import { setApiKeysCacheFromFirestore } from './config/apiKeys';
 
 // Lazy load view components for better performance (with retry for dev "Failed to fetch" resilience)
 const ScoreBoardView = lazyWithRetry<typeof import('./components/views/ScoreBoardView').default>(() => import('./components/views/ScoreBoardView'), 'ScoreBoardView');
@@ -32,6 +35,7 @@ const EntryExitView = lazyWithRetry<typeof import('./components/views/EntryExitV
 const FundamentalView = lazyWithRetry<typeof import('./components/views/FundamentalView').default>(() => import('./components/views/FundamentalView'), 'FundamentalView');
 const ThresholdIndustryView = lazyWithRetry<typeof import('./components/views/ThresholdIndustryView').default>(() => import('./components/views/ThresholdIndustryView'), 'ThresholdIndustryView');
 const PersonalPortfolioView = lazyWithRetry<typeof import('./components/views/PersonalPortfolioView').default>(() => import('./components/views/PersonalPortfolioView'), 'PersonalPortfolioView');
+const AdminView = lazyWithRetry<typeof import('./components/views/AdminView').default>(() => import('./components/views/AdminView'), 'AdminView');
 
 // Lazy load modal components
 const ConditionsModal = lazyWithRetry<typeof import('./components/ConditionsModal').default>(() => import('./components/ConditionsModal'), 'ConditionsModal');
@@ -78,7 +82,7 @@ function migrateFromLocalStorageCache() {
 
 function App() {
   const { loading: authLoading, currentUser } = useAuth();
-  const { canView } = useUserRole();
+  const { canView, isAdmin } = useUserRole();
   const { t } = useTranslation();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -116,6 +120,34 @@ function App() {
     }
   }, [authLoading, currentUser]);
 
+  // Load API keys from Firestore for all authenticated users
+  // (API keys are needed for currency exchange rates, but only admin can view/edit them in UI)
+  useEffect(() => {
+    if (!authLoading && currentUser) {
+      getApiKeysFromFirestore()
+        .then((keys) => {
+          if (keys) setApiKeysCacheFromFirestore(keys);
+        })
+        .catch(() => {
+          // Ignore; getApiKeys() will use env fallback
+        });
+    }
+  }, [authLoading, currentUser]);
+
+  // Sync activeView from URL (e.g. /admin) and redirect non-admin away from /admin
+  useEffect(() => {
+    if (!currentUser) return;
+    const path = location.pathname.replace(/^\//, '') || 'score';
+    if (path === 'admin') {
+      if (isAdmin) {
+        setActiveView('admin');
+      } else {
+        navigate('/', { replace: true });
+        setActiveView('score');
+      }
+    }
+  }, [currentUser, location.pathname, isAdmin, navigate]);
+
   // Redirect viewers if they try to access unauthorized views
   // This useEffect must be called before any early returns to maintain hook order
   useEffect(() => {
@@ -152,7 +184,11 @@ function App() {
     return <LoadingFallback />;
   }
 
-  // App now works without authentication (viewers can use it without login)
+  // Require login: show Login when not authenticated
+  if (!currentUser) {
+    const returnUrl = location.pathname + location.search;
+    return <Login returnUrl={returnUrl !== '/' ? returnUrl : undefined} />;
+  }
 
   const handleOpenConditionsModal = (viewId: ViewId) => {
     setSelectedViewForModal(viewId);
@@ -181,6 +217,7 @@ function App() {
       'fundamental-pe-industry': t('navigation.peIndustry'),
       'threshold-industry': t('navigation.thresholdIndustry'),
       'personal-portfolio': t('navigation.personalPortfolio'),
+      'admin': t('navigation.userManagement'),
     };
     return names[viewId] || viewId;
   };
@@ -230,6 +267,14 @@ function App() {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <PersonalPortfolioView />
+        </Suspense>
+      );
+    }
+
+    if (activeView === 'admin') {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <AdminView />
         </Suspense>
       );
     }
