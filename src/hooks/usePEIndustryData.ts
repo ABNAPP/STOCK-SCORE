@@ -5,7 +5,7 @@ import type { DataRow } from '../services/sheets';
 import { PEIndustryData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
 import { getCachedData, getDeltaCacheEntry, setDeltaCacheEntry, CACHE_KEYS } from '../services/firestoreCacheService';
-import { createErrorHandler, logError } from '../utils/errorHandler';
+import { createErrorHandler, logError, formatError, isErrorType } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
 import { useNotifications } from '../contexts/NotificationContext';
 import { detectDataChanges, formatChangeSummary } from '../utils/dataChangeDetector';
@@ -309,13 +309,17 @@ export function usePEIndustryData() {
       }
     } catch (pollError) {
       // Silently fail polling - don't show errors to user
-      const errorHandler = createErrorHandler({
+      const context = {
         operation: 'poll for changes',
         component: 'usePEIndustryData',
         additionalInfo: { version: currentVersionRef.current },
-      });
-      logError(pollError, errorHandler({}).context);
-      // Don't set error state - polling failures should be silent
+      };
+      const formatted = formatError(pollError, context);
+      if (isErrorType(pollError, 'timeout')) {
+        logger.warn(formatted.message, { component: context.component, operation: context.operation, ...formatted.context.additionalInfo });
+      } else {
+        logError(pollError, formatted.context);
+      }
     }
   }, [isPageVisible, createNotification]);
 

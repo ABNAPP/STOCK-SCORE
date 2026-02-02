@@ -21,7 +21,7 @@ const POLL_INTERVAL_MINUTES = parseInt(import.meta.env.VITE_DELTA_SYNC_POLL_MINU
 const API_TOKEN = import.meta.env.VITE_APPS_SCRIPT_TOKEN || ''; // Optional token
 // Request timeout: Configurable via environment variable
 // Delta sync uses a longer timeout since it may need to fetch large snapshots (e.g. Apps Script cold start)
-const DELTA_SYNC_TIMEOUT_SECONDS = parseInt(import.meta.env.VITE_DELTA_SYNC_TIMEOUT_SECONDS || '45', 10); // Default: 45 seconds for delta sync
+const DELTA_SYNC_TIMEOUT_SECONDS = parseInt(import.meta.env.VITE_DELTA_SYNC_TIMEOUT_SECONDS || '60', 10); // Default: 60 seconds for delta sync (covers cold start / slow networks)
 const DELTA_SYNC_TIMEOUT = DELTA_SYNC_TIMEOUT_SECONDS * 1000;
 // Regular fetch timeout (used by fetchService) - shorter for faster feedback
 const FETCH_TIMEOUT_SECONDS = parseInt(import.meta.env.VITE_FETCH_TIMEOUT_SECONDS || '30', 10);

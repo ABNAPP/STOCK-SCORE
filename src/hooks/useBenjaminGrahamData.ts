@@ -21,7 +21,7 @@ import { setDeltaCacheEntry, getDeltaCacheEntry, getCachedData, CACHE_KEYS } fro
 import { BenjaminGrahamData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
 import { usePageVisibility } from './usePageVisibility';
-import { formatError, logError, createErrorHandler } from '../utils/errorHandler';
+import { formatError, logError, createErrorHandler, isErrorType } from '../utils/errorHandler';
 import { isDataRowArray } from '../utils/typeGuards';
 import { logger } from '../utils/logger';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -385,13 +385,17 @@ export function useBenjaminGrahamData() {
       }
     } catch (pollError) {
       // Silently fail polling - don't show errors to user
-      const errorHandler = createErrorHandler({
+      const context = {
         operation: 'poll for changes',
         component: 'useBenjaminGrahamData',
         additionalInfo: { version: currentVersionRef.current },
-      });
-      logError(pollError, errorHandler({}).context);
-      // Don't set error state - polling failures should be silent
+      };
+      const formatted = formatError(pollError, context);
+      if (isErrorType(pollError, 'timeout')) {
+        logger.warn(formatted.message, { component: context.component, operation: context.operation, ...formatted.context.additionalInfo });
+      } else {
+        logError(pollError, formatted.context);
+      }
     }
   }, [isPageVisible]);
 

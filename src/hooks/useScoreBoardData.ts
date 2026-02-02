@@ -7,7 +7,7 @@ import type { DataRow } from '../services/sheets';
 import { ScoreBoardData, PEIndustryData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
 import { getCachedData, getDeltaCacheEntry, setDeltaCacheEntry, CACHE_KEYS } from '../services/firestoreCacheService';
-import { createErrorHandler, logError } from '../utils/errorHandler';
+import { createErrorHandler, logError, formatError, isErrorType } from '../utils/errorHandler';
 import { useNotifications } from '../contexts/NotificationContext';
 import { detectDataChanges, formatChangeSummary } from '../utils/dataChangeDetector';
 import { logger } from '../utils/logger';
@@ -407,13 +407,18 @@ export function useScoreBoardData() {
       }
     } catch (pollError) {
       // Silently fail polling - don't show errors to user
-      const errorHandler = createErrorHandler({
+      const context = {
         operation: 'poll for changes',
         component: 'useScoreBoardData',
         additionalInfo: { version: currentVersionRef.current },
-      });
-      logError(pollError, errorHandler({}).context);
-      // Don't set error state - polling failures should be silent
+      };
+      const formatted = formatError(pollError, context);
+      // Timeouts during poll are expected (e.g. cold start); log as warning to avoid noisy [ERROR]
+      if (isErrorType(pollError, 'timeout')) {
+        logger.warn(formatted.message, { component: context.component, operation: context.operation, ...formatted.context.additionalInfo });
+      } else {
+        logError(pollError, formatted.context);
+      }
     }
   }, [isPageVisible, createNotification, fetchDependenciesAndCreateTransformer]);
 
