@@ -17,7 +17,7 @@ async function verifyAdmin(context: functions.https.CallableContext): Promise<vo
   }
 }
 
-// Claim viewer role (for newly signed-up users; sets role to viewer for the calling user only)
+// Claim viewer role (for newly signed-up users; sets role to viewer and creates userData doc)
 export const claimViewerRole = functions.https.onCall(async (_data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
@@ -27,6 +27,20 @@ export const claimViewerRole = functions.https.onCall(async (_data, context) => 
 
   try {
     await admin.auth().setCustomUserClaims(uid, { role: 'viewer' });
+
+    const userRecord = await admin.auth().getUser(uid);
+    const email = userRecord.email ?? '';
+
+    await admin.firestore().doc(`userData/${uid}`).set(
+      {
+        uid,
+        email,
+        role: 'viewer',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
     return { success: true, message: 'Viewer role set successfully' };
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
