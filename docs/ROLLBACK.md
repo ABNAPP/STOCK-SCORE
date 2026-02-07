@@ -32,7 +32,7 @@ Minimal process när något går fel efter merge till main.
    - Vid ändringar i `src/config/viewTableMap.ts`: kontrollera Conditions-modal, OnboardingHelp och metadata (viewId→tableId).
 
 5. **Dokumentera**  
-   Kommentera i original-PR eller i ett kort rollback-dokument vad som reverterades och varför. Öppna ny issue för att åtgärda orsaken och eventuellt återintroducera ändringen på ett säkrare sätt.
+   Kommentera i original-PR eller i ett kort rollback-dokument vad som reverterades och varför. Öppna ny issue för att åtgärda orsaken och eventuellt återintroducera ändringen på ett säkrare sätt. Vid revert av **secrets-cleanup** (docs/SECRETS.md): rotera alla exponerade nycklar omedelbart.
 
 ## Feature flags
 

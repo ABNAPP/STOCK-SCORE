@@ -54,7 +54,8 @@ Appen använder **Google Apps Script API** som primär metod för datahämtning,
 #### Aktivera Apps Script API (Rekommenderat)
 
 1. **För lokal utveckling:**
-   - Skapa en `.env.local` fil i projektets rotkatalog (se `env.template` för exempel)
+   - Kopiera `env.template` till `.env.local`: `cp env.template .env.local`
+   - Öppna `.env.local` och ersätt placeholders med dina värden (se `docs/SECRETS.md` för instruktioner)
    - Lägg till:
      ```
      VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
@@ -88,6 +89,8 @@ Appen använder Firebase Authentication för användarautentisering och rollbase
 
 ### Dokumentation
 
+- `env.template` - Mall för environment variables (kopiera till `.env.local`)
+- `docs/SECRETS.md` - Hur man sätter nycklar lokalt och secret scan
 - `APPS_SCRIPT_SETUP.md` - Detaljerad guide för att sätta upp Google Apps Script
 - `SETUP_APPS_SCRIPT.md` / `QUICK_FIX.md` - Snabb guide för att konfigurera Apps Script URL
 - `SET_ADMIN_ROLE.md` - Guide för att sätta admin-roll på användare

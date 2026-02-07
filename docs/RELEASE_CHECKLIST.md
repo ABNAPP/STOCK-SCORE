@@ -36,6 +36,10 @@ Kör: `verify` + E2E-tester.
 | `npm run test:coverage` | Coverage-rapport |
 | `npm run storybook` | Manuell kontroll av UI-komponenter |
 
+### Secret scan (innan push)
+
+Se [docs/SECRETS.md](SECRETS.md) för ripgrep-kommandon som verifierar att inga riktiga API-nycklar finns i repo.
+
 ---
 
 ## Revertera PR/commit
