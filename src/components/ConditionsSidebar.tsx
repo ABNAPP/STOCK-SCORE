@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ViewId, NavigationSection } from '../types/navigation';
 import { getTableMetadata } from '../config/tableMetadata';
+import { getTableId } from '../config/viewTableMap';
 
 interface ConditionsSidebarProps {
   onOpenModal: (viewId: ViewId) => void;
@@ -36,6 +37,12 @@ const getNavigationSections = (t: (key: string) => string): NavigationSection[] 
     id: 'threshold-industry',
     label: t('navigation.thresholdIndustry'),
     items: [{ id: 'threshold-industry', label: t('navigation.thresholdIndustry') }],
+    collapsible: false,
+  },
+  {
+    id: 'personal-portfolio',
+    label: t('navigation.personalPortfolio'),
+    items: [{ id: 'personal-portfolio', label: t('navigation.personalPortfolio') }],
     collapsible: false,
   },
 ];
@@ -74,16 +81,6 @@ export default function ConditionsSidebar({ onOpenModal }: ConditionsSidebarProp
       }
       return next;
     });
-  };
-
-  // Map viewIds to table metadata IDs (only views with metadata)
-  const getTableId = (viewId: ViewId): string | null => {
-    if (viewId === 'score') return 'score';
-    if (viewId === 'score-board') return 'score-board';
-    if (viewId === 'entry-exit-benjamin-graham') return 'benjamin-graham';
-    if (viewId === 'fundamental-pe-industry') return 'pe-industry';
-    if (viewId === 'threshold-industry') return 'threshold-industry';
-    return null;
   };
 
   const hasMetadata = (viewId: ViewId): boolean => {
