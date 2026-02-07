@@ -95,7 +95,7 @@ Om du använder delta-sync-koden:
 
 Skapa en `.env.local` fil i projektets root:
 ```
-VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec
+VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
 VITE_DELTA_SYNC_ENABLED=true
 VITE_DELTA_SYNC_POLL_MINUTES=15
 VITE_APPS_SCRIPT_TOKEN=your-token-here
@@ -114,7 +114,7 @@ VITE_APPS_SCRIPT_TOKEN=your-token-here
 4. Klicka på **Add New**
 5. Fyll i:
    - **Key**: `VITE_APPS_SCRIPT_URL`
-   - **Value**: `https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec`
+   - **Value**: `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec` (ersätt YOUR_SCRIPT_ID med ditt Script ID från deployment)
    - **Environment**: Välj alla (Production, Preview, Development)
 6. (Valfritt) Lägg till delta-sync inställningar:
    - **Key**: `VITE_DELTA_SYNC_ENABLED`, **Value**: `true`
@@ -182,8 +182,9 @@ För att kontrollera om Apps Script URL är korrekt konfigurerad:
 
 3. **Testa Apps Script direkt**: Öppna denna URL i webbläsaren:
    ```
-   https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec?sheet=DashBoard
+   https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?sheet=DashBoard
    ```
+   (Ersätt YOUR_SCRIPT_ID med ditt Script ID.)
    Du bör se JSON-data direkt. Om du ser en inloggningssida eller fel, kontrollera deployment-inställningarna.
 
 4. **Testa delta-sync endpoints** (om delta-sync är aktiverat):

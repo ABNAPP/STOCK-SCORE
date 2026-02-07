@@ -11,7 +11,7 @@ Konsolen visar: `Apps Script URL not configured, falling back to CSV`
 
 **Steg 2**: Lägg till denna rad i filen:
 ```
-VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec
+VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
 ```
 
 **Steg 3**: Spara filen och starta om utvecklingsservern:
@@ -41,7 +41,7 @@ npm run dev
 
 **Steg 5**: Fyll i formuläret:
 - **Key**: `VITE_APPS_SCRIPT_URL`
-- **Value**: `https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec`
+- **Value**: `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec` (ersätt YOUR_SCRIPT_ID med ditt Script ID)
 - **Environments**: ✅ Production, ✅ Preview, ✅ Development (kryssa i alla tre)
 
 **Steg 6**: Klicka på **Save**
@@ -70,7 +70,7 @@ git push
 
 Testa Apps Script direkt i webbläsaren:
 ```
-https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec?sheet=DashBoard
+https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?sheet=DashBoard
 ```
 
 **Förväntat resultat**: Du bör se JSON-data direkt.
@@ -96,7 +96,7 @@ https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4i
 2. **Dubbelkolla environment variable**:
    - Gå tillbaka till Vercel → Settings → Environment Variables
    - Verifiera att `VITE_APPS_SCRIPT_URL` finns
-   - Verifiera att värdet är EXAKT samma som ovan (kopiera-klistra in)
+   - Verifiera att värdet har format: `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec`
    - Verifiera att alla tre environments (Production, Preview, Development) är ikryssade
 
 3. **Kontrollera i Network tab**:

@@ -9,7 +9,7 @@
 Skapa en fil `.env.local` i projektets root med följande innehåll:
 
 ```
-VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec
+VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
 ```
 
 **OBS**: Filen `.env.local` ignoreras av Git (det är bra för säkerhet).
@@ -23,7 +23,7 @@ VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/AKfycby519iyhursADbzQUTT
 5. Klicka på knappen **Add New** (eller **Add**)
 6. Fyll i formuläret:
    - **Key**: `VITE_APPS_SCRIPT_URL`
-   - **Value**: `https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec`
+   - **Value**: `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec` (ersätt YOUR_SCRIPT_ID med ditt Script ID från Apps Script deployment)
    - **Environments**: Välj alla tre (Production, Preview, Development)
 7. Klicka på **Save**
 
@@ -59,8 +59,9 @@ Efter att ha lagt till environment variables i Vercel **måste** du redeploya:
 3. **Testa Apps Script direkt**:
    Öppna denna URL i webbläsaren:
    ```
-   https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec?sheet=DashBoard
+   https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?sheet=DashBoard
    ```
+   (Ersätt YOUR_SCRIPT_ID med ditt Script ID.)
    Du bör se JSON-data. Om du ser en inloggningssida eller felmeddelande, kontrollera att Apps Script är deployat med "Who has access" = "Anyone".
 
 ## Felsökning
@@ -74,7 +75,7 @@ Efter att ha lagt till environment variables i Vercel **måste** du redeploya:
 2. **Kontrollera environment variable**:
    - Gå tillbaka till Vercel → Settings → Environment Variables
    - Verifiera att `VITE_APPS_SCRIPT_URL` finns
-   - Verifiera att värdet är exakt: `https://script.google.com/macros/s/AKfycby519iyhursADbzQUTTODBsL90qs1zXdUxSqGe4ifI1ZX8DOzN707ZtQld0_v65EtHKRw/exec`
+   - Verifiera att värdet är rätt format: `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec`
    - Verifiera att alla tre environments (Production, Preview, Development) är ikryssade
 
 3. **Kontrollera Apps Script deployment**:
