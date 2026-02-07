@@ -13,6 +13,7 @@ import { logger } from './utils/logger'
 import { validateEnvironmentVariables } from './utils/envValidator'
 import { registerServiceWorker } from './utils/serviceWorkerRegistration'
 import { initializeBackgroundSync } from './services/backgroundSyncService'
+import { runPreAuthMigrations } from './services/migrations'
 
 /**
  * Filter out browser extension errors that don't affect the application
@@ -181,6 +182,9 @@ if (!rootElement) {
   );
   throw new Error('Root element not found. Please check index.html');
 }
+
+// Run pre-auth migrations (localStorage) before app renders
+runPreAuthMigrations();
 
 // Register Service Worker and enable background sync (production only)
 if (import.meta.env.PROD) {

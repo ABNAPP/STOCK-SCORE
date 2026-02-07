@@ -6,7 +6,7 @@ import * as matchers from '@testing-library/jest-dom/matchers';
 // Extend Vitest's expect with jest-dom matchers
 expect.extend(matchers);
 
-// Mock localStorage
+// Mock localStorage (Storage interface with length + key for migrations)
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
 
@@ -20,6 +20,13 @@ const localStorageMock = (() => {
     },
     clear: () => {
       store = {};
+    },
+    get length() {
+      return Object.keys(store).length;
+    },
+    key: (index: number) => {
+      const keys = Object.keys(store);
+      return keys[index] ?? null;
     },
   };
 })();

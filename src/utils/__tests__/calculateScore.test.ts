@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateScore } from '../calculateScore';
 import { ScoreBoardData, ThresholdIndustryData, BenjaminGrahamData } from '../../types/stock';
-import { EntryExitValues } from '../../contexts/EntryExitContext';
 import {
   createMockScoreBoardData,
   createMockThresholdData,
@@ -177,17 +176,12 @@ describe('calculateScore', () => {
 
       const score = calculateScore(scoreBoardData, mockThresholdData, benjaminGrahamData, entryExitValues);
 
-      // TheoEntry: GREEN (35 points)
+      // TheoEntry: GREEN (40 points)
       // SMA(100): GREEN (price 100 > sma100 90) = 2.5 points
       // SMA(200): GREEN (price 100 > sma200 80) = 2.5 points
       // SMA Cross: GREEN (GOLDEN = GREEN in calculateScore.ts) = 5 points
-      // TheoEntry: GREEN (35 points)
-      // SMA(100): GREEN (price 100 > sma100 90) = 2.5 points
-      // SMA(200): GREEN (price 100 > sma200 80) = 2.5 points
-      // SMA Cross: GREEN (GOLDEN = GREEN in calculateScore.ts) = 5 points
-      // Total Technical: 45 points (TheoEntry 35 + SMA(100) 2.5 + SMA(200) 2.5 + SMA Cross 5)
-      // Total: 45 / 100 * 100 = 45.0
-      expect(score).toBeCloseTo(45.0, 1);
+      // Total Technical: 50 points. With mock defaults, total score = 50.0
+      expect(score).toBeCloseTo(50.0, 1);
     });
 
     it('should calculate score with BLANK TheoEntry (GreenOnly method)', () => {

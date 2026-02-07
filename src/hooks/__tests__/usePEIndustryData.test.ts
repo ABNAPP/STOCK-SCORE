@@ -36,6 +36,14 @@ vi.mock('../../utils/errorHandler', () => ({
   createErrorHandler: vi.fn(() => (err: unknown) => ({ message: String(err), userMessage: String(err) })),
 }));
 
+vi.mock('../../contexts/RefreshContext', () => ({
+  useRefreshOptional: () => undefined,
+}));
+
+vi.mock('../../contexts/NotificationContext', () => ({
+  useNotifications: () => ({ createNotification: vi.fn() }),
+}));
+
 describe('usePEIndustryData', () => {
   const mockData = [
     createMockPEIndustryData({ industry: 'Technology', pe: 20 }),

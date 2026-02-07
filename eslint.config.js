@@ -1,3 +1,4 @@
+/** Project's single ESLint config (flat config). Do not add .eslintrc.*. */
 import js from '@eslint/js';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';

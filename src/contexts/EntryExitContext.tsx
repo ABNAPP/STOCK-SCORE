@@ -7,15 +7,9 @@ import { db } from '../config/firebase';
 import { isObject, isNumber, isString, isNullOrUndefined } from '../utils/typeGuards';
 import { logger } from '../utils/logger';
 import { validateEntryExitValue } from '../utils/inputValidator';
+import type { EntryExitValuesForScore } from '../types/score';
 
-export interface EntryExitValues {
-  entry1: number;
-  entry2: number;
-  exit1: number;
-  exit2: number;
-  currency: string;
-  dateOfUpdate: string | null;
-}
+export type EntryExitValues = EntryExitValuesForScore;
 
 interface EntryExitContextType {
   getEntryExitValue: (ticker: string, companyName: string) => EntryExitValues | undefined;

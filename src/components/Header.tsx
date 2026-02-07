@@ -9,6 +9,7 @@ import { useUserRole } from '../hooks/useUserRole';
 import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
 import { ViewId } from '../types/navigation';
+import { getTableId as getTableIdFromView } from '../config/viewTableMap';
 
 // Lazy load help components
 const OnboardingHelp = lazy(() => import('./OnboardingHelp'));
@@ -39,12 +40,8 @@ export default function Header({ onNavigate, activeView, sidebarCollapsed = fals
   // Determine if help button should be shown (only for score and score-board views)
   const shouldShowHelp = activeView === 'score' || activeView === 'score-board';
 
-  // Get tableId based on activeView
-  const getTableId = (): string | undefined => {
-    if (activeView === 'score') return 'score';
-    if (activeView === 'score-board') return 'score-board';
-    return undefined;
-  };
+  // Get tableId based on activeView (from shared config)
+  const tableIdForHelp = activeView ? getTableIdFromView(activeView) ?? undefined : undefined;
 
   const handleLogout = async () => {
     try {
@@ -403,7 +400,7 @@ export default function Header({ onNavigate, activeView, sidebarCollapsed = fals
       )}
       {shouldShowHelp && (
         <Suspense fallback={null}>
-          <OnboardingHelp tableId={getTableId()} isOpen={showHelp} onClose={() => setShowHelp(false)} />
+          <OnboardingHelp tableId={tableIdForHelp} isOpen={showHelp} onClose={() => setShowHelp(false)} />
         </Suspense>
       )}
     </div>

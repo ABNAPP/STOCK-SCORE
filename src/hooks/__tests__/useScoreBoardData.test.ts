@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { useScoreBoardData } from '../useScoreBoardData';
 import { fetchScoreBoardData } from '../../services/sheets';
 import { getCachedData, setCachedData, CACHE_KEYS } from '../../services/cacheService';
@@ -35,6 +35,14 @@ vi.mock('../../utils/errorHandler', () => ({
   formatError: vi.fn((err) => ({ message: String(err), userMessage: String(err) })),
   logError: vi.fn(),
   createErrorHandler: vi.fn(() => (err: unknown) => ({ message: String(err), userMessage: String(err) })),
+}));
+
+vi.mock('../../contexts/RefreshContext', () => ({
+  useRefreshOptional: () => undefined,
+}));
+
+vi.mock('../../contexts/NotificationContext', () => ({
+  useNotifications: () => ({ createNotification: vi.fn() }),
 }));
 
 describe('useScoreBoardData', () => {

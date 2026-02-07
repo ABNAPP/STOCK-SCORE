@@ -17,7 +17,7 @@ export interface ViewerPermissions {
   allowedViews?: string[];
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   currentUser: User | null;
   userRole: UserRole;
   viewerPermissions: ViewerPermissions | null;
@@ -28,7 +28,7 @@ interface AuthContextType {
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /**
  * Hook to access authentication context

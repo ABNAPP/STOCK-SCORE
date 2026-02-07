@@ -20,6 +20,7 @@ import {
 import { setDeltaCacheEntry, getDeltaCacheEntry, getCachedData, CACHE_KEYS } from '../services/firestoreCacheService';
 import { BenjaminGrahamData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
+import { useRefreshOptional } from '../contexts/RefreshContext';
 import { usePageVisibility } from './usePageVisibility';
 import { formatError, logError, createErrorHandler, isErrorType } from '../utils/errorHandler';
 import { isDataRowArray } from '../utils/typeGuards';
@@ -469,6 +470,14 @@ export function useBenjaminGrahamData() {
   const refetch = useCallback((forceRefresh?: boolean) => {
     loadData(forceRefresh ?? false);
   }, [loadData]);
+
+  // Register with RefreshContext so Refresh All triggers this hook's refetch
+  const refreshContext = useRefreshOptional();
+  useEffect(() => {
+    if (!refreshContext) return;
+    const unregister = refreshContext.registerRefetch('benjamin-graham', () => refetch(true));
+    return unregister;
+  }, [refreshContext, refetch]);
 
   return {
     data,

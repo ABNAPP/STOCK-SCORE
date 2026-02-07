@@ -1,12 +1,12 @@
 import { useState, Suspense, useEffect, useCallback } from 'react';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { logger } from './utils/logger';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Breadcrumbs from './components/Breadcrumbs';
 import { ViewId } from './types/navigation';
 import { getTableMetadata } from './config/tableMetadata';
+import { getTableId } from './config/viewTableMap';
 import type { TableMetadata } from './types/columnMetadata';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from './contexts/AuthContext';
@@ -24,9 +24,7 @@ import { usePullToRefresh } from './hooks/usePullToRefresh';
 import ShareableView from './components/views/ShareableView';
 import { ShareableLink } from './services/shareableLinkService';
 import { FilterValues } from './types/filters';
-import { migrateCoreBoardToScoreBoard, runTruncatedCacheMigrations } from './services/firestoreCacheService';
-import { getApiKeysFromFirestore } from './services/appConfigService';
-import { setApiKeysCacheFromFirestore } from './config/apiKeys';
+import { runPostAuthMigrations } from './services/migrations';
 
 // Lazy load view components for better performance (with retry for dev "Failed to fetch" resilience)
 const ScoreBoardView = lazyWithRetry<typeof import('./components/views/ScoreBoardView').default>(() => import('./components/views/ScoreBoardView'), 'ScoreBoardView');
@@ -40,45 +38,6 @@ const AdminView = lazyWithRetry<typeof import('./components/views/AdminView').de
 // Lazy load modal components
 const ConditionsModal = lazyWithRetry<typeof import('./components/ConditionsModal').default>(() => import('./components/ConditionsModal'), 'ConditionsModal');
 const UserProfileModal = lazyWithRetry<typeof import('./components/UserProfileModal').default>(() => import('./components/UserProfileModal'), 'UserProfileModal');
-
-/**
- * Migrate from localStorage cache to Firestore cache
- * 
- * Clears all localStorage cache entries on first load after migration.
- * This ensures old localStorage cache is not used after switching to Firestore.
- */
-function migrateFromLocalStorageCache() {
-  const MIGRATION_FLAG = 'cache:migrated-to-firestore';
-  try {
-    if (localStorage.getItem(MIGRATION_FLAG)) {
-      return; // Already migrated
-    }
-    
-    // Clear all cache keys (those starting with 'cache:') plus legacy currency cache
-    const keysToRemove: string[] = ['currency_rates_usd'];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('cache:')) {
-        keysToRemove.push(key);
-      }
-    }
-
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-    localStorage.setItem(MIGRATION_FLAG, 'true');
-    
-    logger.info('Migrated from localStorage cache to Firestore cache', {
-      component: 'App',
-      operation: 'migrateFromLocalStorageCache',
-      clearedKeys: keysToRemove.length,
-    });
-  } catch (error) {
-    logger.warn('Failed to migrate from localStorage cache', {
-      component: 'App',
-      operation: 'migrateFromLocalStorageCache',
-      error,
-    });
-  }
-}
 
 function App() {
   const { loading: authLoading, currentUser } = useAuth();
@@ -94,43 +53,10 @@ function App() {
   const [userProfileOpen, setUserProfileOpen] = useState(false);
   const [loadedShareableLink, setLoadedShareableLink] = useState<ShareableLink | null>(null);
 
-  // Run migration on app start
-  useEffect(() => {
-    migrateFromLocalStorageCache();
-  }, []);
-
-  // Run Firestore cache migrations after user is authenticated
+  // Run post-auth migrations and setup when user is authenticated
   useEffect(() => {
     if (!authLoading && currentUser) {
-      // Run migrations asynchronously in background - don't block app start
-      migrateCoreBoardToScoreBoard().catch((error) => {
-        logger.warn('Firestore cache migration failed', {
-          component: 'App',
-          operation: 'migrateCoreBoardToScoreBoard',
-          error,
-        });
-      });
-      runTruncatedCacheMigrations().catch((error) => {
-        logger.warn('Firestore truncated cache migrations failed', {
-          component: 'App',
-          operation: 'runTruncatedCacheMigrations',
-          error,
-        });
-      });
-    }
-  }, [authLoading, currentUser]);
-
-  // Load API keys from Firestore for all authenticated users
-  // (API keys are needed for currency exchange rates, but only admin can view/edit them in UI)
-  useEffect(() => {
-    if (!authLoading && currentUser) {
-      getApiKeysFromFirestore()
-        .then((keys) => {
-          if (keys) setApiKeysCacheFromFirestore(keys);
-        })
-        .catch(() => {
-          // Ignore; getApiKeys() will use env fallback
-        });
+      runPostAuthMigrations();
     }
   }, [authLoading, currentUser]);
 
@@ -198,15 +124,6 @@ function App() {
   const handleCloseConditionsModal = () => {
     setConditionsModalOpen(false);
     setSelectedViewForModal(null);
-  };
-
-  const getTableId = (viewId: ViewId): string | null => {
-    if (viewId === 'score-board') return 'score-board';
-    if (viewId === 'score') return 'score';
-    if (viewId === 'entry-exit-benjamin-graham') return 'benjamin-graham';
-    if (viewId === 'fundamental-pe-industry') return 'pe-industry';
-    if (viewId === 'threshold-industry') return 'threshold-industry';
-    return null;
   };
 
   const getPageName = (viewId: ViewId): string => {

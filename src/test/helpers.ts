@@ -6,7 +6,7 @@ import {
   EntryExitData,
   PEIndustryData
 } from '../types/stock';
-import { EntryExitValues } from '../contexts/EntryExitContext';
+import type { EntryExitValuesForScore } from '../types/score';
 import { ScoreData } from '../components/views/ScoreView';
 
 /**
@@ -73,7 +73,7 @@ export function createMockBenjaminGrahamData(overrides: Partial<BenjaminGrahamDa
 /**
  * Create mock EntryExitValues for testing
  */
-export function createMockEntryExitValues(overrides: Partial<EntryExitValues> = {}): EntryExitValues {
+export function createMockEntryExitValues(overrides: Partial<EntryExitValuesForScore> = {}): EntryExitValuesForScore {
   return {
     entry1: 0,
     entry2: 0,
@@ -89,9 +89,9 @@ export function createMockEntryExitValues(overrides: Partial<EntryExitValues> = 
  * Create a Map of EntryExitValues for testing
  */
 export function createMockEntryExitValuesMap(
-  entries: Array<{ ticker: string; companyName: string; values: Partial<EntryExitValues> }> = []
-): Map<string, EntryExitValues> {
-  const map = new Map<string, EntryExitValues>();
+  entries: Array<{ ticker: string; companyName: string; values: Partial<EntryExitValuesForScore> }> = []
+): Map<string, EntryExitValuesForScore> {
+  const map = new Map<string, EntryExitValuesForScore>();
   entries.forEach(({ ticker, companyName, values }) => {
     const key = `${ticker}-${companyName}`;
     map.set(key, createMockEntryExitValues(values));

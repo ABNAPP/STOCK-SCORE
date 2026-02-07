@@ -6,6 +6,7 @@ import { fetchSMAData } from '../services/sheets/smaService';
 import type { DataRow } from '../services/sheets';
 import { ScoreBoardData, PEIndustryData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
+import { useRefreshOptional } from '../contexts/RefreshContext';
 import { getCachedData, getDeltaCacheEntry, setDeltaCacheEntry, CACHE_KEYS } from '../services/firestoreCacheService';
 import { createErrorHandler, logError, formatError, isErrorType } from '../utils/errorHandler';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -492,6 +493,14 @@ export function useScoreBoardData() {
   const refetch = useCallback((forceRefresh?: boolean) => {
     loadData(forceRefresh ?? false);
   }, [loadData]);
+
+  // Register with RefreshContext so Refresh All triggers this hook's refetch
+  const refreshContext = useRefreshOptional();
+  useEffect(() => {
+    if (!refreshContext) return;
+    const unregister = refreshContext.registerRefetch('score-board', () => refetch(true));
+    return unregister;
+  }, [refreshContext, refetch]);
 
   return {
     data,

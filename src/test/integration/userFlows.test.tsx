@@ -108,13 +108,16 @@ describe('User Flows Integration Tests', () => {
       } as User);
       setupFirebaseMocks({ user });
 
-      // Mock user role as editor
+      // Mock user role as editor (must include canView so Sidebar does not throw)
       vi.mock('../../hooks/useUserRole', () => ({
         useUserRole: () => ({
           hasRole: true,
           userRole: 'editor',
           isEditor: true,
           isAdmin: false,
+          canView: () => true,
+          getAllowedViews: () => null,
+          refreshUserRole: vi.fn(),
         }),
       }));
 

@@ -18,6 +18,14 @@ vi.mock('../usePageVisibility', () => ({
   default: () => true,
 }));
 
+vi.mock('../../contexts/RefreshContext', () => ({
+  useRefreshOptional: () => undefined,
+}));
+
+vi.mock('../../contexts/NotificationContext', () => ({
+  useNotifications: () => ({ createNotification: vi.fn() }),
+}));
+
 describe('useBenjaminGrahamData Error Handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();

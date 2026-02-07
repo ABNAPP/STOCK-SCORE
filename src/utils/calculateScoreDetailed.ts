@@ -1,25 +1,39 @@
 import { ScoreBoardData, ThresholdIndustryData, BenjaminGrahamData } from '../types/stock';
-import { EntryExitValues } from '../contexts/EntryExitContext';
+import { EntryExitValuesForScore } from '../types/score';
 import {
-  PRICE_TOLERANCE_GREEN,
-  RR1_GREEN_THRESHOLD_PERCENT,
-  MUNGER_QUALITY_SCORE_RED_THRESHOLD,
-  MUNGER_QUALITY_SCORE_GREEN_THRESHOLD,
-  TB_S_PRICE_GREEN_THRESHOLD,
   COLOR_FACTOR_GREEN,
   COLOR_FACTOR_ORANGE_BLUE,
 } from '../config/constants';
+import {
+  getIRRColor,
+  getMungerQualityScoreColor,
+  getValueCreationColor,
+  getRo40Color,
+  getLeverageF2Color,
+  getCashSdebtColor,
+  getCurrentRatioColor,
+  getPEPercentageColor,
+  getTBSPPriceColor,
+  getSMAColor,
+  getSMACrossColorDetailed,
+  isTheoEntryGreen,
+} from './colorThresholds';
+import type { ColorType } from './colorThresholds';
 
-// Color classification types
-type ColorType = 'GREEN' | 'BLUE' | 'RED' | 'BLANK';
+/** Detailed view uses BLUE for middle band (maps ORANGE from colorThresholds). */
+type DetailedColor = 'GREEN' | 'BLUE' | 'RED' | 'BLANK';
 
-// Color factors
-const COLOR_FACTORS = {
+const COLOR_FACTORS: Record<DetailedColor, number> = {
   GREEN: COLOR_FACTOR_GREEN,
   BLUE: COLOR_FACTOR_ORANGE_BLUE,
   RED: 0.00,
   BLANK: 0.00,
 };
+
+/** Maps colorThresholds ColorType (ORANGE) to DetailedColor (BLUE) for factor lookup and display. */
+function toDetailedColor(color: ColorType): DetailedColor {
+  return color === 'ORANGE' ? 'BLUE' : (color as DetailedColor);
+}
 
 // Metrics configuration with weights
 interface Metric {
@@ -49,257 +63,6 @@ const METRICS: Metric[] = [
 
 const TOTAL_WEIGHT = 100; // 50 + 50
 
-// Color classification functions (same logic as ScoreBoardTable)
-
-function getIRRColor(
-  irrValue: number | null,
-  industry: string,
-  thresholdData: ThresholdIndustryData[]
-): ColorType {
-  if (irrValue === null || !isFinite(irrValue)) return 'BLANK';
-  if (!industry || industry.trim() === '') return 'BLANK';
-
-  const threshold = thresholdData.find(
-    t => t.industry.toLowerCase() === industry.toLowerCase()
-  );
-
-  if (!threshold) return 'BLANK';
-
-  const { irr: irrThreshold } = threshold;
-  return irrValue >= irrThreshold ? 'GREEN' : 'RED';
-}
-
-function getMungerQualityScoreColor(mungerQualityScore: number | null): ColorType {
-  if (mungerQualityScore === null || !isFinite(mungerQualityScore)) return 'BLANK';
-  
-  if (mungerQualityScore < MUNGER_QUALITY_SCORE_RED_THRESHOLD) return 'RED';
-  if (mungerQualityScore >= MUNGER_QUALITY_SCORE_RED_THRESHOLD && mungerQualityScore <= MUNGER_QUALITY_SCORE_GREEN_THRESHOLD) return 'BLUE';
-  return 'GREEN'; // >= MUNGER_QUALITY_SCORE_GREEN_THRESHOLD
-}
-
-function getValueCreationColor(valueCreation: number | null): ColorType {
-  if (valueCreation === null || !isFinite(valueCreation)) return 'BLANK';
-  return valueCreation >= 0 ? 'GREEN' : 'RED';
-}
-
-function getRo40Color(
-  ro40Value: number | null,
-  industry: string,
-  thresholdData: ThresholdIndustryData[]
-): ColorType {
-  if (ro40Value === null || !isFinite(ro40Value)) return 'BLANK';
-  if (!industry || industry.trim() === '') return 'BLANK';
-
-  const threshold = thresholdData.find(
-    t => t.industry.toLowerCase() === industry.toLowerCase()
-  );
-
-  if (!threshold) return 'BLANK';
-
-  const { ro40Min, ro40Max } = threshold;
-  const ro40Decimal = ro40Value / 100;
-
-  if (ro40Decimal <= ro40Min) return 'RED';
-  if (ro40Decimal >= ro40Max) return 'GREEN';
-  return 'BLUE'; // Between MIN and MAX
-}
-
-function getLeverageF2Color(
-  leverageF2Value: number | null,
-  industry: string,
-  thresholdData: ThresholdIndustryData[]
-): ColorType {
-  if (leverageF2Value === null || !isFinite(leverageF2Value)) return 'BLANK';
-  if (!industry || industry.trim() === '') return 'BLANK';
-
-  const threshold = thresholdData.find(
-    t => t.industry.toLowerCase() === industry.toLowerCase()
-  );
-
-  if (!threshold) return 'BLANK';
-
-  const { leverageF2Min, leverageF2Max } = threshold;
-
-  if (leverageF2Value <= leverageF2Min) return 'GREEN';
-  if (leverageF2Value <= leverageF2Max) return 'BLUE';
-  return 'RED'; // > leverageF2Max
-}
-
-function getCashSdebtColor(
-  cashSdebt: number | null,
-  isDivZero: boolean,
-  industry: string,
-  thresholdData: ThresholdIndustryData[]
-): ColorType {
-  if (isDivZero) return 'GREEN';
-  if (cashSdebt === null || !isFinite(cashSdebt)) return 'BLANK';
-  if (!industry || industry.trim() === '') return 'BLANK';
-
-  const threshold = thresholdData.find(
-    t => t.industry.toLowerCase() === industry.toLowerCase()
-  );
-
-  if (!threshold) return 'BLANK';
-
-  const { cashSdebtMin, cashSdebtMax } = threshold;
-
-  if (cashSdebt <= cashSdebtMin) return 'RED';
-  if (cashSdebt >= cashSdebtMax) return 'GREEN';
-  return 'BLUE'; // Between MIN and MAX
-}
-
-function getCurrentRatioColor(
-  currentRatio: number | null,
-  industry: string,
-  thresholdData: ThresholdIndustryData[]
-): ColorType {
-  if (currentRatio === null || !isFinite(currentRatio)) return 'BLANK';
-  if (!industry || industry.trim() === '') return 'BLANK';
-
-  const threshold = thresholdData.find(
-    t => t.industry.toLowerCase() === industry.toLowerCase()
-  );
-
-  if (!threshold) return 'BLANK';
-
-  const { currentRatioMin, currentRatioMax } = threshold;
-
-  if (currentRatio < currentRatioMin) return 'RED';
-  if (currentRatio >= currentRatioMin && currentRatio < currentRatioMax) return 'GREEN';
-  return 'BLUE'; // >= currentRatioMax
-}
-
-function getPEPercentageColor(peIndustry: number | null): ColorType {
-  if (peIndustry === null || !isFinite(peIndustry)) return 'BLANK';
-  return peIndustry <= 0 ? 'GREEN' : 'RED';
-}
-
-function getTBSPPriceColor(tbSPrice: number | null): ColorType {
-  if (tbSPrice === null || !isFinite(tbSPrice)) return 'BLANK';
-  return tbSPrice >= TB_S_PRICE_GREEN_THRESHOLD ? 'GREEN' : 'RED';
-}
-
-function getSMAColor(
-  price: number | null | undefined,
-  smaValue: number | null
-): ColorType {
-  if (price === null || price === undefined || !isFinite(price) ||
-      smaValue === null || !isFinite(smaValue)) {
-    return 'BLANK';
-  }
-
-  if (price > smaValue) return 'GREEN';
-  if (price < smaValue) return 'RED';
-  return 'BLUE'; // price === smaValue (yellow in UI, but counts as blue)
-}
-
-/**
- * Classifies SMA Cross color with inverted logic for detailed view
- * 
- * **Why inverted logic (GOLDEN=RED, DEATH=GREEN)?**
- * - In the detailed scoring view, the business logic interprets signals differently
- * - GOLDEN cross (short-term above long-term) can indicate overbought conditions
- * - DEATH cross (short-term below long-term) can indicate oversold opportunities
- * - This inversion reflects a contrarian approach in the detailed analysis
- * - Note: This differs from the main score calculation which uses standard logic
- * 
- * @param smaCross - SMA cross signal ('GOLDEN', 'DEATH', or null)
- * @returns Color classification (inverted for detailed view)
- */
-function getSMACrossColor(smaCross: string | null): ColorType {
-  if (!smaCross) return 'BLANK';
-  const upper = smaCross.toUpperCase();
-  // Note: In ScoreBoardTable, GOLDEN is red and DEATH is green (opposite of expectation)
-  // Following the actual implementation in ScoreBoardTable
-  if (upper.includes('GOLDEN')) return 'RED';
-  if (upper.includes('DEATH')) return 'GREEN';
-  return 'BLANK';
-}
-
-// Calculate RR1: (Exit1 - Entry1) / Entry1 * 100
-function calculateRR1(entry1: number, exit1: number): number | null {
-  if (!entry1 || !exit1 || entry1 === 0) return null;
-  const rr1 = ((exit1 - entry1) / entry1) * 100;
-  return isNaN(rr1) || !isFinite(rr1) ? null : rr1;
-}
-
-// Check if RR1 is green
-function isRR1Green(
-  entryExitValues: EntryExitValues | undefined,
-  price: number | null | undefined
-): boolean {
-  if (!entryExitValues) return false;
-  
-  const entry1 = entryExitValues.entry1 || 0;
-  const exit1 = entryExitValues.exit1 || 0;
-  const rr1 = calculateRR1(entry1, exit1);
-
-  // RR1 is green when: RR1 >= 60%, Price > 0, Entry1 > 0, Price ≤ Entry1 * 1.05
-  return rr1 !== null && rr1 >= RR1_GREEN_THRESHOLD_PERCENT && price !== null && price !== undefined && price > 0 && entry1 > 0 && price <= entry1 * PRICE_TOLERANCE_GREEN;
-}
-
-// Check if Entry1 is green
-function isEntry1Green(
-  entryExitValues: EntryExitValues | undefined,
-  price: number | null | undefined
-): boolean {
-  if (!entryExitValues) return false;
-  
-  const entry1 = entryExitValues.entry1 || 0;
-
-  // Entry1 is green when: Entry1 > 0, Price > 0, Price ≤ Entry1 * 1.05
-  return entry1 > 0 && price !== null && price !== undefined && price > 0 && price <= entry1 * PRICE_TOLERANCE_GREEN;
-}
-
-// Calculate RR2: (Exit2 - Entry2) / Entry2 * 100
-function calculateRR2(entry2: number, exit2: number): number | null {
-  if (!entry2 || !exit2 || entry2 === 0) return null;
-  const rr2 = ((exit2 - entry2) / entry2) * 100;
-  return isNaN(rr2) || !isFinite(rr2) ? null : rr2;
-}
-
-// Check if RR2 is green for TheoEntry (RR2 > 60% and Price ≤ Entry2 * 1.05)
-function isRR2GreenForTheoEntry(
-  entryExitValues: EntryExitValues | undefined,
-  price: number | null | undefined
-): boolean {
-  if (!entryExitValues) return false;
-  
-  const entry2 = entryExitValues.entry2 || 0;
-  const exit2 = entryExitValues.exit2 || 0;
-  const rr2 = calculateRR2(entry2, exit2);
-
-  // RR2 is green for TheoEntry when: RR2 > 60%, Price > 0, Entry2 > 0, Price ≤ Entry2 * 1.05
-  return rr2 !== null && rr2 > RR1_GREEN_THRESHOLD_PERCENT && price !== null && price !== undefined && price > 0 && entry2 > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN;
-}
-
-// Check if Entry2 is green
-function isEntry2Green(
-  entryExitValues: EntryExitValues | undefined,
-  price: number | null | undefined
-): boolean {
-  if (!entryExitValues) return false;
-  
-  const entry2 = entryExitValues.entry2 || 0;
-
-  // Entry2 is green when: Entry2 > 0, Price > 0, Price ≤ Entry2 * 1.05
-  return entry2 > 0 && price !== null && price !== undefined && price > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN;
-}
-
-// Check if TheoEntry is green (either RR1+Entry1 OR RR2+Entry2 are green)
-function isTheoEntryGreen(
-  entryExitValues: EntryExitValues | undefined,
-  price: number | null | undefined
-): boolean {
-  // RR1 path: RR1 is green AND Entry1 is green
-  const rr1Path = isRR1Green(entryExitValues, price) && isEntry1Green(entryExitValues, price);
-  
-  // RR2 path: RR2 > 60% AND Entry2 is green
-  const rr2Path = isRR2GreenForTheoEntry(entryExitValues, price) && isEntry2Green(entryExitValues, price);
-  
-  return rr1Path || rr2Path;
-}
-
 // Get price from BenjaminGrahamData
 function getPriceFromBenjaminGraham(
   ticker: string,
@@ -313,12 +76,12 @@ function getPriceFromBenjaminGraham(
   return match?.price ?? null;
 }
 
-// Get EntryExitValues
+// Get EntryExitValuesForScore
 function getEntryExitValue(
   ticker: string,
   companyName: string,
-  entryExitValues: Map<string, EntryExitValues>
-): EntryExitValues | undefined {
+  entryExitValues: Map<string, EntryExitValuesForScore>
+): EntryExitValuesForScore | undefined {
   const key = `${ticker}-${companyName}`;
   return entryExitValues.get(key);
 }
@@ -409,7 +172,7 @@ export function calculateDetailedScoreBreakdown(
   scoreBoardData: ScoreBoardData,
   thresholdData: ThresholdIndustryData[],
   benjaminGrahamData: BenjaminGrahamData[],
-  entryExitValues: Map<string, EntryExitValues>
+  entryExitValues: Map<string, EntryExitValuesForScore>
 ): ScoreBreakdown {
   const items: ScoreBreakdownItem[] = [];
   let fundamentalTotal = 0;
@@ -495,12 +258,13 @@ export function calculateDetailedScoreBreakdown(
         color = getSMAColor(price, scoreBoardData.sma200);
         break;
       case 'SMA CROSS':
-        color = getSMACrossColor(scoreBoardData.smaCross);
+        color = getSMACrossColorDetailed(scoreBoardData.smaCross);
         break;
     }
 
-    // Calculate points based on color
-    const factor = COLOR_FACTORS[color];
+    // Map ORANGE -> BLUE for detailed view (factor lookup and display)
+    const detailedColor = toDetailedColor(color);
+    const factor = COLOR_FACTORS[detailedColor];
     const points = metric.weight * factor;
     
     // Determine category
@@ -509,7 +273,7 @@ export function calculateDetailedScoreBreakdown(
     items.push({
       metric: metric.name,
       weight: metric.weight,
-      color: color,
+      color: detailedColor,
       factor: factor,
       points: points,
       category: category,
@@ -570,7 +334,7 @@ export function calculateDetailedScore(
   scoreBoardData: ScoreBoardData,
   thresholdData: ThresholdIndustryData[],
   benjaminGrahamData: BenjaminGrahamData[],
-  entryExitValues: Map<string, EntryExitValues>
+  entryExitValues: Map<string, EntryExitValuesForScore>
 ): number {
   let totalPoints = 0;
 
@@ -639,12 +403,12 @@ export function calculateDetailedScore(
         color = getSMAColor(price, scoreBoardData.sma200);
         break;
       case 'SMA CROSS':
-        color = getSMACrossColor(scoreBoardData.smaCross);
+        color = getSMACrossColorDetailed(scoreBoardData.smaCross);
         break;
     }
 
-    // Calculate points based on color
-    const factor = COLOR_FACTORS[color];
+    const detailedColor = toDetailedColor(color);
+    const factor = COLOR_FACTORS[detailedColor];
     totalPoints += metric.weight * factor;
   }
 

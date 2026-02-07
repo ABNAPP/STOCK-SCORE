@@ -14,7 +14,7 @@
     "verify": "npm run lint && npm run build:check && npm run test:unit && npm run test:integration",
     "verify:full": "npm run verify && npm run test:e2e",
     "analyze": "vite build",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint . --max-warnings 0 --config eslint.config.js",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",

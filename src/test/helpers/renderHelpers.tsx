@@ -1,51 +1,88 @@
 /**
  * Render Helpers for Testing
- * 
+ *
  * Provides utility functions for rendering React components in tests
- * with all necessary providers and contexts.
+ * with all necessary providers and contexts. Provider tree matches main.tsx + App.tsx:
+ * Theme → Toast → Auth → Notification → LoadingProgress → Refresh → AutoRefresh → EntryExit → Threshold.
  */
 
 import React, { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '../../contexts/ThemeContext';
-import { AuthProvider } from '../../contexts/AuthContext';
+import { AuthProvider, AuthContext, type AuthContextType } from '../../contexts/AuthContext';
 import { ToastProvider } from '../../contexts/ToastContext';
 import { RefreshProvider } from '../../contexts/RefreshContext';
 import { AutoRefreshProvider } from '../../contexts/AutoRefreshContext';
 import { LoadingProgressProvider } from '../../contexts/LoadingProgressContext';
 import { EntryExitProvider } from '../../contexts/EntryExitContext';
 import { ThresholdProvider } from '../../contexts/ThresholdContext';
+import { NotificationProvider } from '../../contexts/NotificationContext';
 import { User } from 'firebase/auth';
 import { createMockFirebaseUser } from '../fixtures/mockFirebase';
-import { act } from '@testing-library/react';
+import { vi } from 'vitest';
+
+/** Build a stable mock auth value for tests so useAuth() returns the given user without Firebase. */
+function getMockAuthValue(user: User | null): AuthContextType {
+  return {
+    currentUser: user,
+    userRole: null,
+    viewerPermissions: null,
+    loading: false,
+    login: vi.fn().mockResolvedValue(undefined),
+    signup: vi.fn().mockResolvedValue({ user } as { user: User }),
+    logout: vi.fn().mockResolvedValue(undefined),
+    refreshUserRole: vi.fn().mockResolvedValue(undefined),
+  };
+}
 
 interface AllTheProvidersProps {
   children: React.ReactNode;
   user?: User | null;
 }
 
-/**
- * Wrapper component with all providers
- */
-function AllTheProviders({ children, user = null }: AllTheProvidersProps) {
+/** Inner tree under Auth: matches App.tsx order (LoadingProgress → Refresh → AutoRefresh → …). */
+function AuthAndBelow({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <AuthProvider>
-          <RefreshProvider>
-            <AutoRefreshProvider>
-              <LoadingProgressProvider>
-                <EntryExitProvider>
-                  <ThresholdProvider>
-                    {children}
-                  </ThresholdProvider>
-                </EntryExitProvider>
-              </LoadingProgressProvider>
-            </AutoRefreshProvider>
-          </RefreshProvider>
-        </AuthProvider>
-      </ToastProvider>
-    </ThemeProvider>
+    <NotificationProvider>
+      <LoadingProgressProvider>
+        <RefreshProvider>
+          <AutoRefreshProvider>
+            <EntryExitProvider>
+              <ThresholdProvider>
+                {children}
+              </ThresholdProvider>
+            </EntryExitProvider>
+          </AutoRefreshProvider>
+        </RefreshProvider>
+      </LoadingProgressProvider>
+    </NotificationProvider>
+  );
+}
+
+/**
+ * Wrapper component with all providers (order matches main.tsx + App.tsx).
+ * When options.user is provided, Auth is mocked with that user; otherwise AuthProvider is used.
+ */
+function AllTheProviders({ children, user }: AllTheProvidersProps) {
+  const authContent = <AuthAndBelow>{children}</AuthAndBelow>;
+
+  return (
+    <BrowserRouter>
+      <ThemeProvider>
+        <ToastProvider>
+          {user !== undefined ? (
+            <AuthContext.Provider value={getMockAuthValue(user)}>
+              {authContent}
+            </AuthContext.Provider>
+          ) : (
+            <AuthProvider>
+              {authContent}
+            </AuthProvider>
+          )}
+        </ToastProvider>
+      </ThemeProvider>
+    </BrowserRouter>
   );
 }
 

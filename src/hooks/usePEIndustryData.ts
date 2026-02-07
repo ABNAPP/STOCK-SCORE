@@ -4,6 +4,7 @@ import { transformPEIndustryData } from '../services/sheets/peIndustryService';
 import type { DataRow } from '../services/sheets';
 import { PEIndustryData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
+import { useRefreshOptional } from '../contexts/RefreshContext';
 import { getCachedData, getDeltaCacheEntry, setDeltaCacheEntry, CACHE_KEYS } from '../services/firestoreCacheService';
 import { createErrorHandler, logError, formatError, isErrorType } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
@@ -393,6 +394,14 @@ export function usePEIndustryData() {
   const refetch = useCallback((forceRefresh?: boolean) => {
     loadData(forceRefresh ?? false);
   }, [loadData]);
+
+  // Register with RefreshContext so Refresh All triggers this hook's refetch
+  const refreshContext = useRefreshOptional();
+  useEffect(() => {
+    if (!refreshContext) return;
+    const unregister = refreshContext.registerRefetch('pe-industry', () => refetch(true));
+    return unregister;
+  }, [refreshContext, refetch]);
 
   return {
     data,
