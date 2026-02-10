@@ -109,8 +109,8 @@ flowchart TD
     B -->|JSON Response| D[Fetch Service]
     C -->|CSV Data| D
     D -->|Transform| E[Data Transformers]
-    E -->|Cache| F[localStorage Cache]
-    F -->|LRU Eviction| G[Cache Service]
+    E -->|Cache| F[Firestore appCache]
+    F -->|TTL/Version| G[firestoreCacheService]
     E -->|Delta Sync| H[Delta Sync Service]
     H -->|Version Tracking| F
     E -->|React Hooks| I[UI Components]
@@ -126,7 +126,7 @@ sequenceDiagram
     participant App as React App
     participant DS as Delta Sync Service
     participant API as Apps Script API
-    participant Cache as Cache Service
+    participant Cache as Firestore appCache
     
     App->>DS: initSync()
     DS->>API: Request Snapshot
@@ -179,30 +179,25 @@ flowchart TD
 
 ### Cache Strategy
 
-Cache-hantering använder LRU (Least Recently Used) eviction och komprimering:
+Data-cache hanteras i **Firestore appCache** (collection `appCache`). Admin uppdaterar cachen via Refresh Now; viewers läser endast whitelistade nycklar (scoreBoard, benjaminGraham, peIndustry, sma, currency_rates_usd). TTL och timestamp styr freshness; ingen localStorage används för data-cache. Offline-visning bygger på Firestore (ev. persistence) och UI (t.ex. OfflineIndicator), inte på localStorage-data-cache.
 
 ```mermaid
 flowchart TD
-    A[Data Fetch] -->|Check Cache| B{Cache Exists?}
-    B -->|Yes| C{Cache Fresh?}
+    A[Data Need] -->|Check Cache| B{appCache Hit?}
+    B -->|Yes| C{Not Expired?}
     B -->|No| D[Fetch from API]
-    C -->|Yes < 5 min| E[Use Cache]
-    C -->|Stale 5-20 min| F[Use Cache + Background Refresh]
-    C -->|Expired > 20 min| D
+    C -->|Yes| E[Use Cache]
+    C -->|No| D
     
-    D -->|Compress| G[Gzip Compression]
-    G -->|Check Size| H{Size > 8MB?}
-    H -->|Yes| I[LRU Eviction]
-    H -->|No| J[Store in localStorage]
-    I -->|Evict Oldest| J
-    J -->|Update LRU Order| K[Cache Ready]
-    
-    F -->|Background| D
+    D -->|Admin Refresh| F[Update Firestore appCache]
+    F -->|TTL + timestamp| G[Cache Ready]
+    E -->|Display| H[User Interface]
     
     style E fill:#90ee90
-    style F fill:#ffd700
     style D fill:#ff6b6b
 ```
+
+**Service Worker:** SW cachar endast static assets (app shell). API-anrop (Apps Script, proxies) går igenom SW utan caching (pass-through); all data-konsistens kommer från Firestore appCache.
 
 ### Component Architecture
 
@@ -232,9 +227,9 @@ graph TD
     N -->|Delta Sync| Q[Delta Sync Service]
     O -->|Fetch| P
     
-    P -->|Cache| R[Cache Service]
+    P -->|Cache| R[firestoreCacheService]
     Q -->|Cache| R
-    R -->|Storage| S[localStorage]
+    R -->|Storage| S[Firestore appCache]
     
     style A fill:#4a90e2
     style G fill:#7b68ee
