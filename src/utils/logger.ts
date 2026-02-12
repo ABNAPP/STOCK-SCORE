@@ -44,7 +44,9 @@ function shouldLog(level: LogLevel, config: LoggerConfig): boolean {
   return LOG_LEVELS[level] >= LOG_LEVELS[config.level];
 }
 
-// Format log message with context
+const REDACTED_KEYS = new Set(['token', 'password', 'authorization', 'apikey', 'apitoken']);
+
+// Format log message with context (sensitive keys are redacted)
 function formatMessage(message: string, context?: LogContext): string {
   if (!context || Object.keys(context).length === 0) {
     return message;
@@ -53,6 +55,9 @@ function formatMessage(message: string, context?: LogContext): string {
   const contextStr = Object.entries(context)
     .filter(([_, value]) => value !== undefined && value !== null)
     .map(([key, value]) => {
+      if (REDACTED_KEYS.has(key.toLowerCase())) {
+        return `${key}: [REDACTED]`;
+      }
       if (typeof value === 'object') {
         try {
           return `${key}: ${JSON.stringify(value)}`;

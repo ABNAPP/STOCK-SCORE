@@ -50,6 +50,33 @@ export function useUserRole() {
     return ['score'];
   };
 
+  /** Main navigation view order (used for default landing) */
+  const NAV_VIEW_ORDER: ViewId[] = [
+    'score',
+    'score-board',
+    'entry-exit-benjamin-graham',
+    'fundamental-pe-industry',
+    'threshold-industry',
+    'personal-portfolio',
+  ];
+
+  /**
+   * Get default landing view for the current user
+   * - Admin: score-board
+   * - Viewer: first view in allowedViews that exists in navigation
+   */
+  const getDefaultLandingView = (): ViewId => {
+    if (isAdmin) {
+      return 'score-board';
+    }
+    const allowed = getAllowedViews();
+    if (!allowed) return 'score-board';
+    for (const vid of NAV_VIEW_ORDER) {
+      if (allowed.includes(vid)) return vid;
+    }
+    return 'score';
+  };
+
   /**
    * Check if user can view a specific view
    */
@@ -79,6 +106,7 @@ export function useUserRole() {
     isAdmin,
     hasRole,
     getAllowedViews,
+    getDefaultLandingView,
     canView,
     refreshUserRole,
   };

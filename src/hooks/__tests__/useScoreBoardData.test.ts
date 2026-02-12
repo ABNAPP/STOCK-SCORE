@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { useScoreBoardData } from '../useScoreBoardData';
 import { fetchScoreBoardData } from '../../services/sheets';
-import { getCachedData, setCachedData, CACHE_KEYS } from '../../services/cacheService';
+import { getCachedData, getDeltaCacheEntry } from '../../services/firestoreCacheService';
 import { createMockScoreBoardData } from '../../test/helpers';
 
 // Mock dependencies
@@ -10,16 +10,26 @@ vi.mock('../../services/sheets', () => ({
   fetchScoreBoardData: vi.fn(),
 }));
 
-vi.mock('../../services/cacheService', async () => {
-  const actual = await vi.importActual('../../services/cacheService');
+vi.mock('../../services/firestoreCacheService', async () => {
+  const actual = await vi.importActual('../../services/firestoreCacheService');
   return {
     ...actual,
     getCachedData: vi.fn(),
+    getDeltaCacheEntry: vi.fn(),
     setCachedData: vi.fn(),
-    isCacheFresh: vi.fn(),
-    isCacheStale: vi.fn(),
+    setDeltaCacheEntry: vi.fn(),
   };
 });
+
+vi.mock('../../services/deltaSyncService', () => ({
+  isDeltaSyncEnabled: vi.fn(() => false),
+  initSync: vi.fn(),
+  pollChanges: vi.fn(),
+  loadSnapshot: vi.fn(),
+  applyChangesToCache: vi.fn(),
+  getPollIntervalMs: vi.fn(() => 900000),
+  snapshotToTransformerFormat: vi.fn(),
+}));
 
 vi.mock('../../contexts/LoadingProgressContext', () => ({
   useLoadingProgress: () => ({
@@ -60,17 +70,21 @@ describe('useScoreBoardData', () => {
     vi.restoreAllMocks();
   });
 
-  it('should load data from cache initially', () => {
-    (getCachedData as any).mockReturnValue(mockData);
+  it('should load data from cache initially', async () => {
+    (getDeltaCacheEntry as any).mockResolvedValue(null);
+    (getCachedData as any).mockResolvedValue(mockData);
 
     const { result } = renderHook(() => useScoreBoardData());
 
-    expect(result.current.data).toEqual(mockData);
-    expect(result.current.loading).toBe(false);
+    await waitFor(() => {
+      expect(result.current.data).toEqual(mockData);
+      expect(result.current.loading).toBe(false);
+    });
   });
 
   it('should fetch data when cache is empty', async () => {
-    (getCachedData as any).mockReturnValue(null);
+    (getDeltaCacheEntry as any).mockResolvedValue(null);
+    (getCachedData as any).mockResolvedValue(null);
     (fetchScoreBoardData as any).mockResolvedValue(mockData);
 
     const { result } = renderHook(() => useScoreBoardData());
@@ -84,7 +98,8 @@ describe('useScoreBoardData', () => {
   });
 
   it('should handle fetch errors', async () => {
-    (getCachedData as any).mockReturnValue(null);
+    (getDeltaCacheEntry as any).mockResolvedValue(null);
+    (getCachedData as any).mockResolvedValue(null);
     (fetchScoreBoardData as any).mockRejectedValue(new Error('Fetch error'));
 
     const { result } = renderHook(() => useScoreBoardData());
@@ -98,7 +113,8 @@ describe('useScoreBoardData', () => {
   });
 
   it('should support force refresh', async () => {
-    (getCachedData as any).mockReturnValue(mockData);
+    (getDeltaCacheEntry as any).mockResolvedValue(null);
+    (getCachedData as any).mockResolvedValue(mockData);
     (fetchScoreBoardData as any).mockResolvedValue(mockData);
 
     const { result } = renderHook(() => useScoreBoardData());
@@ -111,7 +127,8 @@ describe('useScoreBoardData', () => {
   });
 
   it('should update lastUpdated on successful fetch', async () => {
-    (getCachedData as any).mockReturnValue(null);
+    (getDeltaCacheEntry as any).mockResolvedValue(null);
+    (getCachedData as any).mockResolvedValue(null);
     (fetchScoreBoardData as any).mockResolvedValue(mockData);
 
     const { result } = renderHook(() => useScoreBoardData());

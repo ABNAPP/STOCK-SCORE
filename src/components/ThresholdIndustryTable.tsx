@@ -5,13 +5,16 @@ import ColumnTooltip from './ColumnTooltip';
 import ColumnFilterMenu from './ColumnFilterMenu';
 import { getColumnMetadata } from '../config/tableMetadata';
 import { FilterConfig } from './AdvancedFilters';
+import { ShareableTableState } from '../types/filters';
 import { useTranslation } from 'react-i18next';
 import { useThresholdValues, ThresholdValues } from '../contexts/ThresholdContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ThresholdIndustryTableProps {
   data: ThresholdIndustryData[];
   loading: boolean;
   error: string | null;
+  initialTableState?: ShareableTableState;
 }
 
 const THRESHOLD_INDUSTRY_COLUMNS: ColumnDefinition<ThresholdIndustryData>[] = [
@@ -28,9 +31,11 @@ const THRESHOLD_INDUSTRY_COLUMNS: ColumnDefinition<ThresholdIndustryData>[] = [
   { key: 'currentRatioMax', label: 'Current Ratio MAX', defaultVisible: true, sortable: true, align: 'center' },
 ];
 
-export default function ThresholdIndustryTable({ data, loading, error }: ThresholdIndustryTableProps) {
+export default function ThresholdIndustryTable({ data, loading, error, initialTableState }: ThresholdIndustryTableProps) {
   const { t } = useTranslation();
+  const { userRole } = useAuth();
   const { thresholdValues, getThresholdValue, getFieldValue, setFieldValue, commitField, initializeFromData } = useThresholdValues();
+  const isReadOnly = userRole !== 'admin';
 
   // Get unique industries for filter dropdown
   const uniqueIndustries = useMemo(() => {
@@ -90,6 +95,29 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
   const handleThresholdChange = useCallback((industry: string, field: keyof ThresholdValues, value: number) => {
     setFieldValue(industry, field, value);
   }, [setFieldValue]);
+
+  const inputClass = 'px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center';
+
+  const renderThresholdField = useCallback(
+    (industry: string, field: keyof ThresholdValues, value: number | string, step: string) =>
+      isReadOnly ? (
+        <span className="text-sm text-black dark:text-white">{value}</span>
+      ) : (
+        <input
+          type="number"
+          step={step}
+          value={value || ''}
+          onChange={(e) => {
+            const v = parseFloat(e.target.value) || 0;
+            handleThresholdChange(industry, field, v);
+          }}
+          onBlur={() => commitField(industry, field)}
+          className={inputClass}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ),
+    [isReadOnly, handleThresholdChange, commitField]
+  );
 
   // Custom header renderer with ColumnTooltip
   const renderHeader = useCallback((props: HeaderRenderProps<ThresholdIndustryData>) => {
@@ -282,144 +310,27 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
       case 'industry':
         return <span className="font-medium">{item.industry}</span>;
       case 'irr':
-        return (
-          <input
-            type="number"
-            step="0.1"
-            value={values.irr || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleThresholdChange(item.industry, 'irr', value);
-            }}
-            onBlur={() => commitField(item.industry, 'irr')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
-        );
+        return renderThresholdField(item.industry, 'irr', values.irr, '0.1');
       case 'leverageF2Min':
-        return (
-          <input
-            type="number"
-            step="0.1"
-            value={values.leverageF2Min || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleThresholdChange(item.industry, 'leverageF2Min', value);
-            }}
-            onBlur={() => commitField(item.industry, 'leverageF2Min')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
-        );
+        return renderThresholdField(item.industry, 'leverageF2Min', values.leverageF2Min, '0.1');
       case 'leverageF2Max':
-        return (
-          <input
-            type="number"
-            step="0.1"
-            value={values.leverageF2Max || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleThresholdChange(item.industry, 'leverageF2Max', value);
-            }}
-            onBlur={() => commitField(item.industry, 'leverageF2Max')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
-        );
+        return renderThresholdField(item.industry, 'leverageF2Max', values.leverageF2Max, '0.1');
       case 'ro40Min':
-        return (
-          <input
-            type="number"
-            step="0.01"
-            value={values.ro40Min || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleThresholdChange(item.industry, 'ro40Min', value);
-            }}
-            onBlur={() => commitField(item.industry, 'ro40Min')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
-        );
+        return renderThresholdField(item.industry, 'ro40Min', values.ro40Min, '0.01');
       case 'ro40Max':
-        return (
-          <input
-            type="number"
-            step="0.01"
-            value={values.ro40Max || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleThresholdChange(item.industry, 'ro40Max', value);
-            }}
-            onBlur={() => commitField(item.industry, 'ro40Max')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
-        );
+        return renderThresholdField(item.industry, 'ro40Max', values.ro40Max, '0.01');
       case 'cashSdebtMin':
-        return (
-          <input
-            type="number"
-            step="0.1"
-            value={values.cashSdebtMin || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleThresholdChange(item.industry, 'cashSdebtMin', value);
-            }}
-            onBlur={() => commitField(item.industry, 'cashSdebtMin')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
-        );
+        return renderThresholdField(item.industry, 'cashSdebtMin', values.cashSdebtMin, '0.1');
       case 'cashSdebtMax':
-        return (
-          <input
-            type="number"
-            step="0.1"
-            value={values.cashSdebtMax || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleThresholdChange(item.industry, 'cashSdebtMax', value);
-            }}
-            onBlur={() => commitField(item.industry, 'cashSdebtMax')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
-        );
+        return renderThresholdField(item.industry, 'cashSdebtMax', values.cashSdebtMax, '0.1');
       case 'currentRatioMin':
-        return (
-          <input
-            type="number"
-            step="0.1"
-            value={values.currentRatioMin || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleThresholdChange(item.industry, 'currentRatioMin', value);
-            }}
-            onBlur={() => commitField(item.industry, 'currentRatioMin')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
-        );
+        return renderThresholdField(item.industry, 'currentRatioMin', values.currentRatioMin, '0.1');
       case 'currentRatioMax':
-        return (
-          <input
-            type="number"
-            step="0.1"
-            value={values.currentRatioMax || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value) || 0;
-              handleThresholdChange(item.industry, 'currentRatioMax', value);
-            }}
-            onBlur={() => commitField(item.industry, 'currentRatioMax')}
-            className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-            onClick={(e) => e.stopPropagation()}
-          />
-        );
+        return renderThresholdField(item.industry, 'currentRatioMax', values.currentRatioMax, '0.1');
       default:
         return null;
     }
-  }, [getFieldValue, handleThresholdChange, commitField]);
+  }, [getFieldValue, renderThresholdField]);
 
   // Render mobile card
   const renderMobileCard = useCallback((item: ThresholdIndustryData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
@@ -485,37 +396,26 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
         {isExpanded && (
           <div className="border-t border-gray-300 dark:border-gray-600 p-4 space-y-3 animate-fade-in">
             {Object.entries({
-              irr: { label: 'IRR', step: '0.1' },
-              leverageF2Min: { label: 'LEVERAGE F2 MIN', step: '0.1' },
-              leverageF2Max: { label: 'LEVERAGE F2 MAX', step: '0.1' },
-              ro40Min: { label: 'RO40 MIN', step: '0.01' },
-              ro40Max: { label: 'RO40 MAX', step: '0.01' },
-              cashSdebtMin: { label: 'Cash/SDebt MIN', step: '0.1' },
-              cashSdebtMax: { label: 'Cash/SDebt MAX', step: '0.1' },
-              currentRatioMin: { label: 'Current Ratio MIN', step: '0.1' },
-              currentRatioMax: { label: 'Current Ratio MAX', step: '0.1' },
+              irr: { label: 'IRR', step: '0.1' as const },
+              leverageF2Min: { label: 'LEVERAGE F2 MIN', step: '0.1' as const },
+              leverageF2Max: { label: 'LEVERAGE F2 MAX', step: '0.1' as const },
+              ro40Min: { label: 'RO40 MIN', step: '0.01' as const },
+              ro40Max: { label: 'RO40 MAX', step: '0.01' as const },
+              cashSdebtMin: { label: 'Cash/SDebt MIN', step: '0.1' as const },
+              cashSdebtMax: { label: 'Cash/SDebt MAX', step: '0.1' as const },
+              currentRatioMin: { label: 'Current Ratio MIN', step: '0.1' as const },
+              currentRatioMax: { label: 'Current Ratio MAX', step: '0.1' as const },
             }).map(([key, config]) => (
               <div key={key} className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{config.label}</span>
-                <input
-                  type="number"
-                  step={config.step}
-                  value={values[key as keyof ThresholdValues] || ''}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    handleThresholdChange(item.industry, key as keyof ThresholdValues, value);
-                  }}
-                  onBlur={() => commitField(item.industry, key as keyof ThresholdValues)}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-                  onClick={(e) => e.stopPropagation()}
-                />
+                {renderThresholdField(item.industry, key as keyof ThresholdValues, values[key as keyof ThresholdValues], config.step)}
               </div>
             ))}
           </div>
         )}
       </div>
     );
-  }, [getFieldValue, handleThresholdChange, commitField]);
+  }, [getFieldValue, renderThresholdField]);
 
   return (
     <BaseTable<ThresholdIndustryData>
@@ -539,7 +439,11 @@ export default function ThresholdIndustryTable({ data, loading, error }: Thresho
       stickyColumns={['antal', 'industry']}
       ariaLabel="Threshold Industry"
       minTableWidth="800px"
-      getRowKey={(item, index) => `${item.industry}-${index}`}
+      getRowKey={(item) => item.industry}
+      initialFilterState={initialTableState?.filterState}
+      initialColumnFilters={initialTableState?.columnFilters}
+      initialSearchValue={initialTableState?.searchValue}
+      initialSortConfig={initialTableState?.sortConfig}
     />
   );
 }

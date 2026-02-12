@@ -1,12 +1,37 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo, memo } from 'react';
 import BaseTable, { ColumnDefinition } from './BaseTable';
 import { ScoreData } from './views/ScoreView';
-import { ThresholdIndustryData, BenjaminGrahamData } from '../types/stock';
+import { ScoreBoardData, ThresholdIndustryData, BenjaminGrahamData } from '../types/stock';
 import { EntryExitValues } from '../contexts/EntryExitContext';
 import { calculateDetailedScoreBreakdown } from '../utils/calculateScoreDetailed';
-import { FilterConfig } from '../types/filters';
+import { FilterConfig, ShareableTableState } from '../types/filters';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import ScoreBreakdownRow from './ScoreBreakdownRow';
+
+/** Memoized expanded row to avoid recalculating breakdown on every render */
+const MemoizedScoreBreakdownExpandedRow = memo(function MemoizedScoreBreakdownExpandedRow({
+  scoreBoardData,
+  thresholdData,
+  benjaminGrahamData,
+  entryExitValues,
+}: {
+  scoreBoardData: ScoreBoardData;
+  thresholdData: ThresholdIndustryData[];
+  benjaminGrahamData: BenjaminGrahamData[];
+  entryExitValues: Map<string, EntryExitValues>;
+}) {
+  const breakdown = useMemo(
+    () =>
+      calculateDetailedScoreBreakdown(
+        scoreBoardData,
+        thresholdData,
+        benjaminGrahamData,
+        entryExitValues
+      ),
+    [scoreBoardData, thresholdData, benjaminGrahamData, entryExitValues]
+  );
+  return <ScoreBreakdownRow breakdown={breakdown} />;
+});
 
 interface ScoreTableProps {
   data: ScoreData[];
@@ -15,6 +40,7 @@ interface ScoreTableProps {
   thresholdData?: ThresholdIndustryData[];
   benjaminGrahamData?: BenjaminGrahamData[];
   entryExitValues?: Map<string, EntryExitValues>;
+  initialTableState?: ShareableTableState;
 }
 
 const SCORE_COLUMNS: ColumnDefinition[] = [
@@ -51,10 +77,11 @@ const SCORE_FILTERS: FilterConfig[] = [
   },
 ];
 
-export default function ScoreTable({ data, loading, error, thresholdData = [], benjaminGrahamData = [], entryExitValues = new Map() }: ScoreTableProps) {
-  // Helper function to generate row key - must be used consistently everywhere
-  const generateRowKey = useCallback((item: ScoreData, index: number): string => {
-    return `${item.ticker}-${item.companyName}-${index}`;
+export default function ScoreTable({ data, loading, error, thresholdData = [], benjaminGrahamData = [], entryExitValues = new Map(), initialTableState }: ScoreTableProps) {
+  // Helper function to generate row key - must be used consistently everywhere.
+  // Stable identifier (no index) so expanded state survives sort/filter changes.
+  const generateRowKey = useCallback((item: ScoreData): string => {
+    return `${item.ticker}-${item.companyName}`;
   }, []);
 
   const getScoreColorClass = useCallback((score: number): string => {
@@ -64,9 +91,9 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
   }, []);
 
   const renderCell = useCallback((item: ScoreData, column: ColumnDefinition, index: number, globalIndex: number, expandedRows?: { [key: string]: boolean }, toggleRow?: (rowKey: string) => void) => {
-    // Use the same format as getRowKey: ticker-companyName-index (where index is globalIndex)
+    // Use the same format as getRowKey: ticker-companyName (stable, no index)
     // IMPORTANT: This must match exactly with getRowKey function below
-    const rowKey = generateRowKey(item, globalIndex);
+    const rowKey = generateRowKey(item);
     const isExpanded = expandedRows?.[rowKey] || false;
 
     switch (column.key) {
@@ -176,16 +203,17 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
     );
   }, [getScoreColorClass]);
 
-  const renderExpandedRow = useCallback((item: ScoreData, index: number, globalIndex: number) => {
-    const breakdown = calculateDetailedScoreBreakdown(
-      item.scoreBoardData,
-      thresholdData,
-      benjaminGrahamData,
-      entryExitValues
-    );
-
-    return <ScoreBreakdownRow breakdown={breakdown} />;
-  }, [thresholdData, benjaminGrahamData, entryExitValues]);
+  const renderExpandedRow = useCallback(
+    (item: ScoreData) => (
+      <MemoizedScoreBreakdownExpandedRow
+        scoreBoardData={item.scoreBoardData}
+        thresholdData={thresholdData}
+        benjaminGrahamData={benjaminGrahamData}
+        entryExitValues={entryExitValues}
+      />
+    ),
+    [thresholdData, benjaminGrahamData, entryExitValues]
+  );
 
   return (
     <BaseTable<ScoreData>
@@ -206,15 +234,15 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
       stickyColumns={['antal', 'companyName', 'ticker', 'currency']}
       ariaLabel="Score"
       minTableWidth="600px"
-      getRowKey={(item, index) => {
-        // index parameter is globalIndex when called from BaseTable
-        // Use the same function to ensure consistency
-        return generateRowKey(item, index);
-      }}
+      getRowKey={(item) => generateRowKey(item)}
       enableExport={true}
       enablePrint={true}
       enableShareableLink={true}
       viewId="score"
+      initialFilterState={initialTableState?.filterState}
+      initialColumnFilters={initialTableState?.columnFilters}
+      initialSearchValue={initialTableState?.searchValue}
+      initialSortConfig={initialTableState?.sortConfig}
     />
   );
 }

@@ -1,5 +1,6 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useShareableHydration } from '../../contexts/ShareableHydrationContext';
 import { ViewId } from '../../types/navigation';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
 import { TableSkeleton } from '../SkeletonLoader';
@@ -15,7 +16,24 @@ interface EntryExitViewProps {
 export default function EntryExitView({ viewId }: EntryExitViewProps) {
   const { t } = useTranslation();
   const isBenjaminGraham = viewId === 'entry-exit-benjamin-graham';
+  const { link, consume } = useShareableHydration();
   const { data: benjaminGrahamData, loading: benjaminGrahamLoading, error: benjaminGrahamError } = useBenjaminGrahamData();
+
+  const VIEW_ID = 'entry-exit-benjamin-graham';
+  const TABLE_ID = 'benjamin-graham';
+  const initialTableState = useMemo(() => {
+    if (!link || link.viewId !== VIEW_ID || link.tableId !== TABLE_ID) return undefined;
+    return {
+      filterState: link.filterState ?? {},
+      columnFilters: link.columnFilters ?? {},
+      searchValue: link.searchValue ?? '',
+      sortConfig: link.sortConfig,
+    };
+  }, [link]);
+
+  useEffect(() => {
+    if (initialTableState) consume();
+  }, [initialTableState, consume]);
   
   const getViewTitle = () => {
     const titles: Partial<Record<ViewId, string>> = {
@@ -41,7 +59,7 @@ export default function EntryExitView({ viewId }: EntryExitViewProps) {
             <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
               {!benjaminGrahamLoading && benjaminGrahamData.length > 0 ? (
                 <Suspense fallback={<TableSkeleton rows={10} columns={5} hasStickyColumns={true} />}>
-                  <EntryExitTable data={benjaminGrahamData} loading={false} error={benjaminGrahamError} />
+                  <EntryExitTable data={benjaminGrahamData} loading={false} error={benjaminGrahamError} initialTableState={initialTableState} />
                 </Suspense>
               ) : benjaminGrahamLoading ? (
                 <TableSkeleton rows={10} columns={5} hasStickyColumns={true} />

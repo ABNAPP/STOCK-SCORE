@@ -31,7 +31,29 @@ export const DEFAULT_TTL = DEFAULT_TTL_MINUTES * 60 * 1000;
 
 // Firestore collection name
 const CACHE_COLLECTION = 'appCache';
+const VIEWDATA_COLLECTION = 'viewData';
 const CACHE_PREFIX = 'cache:';
+
+/** Migration mode: dual-write (write both), dual-read (read viewData first, fallback appCache), cutover (viewData only) */
+export const VIEWDATA_MIGRATION_MODE = (
+  import.meta.env.VITE_VIEWDATA_MIGRATION_MODE || 'dual-read'
+) as 'dual-write' | 'dual-read' | 'cutover';
+
+/** Cache keys for view-docs; cutover skips appCache writes for these */
+const VIEW_CACHE_KEYS = new Set([
+  CACHE_KEYS.SCORE_BOARD,
+  CACHE_KEYS.BENJAMIN_GRAHAM,
+  CACHE_KEYS.PE_INDUSTRY,
+  CACHE_KEYS.SMA,
+]);
+
+/**
+ * Returns true when appCache write should be blocked (cutover mode + view-doc key).
+ * currency_rates_usd and other non-view-doc keys always return false.
+ */
+export function shouldBlockAppCacheWriteInCutover(key: string, mode: string): boolean {
+  return mode === 'cutover' && VIEW_CACHE_KEYS.has(key);
+}
 
 /**
  * Firestore cache entry interface (TTL-based)
@@ -52,6 +74,126 @@ function getCacheDocRef(key: string) {
   // Remove 'cache:' prefix if present for cleaner document IDs
   const docId = key.startsWith(CACHE_PREFIX) ? key.slice(CACHE_PREFIX.length) : key;
   return doc(db, CACHE_COLLECTION, docId);
+}
+
+/**
+ * Get viewData document reference
+ */
+function getViewDataDocRef(viewId: string) {
+  return doc(db, VIEWDATA_COLLECTION, viewId);
+}
+
+/**
+ * ViewData document structure (stored in Firestore)
+ */
+export interface ViewDataPayload<T = unknown> {
+  data: T;
+  timestamp: number;
+  ttl: number;
+  schemaVersion: number;
+  source: string;
+  updatedBy: string;
+  meta?: { lastSnapshotAt?: number };
+}
+
+/**
+ * Get view data from viewData/{viewId}
+ */
+export async function getViewData<T>(viewId: string): Promise<ViewDataPayload<T> | null> {
+  try {
+    const docRef = getViewDataDocRef(viewId);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return null;
+    const docData = docSnap.data();
+    const now = Date.now();
+    if (!docData.data || typeof docData.timestamp !== 'number' || typeof docData.ttl !== 'number') {
+      logger.warn('Invalid viewData structure', { component: 'firestoreCacheService', operation: 'getViewData', viewId });
+      return null;
+    }
+    const age = now - docData.timestamp;
+    if (age > docData.ttl) return null;
+    return docData as ViewDataPayload<T>;
+  } catch (error: unknown) {
+    const isPermissionError =
+      (error as { code?: string })?.code === 'permission-denied' ||
+      ((error as { name?: string; code?: string })?.name === 'FirebaseError' && (error as { code?: string })?.code === 'permission-denied');
+    logger.warn(`Failed to get viewData for "${viewId}"`, {
+      component: 'firestoreCacheService',
+      operation: 'getViewData',
+      viewId,
+      error,
+      permissionDenied: isPermissionError,
+    });
+    return null;
+  }
+}
+
+/**
+ * Set view data to viewData/{viewId}
+ */
+export async function setViewData<T>(
+  viewId: string,
+  data: T,
+  options?: { ttl?: number; source?: string; updatedBy?: string }
+): Promise<void> {
+  const ttl = options?.ttl ?? DEFAULT_TTL;
+  const now = Date.now();
+  const payload: ViewDataPayload<T> = {
+    data,
+    timestamp: now,
+    ttl,
+    schemaVersion: 1,
+    source: options?.source ?? 'client-refresh',
+    updatedBy: options?.updatedBy ?? 'system',
+  };
+  try {
+    const docRef = getViewDataDocRef(viewId);
+    await setDoc(docRef, payload, { merge: false });
+    logger.info('viewData saved', { component: 'firestoreCacheService', operation: 'setViewData', viewId });
+  } catch (error) {
+    logger.error(`Failed to set viewData for "${viewId}"`, { component: 'firestoreCacheService', operation: 'setViewData', viewId, error });
+    throw error;
+  }
+}
+
+/**
+ * Get view data with dual-read fallback to appCache when in dual-read mode
+ * - dual-write: read from appCache only (fallback)
+ * - dual-read: read viewData first, fallback to appCache if missing/denied
+ * - cutover: read viewData only, no fallback
+ * @param options.mode - Optional override for tests (default: VIEWDATA_MIGRATION_MODE from env)
+ */
+export interface ViewDataWithFallbackResult<T> {
+  data: T;
+  source: 'viewData' | 'appCache';
+  timestamp?: number;
+}
+
+export async function getViewDataWithFallback<T>(
+  viewId: string,
+  options: { fallback: () => Promise<T | null>; mode?: 'dual-write' | 'dual-read' | 'cutover' }
+): Promise<ViewDataWithFallbackResult<T> | null> {
+  const mode = options.mode ?? VIEWDATA_MIGRATION_MODE;
+  if (mode === 'dual-write') {
+    const fallbackData = await options.fallback();
+    if (fallbackData) {
+      logger.info('CACHE_SOURCE=appCache', { component: 'firestoreCacheService', operation: 'getViewDataWithFallback', viewId, mode });
+      return { data: fallbackData, source: 'appCache', timestamp: Date.now() };
+    }
+    return null;
+  }
+  const viewPayload = await getViewData<T>(viewId);
+  if (viewPayload) {
+    logger.info('CACHE_SOURCE=viewData', { component: 'firestoreCacheService', operation: 'getViewDataWithFallback', viewId, mode });
+    return { data: viewPayload.data, source: 'viewData', timestamp: viewPayload.timestamp };
+  }
+  if (mode === 'cutover') return null;
+  const fallbackData = await options.fallback();
+  if (fallbackData) {
+    logger.info('CACHE_SOURCE=appCache', { component: 'firestoreCacheService', operation: 'getViewDataWithFallback', viewId, mode });
+    return { data: fallbackData, source: 'appCache', timestamp: Date.now() };
+  }
+  return null;
 }
 
 /**
@@ -253,6 +395,11 @@ export async function getLastVersion(key: string): Promise<number> {
  * ```
  */
 export async function setCachedData<T>(key: string, data: T, ttl: number = DEFAULT_TTL): Promise<void> {
+  // cutover: block appCache writes for view-docs; currency_rates_usd always allowed
+  if (shouldBlockAppCacheWriteInCutover(key, VIEWDATA_MIGRATION_MODE)) {
+    logger.info('CUTOVER_BLOCK_APP_CACHE_WRITE', { component: 'firestoreCacheService', operation: 'setCachedData', key });
+    return;
+  }
   try {
     const docRef = getCacheDocRef(key);
     const now = Date.now();
@@ -466,6 +613,15 @@ async function migrateCacheDocument(
         return false;
       }
     } else {
+      // cutover: no appCache writes for view-docs (mark migration done)
+      if (VIEWDATA_MIGRATION_MODE === 'cutover' && VIEW_CACHE_KEYS.has(cacheKey)) {
+        try {
+          localStorage.setItem(migrationFlag, 'true');
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
       try {
         if (oldData.version !== undefined) {
           await setDeltaCacheEntry(
@@ -622,6 +778,15 @@ export async function migrateCoreBoardToScoreBoard(): Promise<boolean> {
       }
     } else {
       // scoreBoard doesn't exist, copy coreBoard to scoreBoard
+      // cutover: no appCache writes for view-docs
+      if (VIEWDATA_MIGRATION_MODE === 'cutover') {
+        try {
+          localStorage.setItem(MIGRATION_FLAG, 'true');
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
       try {
         // Determine cache type and copy accordingly
         if (coreBoardData.version !== undefined) {
@@ -641,7 +806,7 @@ export async function migrateCoreBoardToScoreBoard(): Promise<boolean> {
             coreBoardData.ttl || DEFAULT_TTL
           );
         }
-        
+
         // Now delete coreBoard
         try {
           await deleteDoc(coreBoardRef);
@@ -735,16 +900,36 @@ export async function runTruncatedCacheMigrations(): Promise<void> {
   await migrateMaToSma();
 }
 
+/** ViewIds for viewData collection (used when clearing all) */
+const VIEWDATA_VIEW_IDS = ['score', 'score-board', 'entry-exit-benjamin-graham', 'fundamental-pe-industry', 'threshold-industry'] as const;
+
+/**
+ * Clear viewData docs (admin only, for refresh)
+ */
+async function clearViewDataDocs(): Promise<void> {
+  for (const viewId of VIEWDATA_VIEW_IDS) {
+    try {
+      const docRef = getViewDataDocRef(viewId);
+      await deleteDoc(docRef);
+      logger.debug('Cleared viewData doc', { component: 'firestoreCacheService', operation: 'clearViewDataDocs', viewId });
+    } catch (err) {
+      const isPerm = (err as { code?: string })?.code === 'permission-denied';
+      if (!isPerm) logger.warn('Failed to clear viewData doc', { component: 'firestoreCacheService', operation: 'clearViewDataDocs', viewId, error: err });
+    }
+  }
+}
+
 /**
  * Clear cache for a specific key or all cache entries
  * 
  * Removes cache entries from Firestore. If a key is provided, only that
- * entry is removed. If no key is provided, all cache entries are removed.
+ * entry is removed. If no key is provided, clears all appCache (except currency_rates_usd)
+ * and viewData docs.
  * 
  * Note: Cache clearing requires editor/admin permissions. If the user doesn't
  * have permission, this function will silently fail (cache will expire via TTL anyway).
  * 
- * @param key - Optional cache key to clear. If not provided, clears all cache entries
+ * @param key - Optional cache key to clear. If not provided, clears all cache entries (except currency_rates_usd) + viewData
  * @returns Promise<{ cleared: boolean }> - cleared true if all requested entries were removed, false otherwise (e.g. permission-denied)
  */
 export async function clearCache(key?: string): Promise<{ cleared: boolean }> {
@@ -764,55 +949,60 @@ export async function clearCache(key?: string): Promise<{ cleared: boolean }> {
       });
       return { cleared: true };
     }
-    // Clear all cache entries
-    logger.debug('Clearing all cache entries from Firestore', { 
-      component: 'firestoreCacheService', 
-      operation: 'clearCache' 
-    });
-    const cacheCollection = collection(db, CACHE_COLLECTION);
-    const q = query(cacheCollection);
-    const querySnapshot = await getDocs(q);
-    
-    const docCount = querySnapshot.docs.length;
-    logger.info(`Found ${docCount} cache entries to clear`, { 
-      component: 'firestoreCacheService', 
-      operation: 'clearCache',
-      docCount 
-    });
-    
-    if (docCount === 0) {
-      logger.debug('No cache entries found to clear', { 
+    // Clear viewData docs (admin refresh)
+    await clearViewDataDocs();
+    // Clear appCache (excluding currency_rates_usd) only when not in cutover mode
+    if (VIEWDATA_MIGRATION_MODE !== 'cutover') {
+      logger.debug('Clearing appCache entries (excluding currency_rates_usd)', { 
         component: 'firestoreCacheService', 
         operation: 'clearCache' 
       });
-      return { cleared: true };
-    }
-    
-    const deletePromises = querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
-    const deleteResults = await Promise.allSettled(deletePromises);
-    
-    const successful = deleteResults.filter(r => r.status === 'fulfilled').length;
-    const failed = deleteResults.filter(r => r.status === 'rejected').length;
-    
-    logger.info('Cache clearing completed', { 
-      component: 'firestoreCacheService', 
-      operation: 'clearCache',
-      total: docCount,
-      successful,
-      failed 
-    });
-    
-    if (failed > 0) {
-      const failedDocs = deleteResults
-        .map((result, index) => result.status === 'rejected' ? querySnapshot.docs[index].id : null)
-        .filter(Boolean);
-      logger.warn('Some cache entries failed to delete', { 
+      const cacheCollection = collection(db, CACHE_COLLECTION);
+      const q = query(cacheCollection);
+      const querySnapshot = await getDocs(q);
+      
+      const docsToDelete = querySnapshot.docs.filter((d) => d.id !== 'currency_rates_usd');
+      const docCount = docsToDelete.length;
+      logger.info(`Found ${docCount} appCache entries to clear (excluding currency_rates_usd)`, { 
         component: 'firestoreCacheService', 
         operation: 'clearCache',
-        failedCount: failed,
-        failedDocs 
+        docCount 
       });
-      return { cleared: false };
+      
+      if (docCount === 0) {
+        logger.debug('No appCache entries found to clear', { 
+          component: 'firestoreCacheService', 
+          operation: 'clearCache' 
+        });
+        return { cleared: true };
+      }
+      
+      const deletePromises = docsToDelete.map(docSnap => deleteDoc(docSnap.ref));
+      const deleteResults = await Promise.allSettled(deletePromises);
+      
+      const successful = deleteResults.filter(r => r.status === 'fulfilled').length;
+      const failed = deleteResults.filter(r => r.status === 'rejected').length;
+      
+      logger.info('Cache clearing completed', { 
+        component: 'firestoreCacheService', 
+        operation: 'clearCache',
+        total: docCount,
+        successful,
+        failed 
+      });
+      
+      if (failed > 0) {
+        const failedDocs = deleteResults
+          .map((result, index) => result.status === 'rejected' ? querySnapshot.docs[index].id : null)
+          .filter(Boolean);
+        logger.warn('Some cache entries failed to delete', { 
+          component: 'firestoreCacheService', 
+          operation: 'clearCache',
+          failedCount: failed,
+          failedDocs 
+        });
+        return { cleared: false };
+      }
     }
     return { cleared: true };
   } catch (error: any) {

@@ -1,22 +1,18 @@
 import { createContext, useContext, ReactNode, useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { ThresholdIndustryData } from '../types/stock';
 import { useAuth } from './AuthContext';
-import { saveThresholdValues, loadThresholdValues } from '../services/userDataService';
+import {
+  loadSharedThresholdValues,
+  saveSharedThresholdValues,
+  loadFromLocalStorage,
+  saveToLocalStorage,
+  type ThresholdValues,
+} from '../services/sharedThresholdService';
 import { onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { logger } from '../utils/logger';
 
-export interface ThresholdValues {
-  irr: number;
-  leverageF2Min: number;
-  leverageF2Max: number;
-  ro40Min: number;
-  ro40Max: number;
-  cashSdebtMin: number;
-  cashSdebtMax: number;
-  currentRatioMin: number;
-  currentRatioMax: number;
-}
+export type { ThresholdValues } from '../services/sharedThresholdService';
 
 interface ThresholdContextType {
   getThresholdValue: (industry: string) => ThresholdValues | undefined;
@@ -29,30 +25,18 @@ interface ThresholdContextType {
 
 export const ThresholdContext = createContext<ThresholdContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'thresholdValues';
-
-// Load from localStorage (fallback)
+// Load from localStorage (fallback) - uses sharedThresholdService key
 const loadFromStorage = (): Map<string, ThresholdValues> => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return new Map(Object.entries(parsed));
-    }
-  } catch (error: unknown) {
-    logger.error('Error loading Threshold values from localStorage', error, { component: 'ThresholdContext', operation: 'loadFromLocalStorage' });
+  const loaded = loadFromLocalStorage();
+  if (loaded) {
+    return new Map(Object.entries(loaded));
   }
   return new Map();
 };
 
-// Save to localStorage (fallback)
+// Save to localStorage (read-cache only)
 const saveToStorage = (values: Map<string, ThresholdValues>) => {
-  try {
-    const obj = Object.fromEntries(values);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-  } catch (error: unknown) {
-    logger.error('Error saving Threshold values to localStorage', error, { component: 'ThresholdContext', operation: 'saveToLocalStorage' });
-  }
+  saveToLocalStorage(Object.fromEntries(values));
 };
 
 interface ThresholdProviderProps {
@@ -60,7 +44,7 @@ interface ThresholdProviderProps {
 }
 
 export function ThresholdProvider({ children }: ThresholdProviderProps) {
-  const { currentUser } = useAuth();
+  const { currentUser, userRole } = useAuth();
   // serverRows: source of truth from Firestore
   const [serverRows, setServerRows] = useState<Map<string, ThresholdValues>>(() => loadFromStorage());
   // draft: only fields user is currently editing (e.g. "Technology.irr": 15)
@@ -87,7 +71,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
       setIsLoading(true);
       isInitialLoadRef.current = true;
       try {
-        const loaded = await loadThresholdValues(currentUser);
+        const loaded = await loadSharedThresholdValues(currentUser);
         if (loaded) {
           setServerRows(new Map(Object.entries(loaded)));
         } else {
@@ -98,8 +82,10 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
           }
         }
       } catch (error: unknown) {
-        logger.error('Error loading Threshold values', error, { component: 'ThresholdContext', operation: 'loadThresholdValues' });
-        // Fallback to localStorage
+        logger.error('Error loading shared threshold', error, {
+          component: 'ThresholdContext',
+          operation: 'sharedThreshold.loadFailed',
+        });
         const localData = loadFromStorage();
         if (localData.size > 0) {
           setServerRows(localData);
@@ -194,16 +180,16 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
     };
   }, [currentUser?.uid]); // Removed isLoading from dependencies - listener should only recreate when user changes
 
-  // Auto-save draft values to Firestore (debounced)
+  // Auto-save draft values to Firestore (debounced) - admin only
   useEffect(() => {
-    if (isLoading || !currentUser || Object.keys(draft).length === 0) return;
+    if (isLoading || !currentUser || userRole !== 'admin' || Object.keys(draft).length === 0) {
+      return;
+    }
 
-    // Clear existing timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Build current state from serverRows + draft for saving
     const currentState = new Map(serverRows);
     for (const [draftKey, draftValue] of Object.entries(draft)) {
       const [industry, field] = draftKey.split('.');
@@ -221,29 +207,35 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
       currentState.set(industry, { ...entry, [field]: draftValue });
     }
 
-    // Save to localStorage immediately (fast fallback)
     saveToStorage(currentState);
 
-    // Debounce Firestore save to avoid too many writes
     saveTimeoutRef.current = setTimeout(async () => {
       try {
         const obj = Object.fromEntries(currentState);
-        await saveThresholdValues(currentUser, obj);
-        // After successful save, release dirty locks + remove draft
+        await saveSharedThresholdValues(obj, { user: currentUser, userRole });
         dirtyKeysRef.current.clear();
         setDraft({});
       } catch (error: unknown) {
-        logger.error('Error saving Threshold values to Firestore', error, { component: 'ThresholdContext', operation: 'saveThresholdValues' });
-        // On error, keep dirty keys and draft so user's edits aren't lost
+        if ((error as Error).message === 'sharedThreshold.saveDenied') {
+          logger.warn('Threshold save denied (viewer)', {
+            component: 'ThresholdContext',
+            operation: 'sharedThreshold.saveDenied',
+          });
+        } else {
+          logger.error('Error saving shared threshold to Firestore', error, {
+            component: 'ThresholdContext',
+            operation: 'sharedThreshold.saveFailed',
+          });
+        }
       }
-    }, 1000); // Wait 1 second after last change
+    }, 1000);
 
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [draft, serverRows, currentUser, isLoading]);
+  }, [draft, serverRows, currentUser, userRole, isLoading]);
 
   // Display value: draft if exists, otherwise server value
   const getFieldValue = useCallback((industry: string, field: keyof ThresholdValues): number => {
@@ -284,18 +276,50 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
     return result;
   }, [serverRows, draft]);
 
-  // While typing: mark dirty + update draft (and optionally optimistic update serverRows)
-  const setFieldValue = useCallback((industry: string, field: keyof ThresholdValues, value: number) => {
-    const dk = `${industry}.${field}`;
-    
-    // Mark as dirty and update draft
-    dirtyKeysRef.current.add(dk);
-    setDraft((d) => ({ ...d, [dk]: value }));
-    
-    // Optional optimistic UI update (keeps tables consistent)
-    setServerRows((rows) => {
-      const newRows = new Map(rows);
-      const current = newRows.get(industry) || {
+  // While typing: mark dirty + update draft. Viewer: no-op.
+  const setFieldValue = useCallback(
+    (industry: string, field: keyof ThresholdValues, value: number) => {
+      if (userRole !== 'admin') {
+        logger.warn('setFieldValue denied: viewer cannot edit', {
+          component: 'ThresholdContext',
+          operation: 'sharedThreshold.setFieldValueDenied',
+        });
+        return;
+      }
+
+      const dk = `${industry}.${field}`;
+      dirtyKeysRef.current.add(dk);
+      setDraft((d) => ({ ...d, [dk]: value }));
+      setServerRows((rows) => {
+        const newRows = new Map(rows);
+        const current = newRows.get(industry) || {
+          irr: 0,
+          leverageF2Min: 0,
+          leverageF2Max: 0,
+          ro40Min: 0,
+          ro40Max: 0,
+          cashSdebtMin: 0,
+          cashSdebtMax: 0,
+          currentRatioMin: 0,
+          currentRatioMax: 0,
+        };
+        newRows.set(industry, { ...current, [field]: value });
+        return newRows;
+      });
+    },
+    [userRole]
+  );
+
+  // Commit to Firestore on blur/enter. Viewer: no-op, return early.
+  const commitField = useCallback(
+    async (industry: string, field: keyof ThresholdValues) => {
+      if (userRole !== 'admin') return;
+
+      const dk = `${industry}.${field}`;
+      const value = draft[dk];
+      if (value === undefined) return;
+
+      const serverEntry = serverRows.get(industry) || {
         irr: 0,
         leverageF2Min: 0,
         leverageF2Max: 0,
@@ -306,55 +330,33 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
         currentRatioMin: 0,
         currentRatioMax: 0,
       };
-      newRows.set(industry, { ...current, [field]: value });
-      return newRows;
-    });
-  }, []);
+      const updated: ThresholdValues = { ...serverEntry, [field]: value };
 
-  // Commit to Firestore on blur/enter, then release dirty lock
-  const commitField = useCallback(async (industry: string, field: keyof ThresholdValues) => {
-    const dk = `${industry}.${field}`;
-    const value = draft[dk];
-    
-    if (value === undefined) return;
-
-    // Build the full entry to save
-    const serverEntry = serverRows.get(industry) || {
-      irr: 0,
-      leverageF2Min: 0,
-      leverageF2Max: 0,
-      ro40Min: 0,
-      ro40Max: 0,
-      cashSdebtMin: 0,
-      cashSdebtMax: 0,
-      currentRatioMin: 0,
-      currentRatioMax: 0,
-    };
-    const updated: ThresholdValues = { ...serverEntry, [field]: value };
-
-    try {
-      // Save this specific field immediately
-      const allValues = Object.fromEntries(serverRows);
-      allValues[industry] = updated;
-      await saveThresholdValues(currentUser, allValues);
-      
-      // Release lock + remove draft
-      dirtyKeysRef.current.delete(dk);
-      setDraft((d) => {
-        const { [dk]: _, ...rest } = d;
-        return rest;
-      });
-      
-      // Update serverRows with committed value
-      setServerRows((rows) => {
-        const newRows = new Map(rows);
-        newRows.set(industry, updated);
-        return newRows;
-      });
-    } catch (error: unknown) {
-      logger.error('Error committing field to Firestore', error, { component: 'ThresholdContext', operation: 'commitField' });
-    }
-  }, [draft, serverRows, currentUser]);
+      try {
+        const allValues = Object.fromEntries(serverRows);
+        allValues[industry] = updated;
+        await saveSharedThresholdValues(allValues, { user: currentUser, userRole });
+        dirtyKeysRef.current.delete(dk);
+        setDraft((d) => {
+          const { [dk]: _, ...rest } = d;
+          return rest;
+        });
+        setServerRows((rows) => {
+          const newRows = new Map(rows);
+          newRows.set(industry, updated);
+          return newRows;
+        });
+      } catch (error: unknown) {
+        if ((error as Error).message !== 'sharedThreshold.saveDenied') {
+          logger.error('Error committing field to Firestore', error, {
+            component: 'ThresholdContext',
+            operation: 'sharedThreshold.saveFailed',
+          });
+        }
+      }
+    },
+    [draft, serverRows, currentUser, userRole]
+  );
 
   const initializeFromData = useCallback((data: ThresholdIndustryData[]) => {
     setServerRows((prev) => {

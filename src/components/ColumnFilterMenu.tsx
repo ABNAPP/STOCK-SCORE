@@ -228,7 +228,7 @@ export default function ColumnFilterMenu<T extends Record<string, unknown>>({
 
   // Handle condition filter change
   const handleConditionChange = useCallback((operator: FilterOperator, value: string | number) => {
-    if (!value || value === '') {
+    if (value === '' || value === null || value === undefined) {
       onFilterChange(null);
     } else {
       onFilterChange({
@@ -426,7 +426,7 @@ export default function ColumnFilterMenu<T extends Record<string, unknown>>({
                 onChange={(e) => {
                   const operator = e.target.value as FilterOperator;
                   const currentValue = filter?.type === 'condition' ? filter.conditionValue : '';
-                  if (currentValue) {
+                  if (currentValue !== undefined && currentValue !== null && currentValue !== '') {
                     handleConditionChange(operator, currentValue);
                   }
                 }}

@@ -5,7 +5,15 @@ import type { DataRow } from '../services/sheets';
 import { PEIndustryData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
 import { useRefreshOptional } from '../contexts/RefreshContext';
-import { getCachedData, getDeltaCacheEntry, setDeltaCacheEntry, CACHE_KEYS } from '../services/firestoreCacheService';
+import {
+  getCachedData,
+  getDeltaCacheEntry,
+  setDeltaCacheEntry,
+  setViewData,
+  getViewDataWithFallback,
+  CACHE_KEYS,
+  VIEWDATA_MIGRATION_MODE,
+} from '../services/firestoreCacheService';
 import { createErrorHandler, logError, formatError, isErrorType } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -18,6 +26,7 @@ import {
   isDeltaSyncEnabled,
   getPollIntervalMs,
   snapshotToTransformerFormat,
+  getApiBaseUrlForDeltaSync,
   type DeltaSyncConfig
 } from '../services/deltaSyncService';
 import { usePageVisibility } from './usePageVisibility';
@@ -83,7 +92,7 @@ export function usePEIndustryData() {
         try {
           const config: DeltaSyncConfig = {
             sheetName: SHEET_NAME,
-            apiBaseUrl: APPS_SCRIPT_URL,
+            apiBaseUrl: getApiBaseUrlForDeltaSync(),
             dataTypeName: 'PE Industry',
           };
 
@@ -106,7 +115,9 @@ export function usePEIndustryData() {
           previousDataRef.current = result.data;
           currentVersionRef.current = result.version;
           setLastUpdated(new Date());
-          
+          setViewData('fundamental-pe-industry', { peIndustry: result.data }, { source: 'client-refresh' }).catch((e) =>
+            logger.warn('Failed to write viewData', { component: 'usePEIndustryData', error: e })
+          );
           // Show notification if significant changes detected
           if (changes.hasSignificantChanges && !isBackground) {
             const changeMessage = formatChangeSummary(changes);
@@ -200,7 +211,9 @@ export function usePEIndustryData() {
       setData(fetchedData);
       previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
-      
+      setViewData('fundamental-pe-industry', { peIndustry: fetchedData }, { source: 'client-refresh' }).catch((e) =>
+        logger.warn('Failed to write viewData', { component: 'usePEIndustryData', error: e })
+      );
       logger.info('PE Industry state updated successfully', { 
         component: 'usePEIndustryData', 
         operation: 'loadData',
@@ -263,7 +276,7 @@ export function usePEIndustryData() {
     try {
       const config: DeltaSyncConfig = {
         sheetName: SHEET_NAME,
-        apiBaseUrl: APPS_SCRIPT_URL,
+        apiBaseUrl: getApiBaseUrlForDeltaSync(),
         dataTypeName: 'PE Industry',
       };
 
@@ -275,8 +288,13 @@ export function usePEIndustryData() {
         const snapshot = await loadSnapshot(config);
         const transformerFormat = snapshotToTransformerFormat(snapshot);
         const transformedData = transformPEIndustryData(transformerFormat);
-        setDeltaCacheEntry(CACHE_KEY, transformedData, snapshot.version, true);
-        
+        // cutover: no appCache writes for view-docs
+        if (VIEWDATA_MIGRATION_MODE !== 'cutover') {
+          setDeltaCacheEntry(CACHE_KEY, transformedData, snapshot.version, true);
+        }
+        setViewData('fundamental-pe-industry', { peIndustry: transformedData }, { source: 'client-refresh' }).catch((e) =>
+          logger.warn('Failed to write viewData', { component: 'usePEIndustryData', error: e })
+        );
         // Detect data changes
         const dataChanges = detectDataChanges(
           previousDataRef.current,
@@ -324,36 +342,34 @@ export function usePEIndustryData() {
     }
   }, [isPageVisible, createNotification]);
 
-  // Load cache on mount - check Firestore cache first
+  // Load cache on mount - viewData first (dual-read/cutover), then appCache fallback
   useEffect(() => {
     const loadCache = async () => {
       if (cacheLoadedRef.current) return;
       cacheLoadedRef.current = true;
       
       try {
-        // Try delta cache first, then fallback to regular cache
-        const deltaCacheEntry = await getDeltaCacheEntry<PEIndustryData[]>(CACHE_KEY);
-        const regularCache = deltaCacheEntry ? null : await getCachedData<PEIndustryData[]>(CACHE_KEY);
-        const cachedData = deltaCacheEntry?.data || regularCache;
-        
-        if (cachedData && cachedData.length > 0) {
+        const result = await getViewDataWithFallback<{ peIndustry: PEIndustryData[] }>('fundamental-pe-industry', {
+          fallback: async () => {
+            const delta = await getDeltaCacheEntry<PEIndustryData[]>(CACHE_KEY);
+            const regular = delta ? null : await getCachedData<PEIndustryData[]>(CACHE_KEY);
+            const arr = delta?.data ?? regular;
+            return arr && arr.length > 0 ? { peIndustry: arr } : null;
+          },
+        });
+        if (result && result.data.peIndustry.length > 0) {
+          const cachedData = result.data.peIndustry;
           setData(cachedData);
           previousDataRef.current = cachedData;
-          currentVersionRef.current = deltaCacheEntry?.version || 0;
+          const delta = await getDeltaCacheEntry<PEIndustryData[]>(CACHE_KEY);
+          currentVersionRef.current = delta?.version ?? 0;
           setLoading(false);
-          // Don't fetch if we have valid cache - hard cache, no initial fetch; polling still updates in background
           return;
         }
-        // No cache, fetch fresh data
       } catch (err) {
-        // If cache load fails, log and continue to fetch fresh data
-        logger.warn('Failed to load cache, fetching fresh data', { 
-          component: 'usePEIndustryData', 
-          error: err 
-        });
+        logger.warn('Failed to load cache, fetching fresh data', { component: 'usePEIndustryData', error: err });
       }
       
-      // If no cache or cache load failed, fetch fresh data
       loadData(false, false);
     };
     
@@ -391,15 +407,41 @@ export function usePEIndustryData() {
     }
   }, [pollForChanges, isPageVisible]);
 
-  const refetch = useCallback((forceRefresh?: boolean) => {
-    loadData(forceRefresh ?? false);
-  }, [loadData]);
+  const refetch = useCallback(
+    async (forceRefresh?: boolean | { skipFetch?: boolean }) => {
+      const opts = typeof forceRefresh === 'object' ? forceRefresh : { skipFetch: false };
+      if (opts?.skipFetch) {
+        setLoading(true);
+        try {
+          const result = await getViewDataWithFallback<{ peIndustry: PEIndustryData[] }>('fundamental-pe-industry', {
+            fallback: async () => {
+              const delta = await getDeltaCacheEntry<PEIndustryData[]>(CACHE_KEY);
+              const regular = delta ? null : await getCachedData<PEIndustryData[]>(CACHE_KEY);
+              const arr = delta?.data ?? regular;
+              return arr && arr.length > 0 ? { peIndustry: arr } : null;
+            },
+          });
+          if (result?.data?.peIndustry?.length) {
+            setData(result.data.peIndustry);
+            previousDataRef.current = result.data.peIndustry;
+            setLastUpdated(new Date());
+          }
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+      loadData(typeof forceRefresh === 'boolean' ? forceRefresh : false);
+    },
+    [loadData]
+  );
 
-  // Register with RefreshContext so Refresh All triggers this hook's refetch
   const refreshContext = useRefreshOptional();
   useEffect(() => {
     if (!refreshContext) return;
-    const unregister = refreshContext.registerRefetch('pe-industry', () => refetch(true));
+    const unregister = refreshContext.registerRefetch('pe-industry', (options) =>
+      refetch(options?.skipFetch ? { skipFetch: true } : true)
+    );
     return unregister;
   }, [refreshContext, refetch]);
 

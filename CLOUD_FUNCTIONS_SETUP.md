@@ -164,13 +164,20 @@ npm install --save-dev @types/node typescript
 firebase deploy --only functions
 ```
 
-### Steg 6: Konfigurera Environment Variable
+### Steg 6: Konfigurera Environment Variables
 
-Efter deploy, kopiera Functions URL och lägg till den i `.env.local` och Vercel:
+Efter deploy, konfigurera Cloud Functions för adminRefreshCache:
 
+```bash
+firebase functions:config:set apps_script.url="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
+firebase functions:config:set apps_script.token="YOUR_APPS_SCRIPT_TOKEN"
 ```
-VITE_CLOUD_FUNCTION_URL=https://YOUR-REGION-YOUR-PROJECT.cloudfunctions.net
-```
+
+Eller använd environment variables vid deploy (Firebase stödjer `process.env` för vissa nycklar). Se Firebase-dokumentation för `.env` eller Secret Manager.
+
+**adminRefreshCache** kräver:
+- `APPS_SCRIPT_URL` eller `apps_script.url` – Apps Script Web App URL
+- `APPS_SCRIPT_TOKEN` eller `apps_script.token` – Token för Apps Script (samma som `VITE_APPS_SCRIPT_TOKEN`)
 
 ## Alternativ: HTTP Functions (för AdminPanel)
 

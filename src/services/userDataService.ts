@@ -1,9 +1,9 @@
 /**
  * User Data Service
- * 
+ *
  * Provides functionality to save and load shared manual data to Firebase Firestore.
- * This includes Entry/Exit values, Currency values, and Threshold values.
- * All data is shared between all authenticated users.
+ * This includes Entry/Exit values and Currency values.
+ * Threshold values are managed by sharedThresholdService (sharedData/threshold).
  * Falls back to localStorage if user is not authenticated or Firestore is unavailable.
  */
 
@@ -25,14 +25,12 @@ const COLLECTIONS = {
   SHARED_DATA: 'sharedData',
   ENTRY_EXIT: 'entryExit',
   CURRENCY: 'currency',
-  THRESHOLD: 'threshold',
 } as const;
 
 // LocalStorage keys (fallback)
 const STORAGE_KEYS = {
   ENTRY_EXIT: 'entryExitValues',
   CURRENCY: 'tachart-currency-map',
-  THRESHOLD: 'thresholdValues',
 } as const;
 
 /**
@@ -371,166 +369,3 @@ export async function loadCurrencyValues(
     return null;
   }
 }
-
-/**
- * Save Threshold values to Firestore
- * 
- * Saves threshold values (IRR, Leverage F2, RO40, Cash/SDebt, Current Ratio)
- * to Firestore. Falls back to localStorage if user is not authenticated.
- * Also saves to localStorage as backup.
- * 
- * @param user - Firebase user object, or null if not authenticated
- * @param values - Threshold values to save, keyed by industry name
- * 
- * @example
- * ```typescript
- * await saveThresholdValues(user, {
- *   'Technology': {
- *     irr: 15,
- *     leverageF2Min: 0.5,
- *     leverageF2Max: 2.0,
- *     ro40Min: 10,
- *     ro40Max: 20,
- *     cashSdebtMin: 0.5,
- *     cashSdebtMax: 1.5,
- *     currentRatioMin: 1.0,
- *     currentRatioMax: 2.0
- *   }
- * });
- * ```
- */
-export async function saveThresholdValues(
-  user: User | null,
-  values: Record<string, {
-    irr: number;
-    leverageF2Min: number;
-    leverageF2Max: number;
-    ro40Min: number;
-    ro40Max: number;
-    cashSdebtMin: number;
-    cashSdebtMax: number;
-    currentRatioMin: number;
-    currentRatioMax: number;
-  }>
-): Promise<void> {
-  if (!user) {
-    // Fallback to localStorage
-    try {
-      localStorage.setItem(STORAGE_KEYS.THRESHOLD, JSON.stringify(values));
-    } catch (error) {
-      logger.error('Error saving Threshold values to localStorage', error, { component: 'userDataService', operation: 'saveThresholdValues' });
-    }
-    return;
-  }
-
-  try {
-    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.THRESHOLD);
-    await setDoc(docRef, {
-      values,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-    
-    // Also save to localStorage as backup
-    try {
-      localStorage.setItem(STORAGE_KEYS.THRESHOLD, JSON.stringify(values));
-    } catch (error) {
-      logger.warn('Failed to save Threshold values to localStorage backup', { component: 'userDataService', operation: 'saveThresholdValues', error });
-    }
-  } catch (error) {
-    logger.error('Error saving Threshold values to Firestore', error, { component: 'userDataService', operation: 'saveThresholdValues' });
-    // Fallback to localStorage
-    try {
-      localStorage.setItem(STORAGE_KEYS.THRESHOLD, JSON.stringify(values));
-    } catch (localError) {
-      logger.error('Error saving Threshold values to localStorage fallback', localError, { component: 'userDataService', operation: 'saveThresholdValues' });
-    }
-  }
-}
-
-/**
- * Load Threshold values from Firestore
- * 
- * Loads threshold values from Firestore. Falls back to localStorage if
- * user is not authenticated or Firestore is unavailable.
- * 
- * @param user - Firebase user object, or null if not authenticated
- * @returns Threshold values keyed by industry name, or null if not found
- * 
- * @example
- * ```typescript
- * const thresholds = await loadThresholdValues(user);
- * if (thresholds) {
- *   const techThresholds = thresholds['Technology'];
- * }
- * ```
- */
-export async function loadThresholdValues(
-  user: User | null
-): Promise<Record<string, {
-  irr: number;
-  leverageF2Min: number;
-  leverageF2Max: number;
-  ro40Min: number;
-  ro40Max: number;
-  cashSdebtMin: number;
-  cashSdebtMax: number;
-  currentRatioMin: number;
-  currentRatioMax: number;
-}> | null> {
-  if (!user) {
-    // Fallback to localStorage
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.THRESHOLD);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (error) {
-      logger.error('Error loading Threshold values from localStorage', error, { component: 'userDataService', operation: 'loadThresholdValues' });
-    }
-    return null;
-  }
-
-  try {
-    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.THRESHOLD);
-    const docSnap = await getDoc(docRef);
-    
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      const values = data.values || {};
-      
-      // Also save to localStorage as backup
-      try {
-        localStorage.setItem(STORAGE_KEYS.THRESHOLD, JSON.stringify(values));
-      } catch (error) {
-        logger.warn('Failed to save Threshold values to localStorage backup', { component: 'userDataService', operation: 'saveThresholdValues', error });
-      }
-      
-      return values;
-    }
-    
-    // If no Firestore data, try localStorage
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.THRESHOLD);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (error) {
-      logger.error('Error loading Threshold values from localStorage', error, { component: 'userDataService', operation: 'loadThresholdValues' });
-    }
-    
-    return null;
-  } catch (error) {
-    logger.error('Error loading Threshold values from Firestore', error, { component: 'userDataService', operation: 'loadThresholdValues' });
-    // Fallback to localStorage
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.THRESHOLD);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (localError) {
-      logger.error('Error loading Threshold values from localStorage fallback', localError, { component: 'userDataService', operation: 'loadThresholdValues' });
-    }
-    return null;
-  }
-}
-

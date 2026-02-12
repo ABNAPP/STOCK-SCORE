@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useMemo, useEffect } from 'react';
+import { useShareableHydration } from '../../contexts/ShareableHydrationContext';
 import { ViewId } from '../../types/navigation';
 import { usePEIndustryData } from '../../hooks/usePEIndustryData';
 import { TableSkeleton } from '../SkeletonLoader';
@@ -11,10 +12,28 @@ interface FundamentalViewProps {
   viewId: ViewId;
 }
 
+const VIEW_ID = 'fundamental-pe-industry';
+const TABLE_ID = 'pe-industry';
+
 export default function FundamentalView({ viewId }: FundamentalViewProps) {
   const { t } = useTranslation();
+  const { link, consume } = useShareableHydration();
   const isPEIndustry = viewId === 'fundamental-pe-industry';
   const { data, loading, error } = usePEIndustryData();
+
+  const initialTableState = useMemo(() => {
+    if (!link || link.viewId !== VIEW_ID || link.tableId !== TABLE_ID) return undefined;
+    return {
+      filterState: link.filterState ?? {},
+      columnFilters: link.columnFilters ?? {},
+      searchValue: link.searchValue ?? '',
+      sortConfig: link.sortConfig,
+    };
+  }, [link]);
+
+  useEffect(() => {
+    if (initialTableState) consume();
+  }, [initialTableState, consume]);
   
   const getViewTitle = () => {
     const titles: Partial<Record<ViewId, string>> = {
@@ -40,7 +59,7 @@ export default function FundamentalView({ viewId }: FundamentalViewProps) {
           </div>
           <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
             <Suspense fallback={<TableSkeleton rows={10} columns={5} hasStickyColumns={true} />}>
-              <PEIndustryTable data={data} loading={loading} error={error} />
+              <PEIndustryTable data={data} loading={loading} error={error} initialTableState={initialTableState} />
             </Suspense>
           </div>
         </div>

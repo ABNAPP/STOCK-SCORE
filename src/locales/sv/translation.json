@@ -267,8 +267,62 @@
       "step4": "Kontrollera att RefreshProvider inte renderas villkorligt"
     }
   },
+  "help": {
+    "title": "Hjälp",
+    "sections": {
+      "conditions": {
+        "title": "Vad betyder Conditions?",
+        "content": "Conditions beskriver regler och villkor för varje kolumn i tabellen. Varje kolumn har en datakälla (varifrån data kommer), eventuell formel (hur värden beräknas) och villkor som styr färgkodning och filtrering. Grön = bra, blå = medel, röd = dåligt."
+      },
+      "filters": {
+        "title": "Hur filtrering fungerar",
+        "content": "Du kan filtrera på två sätt: 1) Kolumnfilter – klicka på filter-ikonen i kolumnhuvudet för att filtrera direkt i kolumnen. 2) Avancerade filter – öppna filter-menyn för att kombinera flera villkor. Kolumnfilter och avancerade filter kan kombineras."
+      },
+      "score": {
+        "title": "Hur Score & breakdown fungerar",
+        "content": "Score är en sammanvägd poäng baserad på flera nyckeltal. Breakdown visar hur varje del bidrar till totalpoängen. Högre poäng indikerar bättre värdering enligt valda kriterier."
+      },
+      "shareExport": {
+        "title": "Share och Export",
+        "content": "Delbara länkar sparar din nuvarande vy (filter, sortering, kolumner). Länken respekterar behörighet – mottagaren ser bara sin tillåtna data. Export till CSV eller Excel sparar den filtrerade datan."
+      }
+    },
+    "thisView": "Denna vy",
+    "close": "Stäng"
+  },
+  "helpThisView": {
+    "score": "Vy för sammanfattad poäng och översikt.",
+    "score-board": "Detaljerad tabell med alla nyckeltal och branschjämförelser.",
+    "entry-exit-benjamin-graham": "Entry/Exit-värden och Benjamin Graham-värderingar.",
+    "fundamental-pe-industry": "P/E-jämförelser per bransch.",
+    "threshold-industry": "Tröskelvärden per bransch.",
+    "personal-portfolio": "Din personliga aktieportfölj.",
+    "default": "Tabellvy med sökning, filter och sortering."
+  },
+  "onboarding": {
+    "title": "Välkommen till Stock Score",
+    "step1": {"title": "Välkommen", "content": "Detta är din guide. Klicka på Nästa för att lära dig mer. Du kan stänga när som helst."},
+    "step2": {"title": "Tabeller", "content": "Tabellerna stöder sökning, filtrering, sortering och kolumnsynlighet. Använd verktygsfälten ovanför varje tabell."},
+    "step3": {"title": "Villkor och färger", "content": "Värden är färgkodade: GRÖN = bra, BLÅ = medel, RÖD = dåligt. Hovra över kolumnnamn för mer info."},
+    "stepScoreBoard": {"title": "Score Board", "content": "Score Board visar alla nyckeltal och branschjämförelser. Använd Score-vyn för poäng (0-100)."},
+    "stepEntryExit": {"title": "Entry/Exit", "content": "Entry/Exit-tabellen visar Benjamin Graham-värderingar och manuella entry/exit-värden."},
+    "stepPEIndustry": {"title": "P/E Industry", "content": "P/E Industry jämför P/E-värden per bransch för att hitta undervärderade aktier."},
+    "stepThreshold": {"title": "Threshold", "content": "Threshold Industry visar tröskelvärden per bransch som styr färgkodningen."},
+    "step4": {"title": "Offline", "content": "Du är offline. Vissa vyer kan vara begränsade. Cachad data visas om tillgänglig."},
+    "step5": {"title": "Klar", "content": "Du kan alltid öppna denna guide igen via Hjälp-menyn. Lycka till!"},
+    "skip": "Hoppa över",
+    "previous": "Föregående",
+    "next": "Nästa",
+    "done": "Klar",
+    "showAgain": "Visa onboarding igen",
+    "help": "Hjälp"
+  },
   "offline": {
-    "indicator": "Offline - Visar cachad data"
+    "readOnly": "Endast läsning (offline)",
+    "indicator": "Offline – data kan vara inaktuell",
+    "showingCached": "Visar cachad data",
+    "tryAgain": "Försök igen",
+    "dataUnavailable": "Data går inte att hämta offline. Kontrollera nätverket och försök igen."
   },
   "pullToRefresh": {
     "pull": "Dra för att uppdatera",

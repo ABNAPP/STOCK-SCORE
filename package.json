@@ -19,8 +19,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "test:unit": "vitest run src/**/__tests__/**/*.test.{ts,tsx}",
-    "test:integration": "vitest run src/test/integration/**/*.test.{ts,tsx}",
+    "test:unit": "vitest run __tests__",
+    "test:integration": "vitest run src/test/integration",
     "test:e2e": "playwright test",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"

@@ -4,10 +4,13 @@ interface LastUpdatedProps {
   lastUpdated: Date | null;
   onRefresh: () => void;
   loading: boolean;
+  isOffline?: boolean;
+  isReadOnly?: boolean;
 }
 
-export default function LastUpdated({ lastUpdated, onRefresh, loading }: LastUpdatedProps) {
+export default function LastUpdated({ lastUpdated, onRefresh, loading, isOffline, isReadOnly }: LastUpdatedProps) {
   const { t, i18n } = useTranslation();
+  const showReadOnlyBadge = isOffline && isReadOnly;
 
   const formatDate = (date: Date) => {
     const locale = i18n.language === 'sv' ? 'sv-SE' : 'en-US';
@@ -24,15 +27,25 @@ export default function LastUpdated({ lastUpdated, onRefresh, loading }: LastUpd
 
   return (
     <div className="mb-6 text-sm font-medium text-gray-600 dark:text-gray-300">
-      <span>
-        {t('lastUpdated.lastUpdated')}:{' '}
-        <span className="font-semibold text-gray-700 dark:text-gray-300">
-          {lastUpdated ? formatDate(lastUpdated) : t('lastUpdated.never')}
+      <div className="flex flex-wrap items-center gap-2">
+        <span>
+          {t('lastUpdated.lastUpdated')}:{' '}
+          <span className="font-semibold text-gray-700 dark:text-gray-300">
+            {lastUpdated ? formatDate(lastUpdated) : t('lastUpdated.never')}
+          </span>
         </span>
-      </span>
+        {showReadOnlyBadge && (
+          <span
+            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200"
+            role="status"
+          >
+            {t('offline.readOnly')}
+          </span>
+        )}
+      </div>
       <button
         onClick={onRefresh}
-        disabled={loading}
+        disabled={loading || showReadOnlyBadge}
         className="ml-2 py-2 px-2 -mx-2 text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold underline disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 min-h-[44px] touch-manipulation inline-flex items-center gap-1.5"
         aria-label={t('aria.refreshButton')}
       >

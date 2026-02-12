@@ -66,11 +66,20 @@ function isNAValue(value: unknown, key: string | number | symbol): boolean {
 export function useTableSort<T>(
   data: T[],
   defaultSortKey: keyof T,
-  defaultDirection: SortDirection = 'asc'
+  defaultDirection: SortDirection = 'asc',
+  initialSortConfig?: { key: string; direction: 'asc' | 'desc' }
 ) {
-  const [sortConfig, setSortConfig] = useState<SortConfig<T>>({
-    key: defaultSortKey,
-    direction: defaultDirection,
+  const [sortConfig, setSortConfig] = useState<SortConfig<T>>(() => {
+    if (initialSortConfig) {
+      return {
+        key: initialSortConfig.key as keyof T,
+        direction: initialSortConfig.direction,
+      };
+    }
+    return {
+      key: defaultSortKey,
+      direction: defaultDirection,
+    };
   });
 
   const sortedData = useMemo(() => {

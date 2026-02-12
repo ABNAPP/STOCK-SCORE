@@ -1,20 +1,27 @@
 import { createContext, useContext, ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../config/firebase';
 import { useToast } from './ToastContext';
 import { useNotifications } from './NotificationContext';
-import { useTranslation } from 'react-i18next';
-import { clearCache } from '../services/firestoreCacheService';
 import { useLoadingProgress } from './LoadingProgressContext';
+import { useTranslation } from 'react-i18next';
 import { requestClearApiCache } from '../utils/serviceWorkerRegistration';
+import { clearCache } from '../services/firestoreCacheService';
 import { logger } from '../utils/logger';
 
 /** Data sources that can register refetch functions */
 export type DataSourceId = 'score-board' | 'benjamin-graham' | 'pe-industry';
 
+/** Options for refetch - skipFetch: only read from viewData (after adminRefreshCache) */
+export interface RefetchOptions {
+  skipFetch?: boolean;
+}
+
 interface RefreshContextType {
   refreshAll: () => Promise<void>;
   isRefreshing: boolean;
   /** Register a refetch function. Returns unregister callback for cleanup on unmount. */
-  registerRefetch: (sourceId: DataSourceId, refetch: () => Promise<void>) => () => void;
+  registerRefetch: (sourceId: DataSourceId, refetch: (options?: RefetchOptions) => Promise<void>) => () => void;
   // Individual refetch functions (trigger only registered refetches for that source)
   refreshBenjaminGraham: () => Promise<void>;
   refreshScoreBoard: () => Promise<void>;
@@ -28,39 +35,34 @@ interface RefreshProviderProps {
 }
 
 /** Registry: sourceId -> Set of refetch functions. Each mounted hook instance registers. */
-type RefetchRegistry = Map<DataSourceId, Set<() => Promise<void>>>;
+type RefetchRegistry = Map<DataSourceId, Set<(options?: RefetchOptions) => Promise<void>>>;
 
 export function RefreshProvider({ children }: RefreshProviderProps) {
   const { t } = useTranslation();
-  const { showSuccess, showError, showWarning } = useToast();
+  const { showSuccess, showError } = useToast();
   const { createNotification } = useNotifications();
   const { reset: resetProgress } = useLoadingProgress();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Registry: stable ref so callbacks don't need to depend on it
   const registryRef = useRef<RefetchRegistry>(new Map());
 
-  const registerRefetch = useCallback((sourceId: DataSourceId, refetch: () => Promise<void>) => {
+  const registerRefetch = useCallback((sourceId: DataSourceId, refetch: (options?: RefetchOptions) => Promise<void>) => {
     const registry = registryRef.current;
     if (!registry.has(sourceId)) {
       registry.set(sourceId, new Set());
     }
-    const set = registry.get(sourceId)!;
-    set.add(refetch);
-
+    registry.get(sourceId)!.add(refetch);
     return () => {
-      set.delete(refetch);
-      if (set.size === 0) {
-        registry.delete(sourceId);
-      }
+      registry.get(sourceId)?.delete(refetch);
+      if (registry.get(sourceId)?.size === 0) registry.delete(sourceId);
     };
   }, []);
 
   const callRefetchesForSource = useCallback(
-    async (sourceId: DataSourceId): Promise<PromiseSettledResult<void>[]> => {
+    async (sourceId: DataSourceId, options?: RefetchOptions): Promise<PromiseSettledResult<void>[]> => {
       const set = registryRef.current.get(sourceId);
       if (!set || set.size === 0) return [];
-      const promises = Array.from(set).map((fn) => fn());
+      const promises = Array.from(set).map((fn) => fn(options));
       return Promise.allSettled(promises);
     },
     []
@@ -69,23 +71,25 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
   const refreshAll = useCallback(async () => {
     try {
       setIsRefreshing(true);
-      logger.info('Refresh Now: Starting refresh process', { component: 'RefreshContext', operation: 'refreshAll' });
+      logger.info('Refresh Now: Clearing cache', { component: 'RefreshContext', operation: 'refreshAll' });
+      await clearCache();
 
-      // Clear cache before refreshing
-      logger.debug('Refresh Now: Clearing Firestore cache', { component: 'RefreshContext', operation: 'refreshAll' });
-      const { cleared } = await clearCache();
-      if (cleared) {
-        logger.info('Refresh Now: Firestore cache cleared successfully', { component: 'RefreshContext', operation: 'refreshAll' });
-      } else {
-        logger.warn('Refresh Now: Firestore cache could not be cleared', {
+      logger.info('Refresh Now: Calling adminRefreshCache (server-side)', { component: 'RefreshContext', operation: 'refreshAll' });
+      const adminRefresh = httpsCallable<{ viewIds?: string[]; force?: boolean; dryRun?: boolean }, { ok: boolean; refreshed: unknown[]; errors: string[] }>(
+        functions,
+        'adminRefreshCache'
+      );
+      const result = await adminRefresh({ force: true });
+      const data = result.data;
+
+      if (!data?.ok) {
+        throw new Error(data?.errors?.join('; ') || 'adminRefreshCache failed');
+      }
+      if ((data.errors ?? []).length > 0) {
+        logger.warn('Refresh Now: adminRefreshCache completed with errors', {
           component: 'RefreshContext',
           operation: 'refreshAll',
-        });
-        const cacheClearWarning = t('toast.refreshCacheClearWarning', 'Cache could not be cleared; you may need editor rights. Data will still refresh where possible.');
-        showWarning(cacheClearWarning);
-        createNotification('warning', 'Cache Clear Skipped', cacheClearWarning, {
-          showDesktop: true,
-          persistent: false,
+          errors: data.errors,
         });
       }
 
@@ -93,23 +97,21 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
 
       try {
         await requestClearApiCache();
-        logger.debug('Refresh Now: Service Worker API cache cleared', { component: 'RefreshContext', operation: 'refreshAll' });
       } catch (swError) {
-        logger.warn('Refresh Now: Failed to clear SW cache, continuing with refetch', {
+        logger.warn('Refresh Now: Failed to clear SW cache, continuing', {
           component: 'RefreshContext',
           operation: 'refreshAll',
           error: swError,
         });
       }
 
-      logger.debug('Refresh Now: Triggering registered refetches', { component: 'RefreshContext', operation: 'refreshAll' });
-
+      logger.debug('Refresh Now: Triggering refetches (viewData only)', { component: 'RefreshContext', operation: 'refreshAll' });
       const sourceIds: DataSourceId[] = ['score-board', 'benjamin-graham', 'pe-industry'];
       const allResults: PromiseSettledResult<void>[] = [];
       const dataTypeNames = ['ScoreBoard', 'BenjaminGraham', 'PEIndustry'];
 
       for (let i = 0; i < sourceIds.length; i++) {
-        const results = await callRefetchesForSource(sourceIds[i]);
+        const results = await callRefetchesForSource(sourceIds[i], { skipFetch: true });
         results.forEach((r) => allResults.push(r));
         const dataType = dataTypeNames[i];
         results.forEach((result, idx) => {
@@ -127,55 +129,24 @@ export function RefreshProvider({ children }: RefreshProviderProps) {
       }
 
       const hasErrors = allResults.some((r) => r.status === 'rejected');
-
       if (hasErrors) {
         const errorMessage = t('toast.refreshError', 'Fel vid uppdatering av data');
-        logger.error('Refresh Now: Refresh completed with errors', {
-          component: 'RefreshContext',
-          operation: 'refreshAll',
-          hasErrors: true,
-        });
         showError(errorMessage);
-        createNotification('error', 'Data Refresh Failed', errorMessage, {
-          showDesktop: true,
-          persistent: false,
-        });
+        createNotification('error', 'Data Refresh Failed', errorMessage, { showDesktop: true, persistent: false });
       } else {
         const successMessage = t('toast.refreshSuccess', 'All data har uppdaterats');
-        logger.info('Refresh Now: All registered refetches completed', {
-          component: 'RefreshContext',
-          operation: 'refreshAll',
-        });
         showSuccess(successMessage);
-        createNotification('success', 'Data Refresh Complete', successMessage, {
-          showDesktop: false,
-          persistent: false,
-        });
+        createNotification('success', 'Data Refresh Complete', successMessage, { showDesktop: false, persistent: false });
       }
     } catch (error: unknown) {
-      logger.error('Refresh Now: Unexpected error during refresh', {
-        component: 'RefreshContext',
-        operation: 'refreshAll',
-        error,
-      });
+      logger.error('Refresh Now: Unexpected error', { component: 'RefreshContext', operation: 'refreshAll', error });
       const errorMessage = t('toast.refreshError', 'Fel vid uppdatering av data');
       showError(errorMessage);
-      createNotification('error', 'Data Refresh Error', errorMessage, {
-        showDesktop: true,
-        persistent: false,
-      });
+      createNotification('error', 'Data Refresh Error', errorMessage, { showDesktop: true, persistent: false });
     } finally {
       setIsRefreshing(false);
     }
-  }, [
-    callRefetchesForSource,
-    showSuccess,
-    showError,
-    showWarning,
-    createNotification,
-    t,
-    resetProgress,
-  ]);
+  }, [callRefetchesForSource, showSuccess, showError, createNotification, t, resetProgress]);
 
   const refreshBenjaminGraham = useCallback(async () => {
     setIsRefreshing(true);

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, ReactNode, lazy, Suspense } from 'react';
+import React, { useState, useCallback, useRef, useEffect, ReactNode, lazy, Suspense } from 'react';
 import { useTableSort, SortConfig } from '../hooks/useTableSort';
 import { useTableSearch } from '../hooks/useTableSearch';
 import { useTablePagination } from '../hooks/useTablePagination';
@@ -8,7 +8,7 @@ import { TableSkeleton } from './SkeletonLoader';
 import TableSearchBar from './TableSearchBar';
 import Pagination from './Pagination';
 import ColumnVisibilityToggle from './ColumnVisibilityToggle';
-import { FilterConfig, FilterValues } from '../types/filters';
+import { FilterConfig, FilterValues, ShareableTableState } from '../types/filters';
 import ShareableLinkModal from './ShareableLinkModal';
 import { useTranslation } from 'react-i18next';
 import { exportTableData, ExportColumn } from '../services/exportService';
@@ -24,6 +24,29 @@ import { UniqueValue } from '../hooks/useColumnUniqueValues';
 import ColumnFilterMenu from './ColumnFilterMenu';
 import BaseTableToolbar from './BaseTableToolbar';
 
+/** Deterministic stringify for row hashing (keys sorted, max length capped) */
+function stableStringify(obj: unknown, maxLen = 500): string {
+  try {
+    if (obj === null || typeof obj !== 'object') return String(obj);
+    const o = obj as Record<string, unknown>;
+    const sorted = Object.keys(o).sort().reduce((acc, k) => {
+      acc[k] = o[k];
+      return acc;
+    }, {} as Record<string, unknown>);
+    return JSON.stringify(sorted).slice(0, maxLen);
+  } catch {
+    return 'row-unknown';
+  }
+}
+
+/** djb2 hash for stable row keys */
+function stableHash(str: string): string {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) + h) + str.charCodeAt(i);
+  }
+  return Math.abs(h).toString(36);
+}
 
 export interface ColumnDefinition<T = unknown> extends ColumnConfig {
   sortable?: boolean;
@@ -120,6 +143,15 @@ export interface BaseTableProps<T> {
   // Shareable link configuration
   enableShareableLink?: boolean;
   viewId?: string;
+
+  // Initial state from shareable link (one-shot hydration)
+  initialFilterState?: FilterValues;
+  initialColumnFilters?: ColumnFilters;
+  initialSearchValue?: string;
+  initialSortConfig?: { key: string; direction: 'asc' | 'desc' };
+
+  // Retry callback for error state (e.g. offline, network failure)
+  onRetry?: () => void;
 }
 
 export default function BaseTable<T extends Record<string, unknown>>({
@@ -161,12 +193,30 @@ export default function BaseTable<T extends Record<string, unknown>>({
   printTableName,
   enableShareableLink = false,
   viewId,
+  initialFilterState,
+  initialColumnFilters,
+  initialSearchValue,
+  initialSortConfig,
+  onRetry,
 }: BaseTableProps<T>) {
   const { t } = useTranslation();
   const { createNotification } = useNotifications();
   const { currentUser } = useAuth();
-  const [filterValues, setFilterValues] = useState<FilterValues>({});
+  const [filterValues, setFilterValues] = useState<FilterValues>(initialFilterState ?? {});
   const [shareableLinkModalOpen, setShareableLinkModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (import.meta.env.DEV && (initialFilterState ?? initialColumnFilters ?? initialSearchValue ?? initialSortConfig)) {
+      // eslint-disable-next-line no-console
+      console.debug('[BaseTable] Hydration: initial state applied', {
+        tableId,
+        hasFilterState: !!initialFilterState && Object.keys(initialFilterState).length > 0,
+        hasColumnFilters: !!initialColumnFilters && Object.keys(initialColumnFilters).length > 0,
+        hasSearchValue: !!initialSearchValue,
+        hasSortConfig: !!initialSortConfig,
+      });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- log once on mount when hydration props present
   const [expandedRows, setExpandedRows] = useState<{ [key: string]: boolean }>({});
   const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
   const [openFilterMenuColumn, setOpenFilterMenuColumn] = useState<string | null>(null);
@@ -184,6 +234,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
   } = useColumnFilters<T>({
     data,
     tableId,
+    initialFilters: initialColumnFilters,
   });
   
   // Column visibility
@@ -238,6 +289,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
     data: dataToFilter,
     searchFields,
     advancedFilters: hasColumnFilters ? {} : filterValues, // Don't apply advanced filters if column filters are active
+    initialSearch: initialSearchValue ?? '',
   });
 
   // Determine final data: if column filters active, use column filtered data; otherwise use search filtered data
@@ -247,7 +299,8 @@ export default function BaseTable<T extends Record<string, unknown>>({
   const { sortedData, sortConfig, handleSort: baseHandleSort } = useTableSort(
     finalFilteredData,
     defaultSortKey || (searchFields[0] as keyof T),
-    defaultSortDirection
+    defaultSortDirection,
+    initialSortConfig
   );
 
   // Handler specifically for column filter menu sort buttons
@@ -334,15 +387,17 @@ export default function BaseTable<T extends Record<string, unknown>>({
     setFilterValues(newFilters);
   }, []);
 
-  // Generate row key - must be defined before it's used in handlers
+  // Generate row key - must be defined before it's used in handlers.
+  // Stable identifier (no index) so expanded state survives sort/filter changes.
   const getItemRowKey = useCallback((item: T, index: number) => {
     if (getRowKey) {
       return getRowKey(item, index);
     }
-    // Default: try to use ticker and companyName
+    // Default: try to use ticker and companyName (stable, no index)
     const ticker = 'ticker' in item && typeof item.ticker === 'string' ? item.ticker : '';
     const companyName = 'companyName' in item && typeof item.companyName === 'string' ? item.companyName : '';
-    return `${ticker}-${companyName}-${index}`;
+    if (ticker || companyName) return `${ticker}-${companyName}`;
+    return `row-${stableHash(stableStringify(item))}`;
   }, [getRowKey]);
 
   // Toggle row expansion for mobile view
@@ -745,7 +800,15 @@ export default function BaseTable<T extends Record<string, unknown>>({
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8" role="alert" aria-live="assertive">
         <h3 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">{t('aria.error')}</h3>
-        <p className="text-base font-medium text-gray-700 dark:text-gray-300">{error}</p>
+        <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-4">{error}</p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-500 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors min-h-[44px]"
+          >
+            {t('offline.tryAgain')}
+          </button>
+        )}
       </div>
     );
   }
@@ -877,6 +940,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
             {enableVirtualScroll ? (
               <VirtualTableBody
                 data={displayData}
+                getRowKey={getItemRowKey}
                 renderRow={(item, index, globalIndex) => {
                   const rowKey = getItemRowKey(item, globalIndex);
                   const rowBgClass = globalIndex % 2 === 0 
@@ -891,6 +955,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                     <React.Fragment key={rowKey}>
                       <tr 
                         data-row-index={index}
+                        data-rowkey={rowKey}
                         className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''}`}
                         onClick={() => handleRowClick(index)}
                         onKeyDown={(e) => {
@@ -988,6 +1053,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                       <React.Fragment key={rowKey}>
                         <tr 
                           data-row-index={index}
+                          data-rowkey={rowKey}
                           className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base animate-fade-in ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''}`}
                           style={{ animationDelay: `${index * 10}ms` }}
                           onClick={() => handleRowClick(index)}
@@ -1091,6 +1157,8 @@ export default function BaseTable<T extends Record<string, unknown>>({
           viewId={viewId}
           tableId={tableId}
           sortConfig={sortConfig.key ? { key: String(sortConfig.key), direction: sortConfig.direction } : undefined}
+          columnFilters={Object.keys(columnFilters).length > 0 ? columnFilters : undefined}
+          searchValue={searchValue || undefined}
         />
       )}
     </>

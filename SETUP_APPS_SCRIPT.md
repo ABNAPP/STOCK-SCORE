@@ -64,6 +64,19 @@ Efter att ha lagt till environment variables i Vercel **måste** du redeploya:
    (Ersätt YOUR_SCRIPT_ID med ditt Script ID.)
    Du bör se JSON-data. Om du ser en inloggningssida eller felmeddelande, kontrollera att Apps Script är deployat med "Who has access" = "Anyone".
 
+### Token och fail-closed (prod)
+
+För fullständig token-policy: se [docs/SECURITY.md](docs/SECURITY.md). Kort: Client→Proxy använder Authorization header; Function→Apps Script använder body (Apps Script läser ej headers). Fail-closed: API_TOKEN satt => 401 utan giltig token. Dev: Lämna API_TOKEN tomt för enklare utveckling.
+
+### Secure mode och proxy
+
+I produktion ska **secure mode** vara aktiverat. Sätt då:
+
+- `VITE_APPS_SCRIPT_TOKEN` – API-token (samma som i Apps Script Script properties)
+- `VITE_APPS_SCRIPT_PROXY_URL` – URL till proxy som vidarebefordrar till Apps Script (proxy krävs i secure mode)
+
+Alternativt: sätt `VITE_APPS_SCRIPT_SECURE_MODE=true` för att tvinga secure beteende utan token (proxy krävs fortfarande). I secure mode blockeras legacy GET helt; använd delta sync eller admin refresh. Se [docs/SECURITY.md](docs/SECURITY.md) sektion "Steg C" för detaljer.
+
 ## Felsökning
 
 ### Problemet kvarstår efter redeploy?

@@ -23,8 +23,8 @@ import OfflineIndicator from './components/OfflineIndicator';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
 import ShareableView from './components/views/ShareableView';
 import { ShareableLink } from './services/shareableLinkService';
-import { FilterValues } from './types/filters';
 import { runPostAuthMigrations } from './services/migrations';
+import { ShareableHydrationProvider } from './contexts/ShareableHydrationContext';
 
 // Lazy load view components for better performance (with retry for dev "Failed to fetch" resilience)
 const ScoreBoardView = lazyWithRetry<typeof import('./components/views/ScoreBoardView').default>(() => import('./components/views/ScoreBoardView'), 'ScoreBoardView');
@@ -38,10 +38,25 @@ const AdminView = lazyWithRetry<typeof import('./components/views/AdminView').de
 // Lazy load modal components
 const ConditionsModal = lazyWithRetry<typeof import('./components/ConditionsModal').default>(() => import('./components/ConditionsModal'), 'ConditionsModal');
 const UserProfileModal = lazyWithRetry<typeof import('./components/UserProfileModal').default>(() => import('./components/UserProfileModal'), 'UserProfileModal');
+const HelpModal = lazyWithRetry<typeof import('./components/HelpModal').default>(() => import('./components/HelpModal'), 'HelpModal');
+
+const MAIN_VIEW_IDS: ViewId[] = [
+  'score',
+  'score-board',
+  'entry-exit-benjamin-graham',
+  'fundamental-pe-industry',
+  'threshold-industry',
+  'personal-portfolio',
+  'admin',
+];
+
+function isValidViewPath(path: string): path is ViewId {
+  return (MAIN_VIEW_IDS as string[]).includes(path);
+}
 
 function App() {
   const { loading: authLoading, currentUser } = useAuth();
-  const { canView, isAdmin } = useUserRole();
+  const { canView, isAdmin, getDefaultLandingView } = useUserRole();
   const { t } = useTranslation();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -51,7 +66,11 @@ function App() {
   const [selectedViewForModal, setSelectedViewForModal] = useState<ViewId | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [userProfileOpen, setUserProfileOpen] = useState(false);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
   const [loadedShareableLink, setLoadedShareableLink] = useState<ShareableLink | null>(null);
+
+  const handleOpenHelpModal = useCallback(() => setHelpModalOpen(true), []);
+  const handleCloseHelpModal = useCallback(() => setHelpModalOpen(false), []);
 
   // Run post-auth migrations and setup when user is authenticated
   useEffect(() => {
@@ -60,28 +79,51 @@ function App() {
     }
   }, [authLoading, currentUser]);
 
-  // Sync activeView from URL (e.g. /admin) and redirect non-admin away from /admin
+  // Sync activeView from URL and handle redirects for unauthorized access
   useEffect(() => {
     if (!currentUser) return;
-    const path = location.pathname.replace(/^\//, '') || 'score';
+    const rawPath = location.pathname.replace(/^\//, '');
+    const path = rawPath || 'score';
+    const defaultView = getDefaultLandingView();
+
     if (path === 'admin') {
       if (isAdmin) {
         setActiveView('admin');
       } else {
-        navigate('/', { replace: true });
-        setActiveView('score');
+        navigate(`/${defaultView}`, { replace: true });
+        setActiveView(defaultView);
+        showToast(t('common.unauthorizedView') || 'Du har inte tillgång till denna vy', 'warning');
       }
+      return;
     }
-  }, [currentUser, location.pathname, isAdmin, navigate]);
 
-  // Redirect viewers if they try to access unauthorized views
-  // This useEffect must be called before any early returns to maintain hook order
+    if (isValidViewPath(path)) {
+      if (canView(path)) {
+        setActiveView(path);
+      } else {
+        navigate(`/${defaultView}`, { replace: true });
+        setActiveView(defaultView);
+        showToast(t('common.unauthorizedView') || 'Du har inte tillgång till denna vy', 'warning');
+      }
+      return;
+    }
+
+    // Unknown path or empty: sync to default and update URL
+    if (path !== defaultView) {
+      navigate(`/${defaultView}`, { replace: true });
+      setActiveView(defaultView);
+    }
+  }, [currentUser, location.pathname, isAdmin, canView, getDefaultLandingView, navigate, showToast, t]);
+
+  // Redirect if activeView becomes unauthorized (e.g. role change)
   useEffect(() => {
     if (!canView(activeView)) {
-      setActiveView('score');
+      const defaultView = getDefaultLandingView();
+      setActiveView(defaultView);
+      navigate(`/${defaultView}`, { replace: true });
       showToast(t('common.unauthorizedView') || 'Du har inte tillgång till denna vy', 'warning');
     }
-  }, [activeView, canView, showToast, t]);
+  }, [activeView, canView, getDefaultLandingView, navigate, showToast, t]);
 
   // Background sync and cache warming disabled - using Firestore cache instead
 
@@ -104,6 +146,16 @@ function App() {
     // Update URL without navigation
     navigate(`/${viewId}`, { replace: true });
   }, [canView, showToast, t, navigate]);
+
+  // Expose handleViewChange for RBAC integration tests (D1)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && import.meta.env.MODE === 'test') {
+      (window as Window & { __STOCK_SCORE_TEST__?: { handleViewChange: (viewId: ViewId) => void } }).__STOCK_SCORE_TEST__ = {
+        ...(window as Window & { __STOCK_SCORE_TEST__?: object }).__STOCK_SCORE_TEST__,
+        handleViewChange,
+      };
+    }
+  }, [handleViewChange]);
 
   // Show loading state while auth is initializing
   if (authLoading) {
@@ -247,7 +299,11 @@ function App() {
                   pageName={pageName}
                   userProfileOpen={userProfileOpen}
                   setUserProfileOpen={setUserProfileOpen}
+                  helpModalOpen={helpModalOpen}
+                  onOpenHelpModal={handleOpenHelpModal}
+                  onCloseHelpModal={handleCloseHelpModal}
                   loadedShareableLink={loadedShareableLink}
+                  onConsumeShareableLink={() => setLoadedShareableLink(null)}
                 />
               </AutoRefreshProvider>
             </RefreshProvider>
@@ -272,7 +328,11 @@ function AppContent({
   pageName,
   userProfileOpen,
   setUserProfileOpen,
+  helpModalOpen,
+  onOpenHelpModal,
+  onCloseHelpModal,
   loadedShareableLink,
+  onConsumeShareableLink,
 }: {
   activeView: ViewId;
   setActiveView: (view: ViewId) => void;
@@ -287,7 +347,11 @@ function AppContent({
   pageName: string;
   userProfileOpen: boolean;
   setUserProfileOpen: (open: boolean) => void;
+  helpModalOpen: boolean;
+  onOpenHelpModal: () => void;
+  onCloseHelpModal: () => void;
   loadedShareableLink: ShareableLink | null;
+  onConsumeShareableLink: () => void;
 }) {
   const { toasts, removeToast } = useToast();
   const { t } = useTranslation();
@@ -303,12 +367,14 @@ function AppContent({
   const isRefreshingAny = isRefreshing || isPullRefreshing;
 
   return (
+    <ShareableHydrationProvider link={loadedShareableLink} onConsume={onConsumeShareableLink}>
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       <SkipLinks />
       <Header 
         onNavigate={setActiveView}
         activeView={activeView}
         sidebarCollapsed={sidebarCollapsed}
+        onOpenHelpModal={onOpenHelpModal}
       />
       <Sidebar 
         activeView={activeView} 
@@ -391,6 +457,15 @@ function AppContent({
           {renderView()}
         </div>
       </main>
+      {helpModalOpen && (
+        <Suspense fallback={null}>
+          <HelpModal
+            isOpen={helpModalOpen}
+            onClose={onCloseHelpModal}
+            viewId={activeView}
+          />
+        </Suspense>
+      )}
       {conditionsModalOpen && (
         <Suspense fallback={null}>
           <ConditionsModal
@@ -412,6 +487,7 @@ function AppContent({
       <ToastContainer toasts={toasts} onClose={removeToast} />
       <OfflineIndicator />
     </div>
+    </ShareableHydrationProvider>
   );
 }
 

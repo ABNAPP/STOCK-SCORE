@@ -9,6 +9,7 @@ import { logger } from '../../utils/logger';
 import type { DataRow, ProgressCallback } from './types';
 import { fetchJSONData } from './fetchJson';
 import { fetchCSVData } from './fetchCsv';
+import { SecurityError } from '../../utils/securityErrors';
 import { convert2DArrayToObjects, createMockParseResult } from './fetchDataConversion';
 import { validateCSVText } from './fetchValidation';
 
@@ -59,6 +60,9 @@ export async function fetchWithFallback<T>(
       additionalData
     );
   } catch (error: unknown) {
+    if (error instanceof SecurityError) {
+      throw error;
+    }
     logger.warn(
       `Apps Script API failed for ${dataTypeName}, falling back to CSV proxy (slower method)`,
       { component: 'fetchService', dataTypeName, operation: 'fetchWithFallback', error }

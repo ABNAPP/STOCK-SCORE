@@ -7,11 +7,11 @@
 
 import { logger } from '../utils/logger';
 import { requestBackgroundSync } from '../utils/serviceWorkerRegistration';
-import { isDeltaSyncEnabled } from './deltaSyncService';
+import { isDeltaSyncEnabled, getApiBaseUrlForDeltaSync } from './deltaSyncService';
 import { snapshotToTransformerFormat } from './deltaSyncService';
 import type { SnapshotResponse } from './deltaSyncService';
 import { CACHE_KEYS } from './cacheKeys';
-import { getCachedData, setDeltaCacheEntry } from './firestoreCacheService';
+import { getCachedData, setDeltaCacheEntry, VIEWDATA_MIGRATION_MODE } from './firestoreCacheService';
 import { transformBenjaminGrahamData } from './sheets/benjaminGrahamService';
 import { transformPEIndustryData } from './sheets/peIndustryService';
 import { transformSMAData } from './sheets/smaService';
@@ -19,7 +19,6 @@ import { createScoreBoardTransformer } from './sheets/scoreBoardService';
 import type { PEIndustryData } from '../types/stock';
 import type { SMAData } from '../types/stock';
 
-const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
 const APPS_SCRIPT_TOKEN = import.meta.env.VITE_APPS_SCRIPT_TOKEN || '';
 
 // Sync coordination flag (stored in sessionStorage to coordinate between main app and SW)
@@ -121,17 +120,20 @@ async function persistSnapshotToCache(
 
   const version = snapshot.version ?? 0;
 
+  // cutover: no appCache writes for view-docs
+  const skipAppCacheWrite = VIEWDATA_MIGRATION_MODE === 'cutover';
+
   for (const cacheKey of cacheKeys) {
     try {
       if (cacheKey === CACHE_KEYS.BENJAMIN_GRAHAM) {
         const data = transformBenjaminGrahamData(transformerFormat);
-        await setDeltaCacheEntry(cacheKey, data, version, true);
+        if (!skipAppCacheWrite) await setDeltaCacheEntry(cacheKey, data, version, true);
       } else if (cacheKey === CACHE_KEYS.PE_INDUSTRY) {
         const data = transformPEIndustryData(transformerFormat);
-        await setDeltaCacheEntry(cacheKey, data, version, true);
+        if (!skipAppCacheWrite) await setDeltaCacheEntry(cacheKey, data, version, true);
       } else if (cacheKey === CACHE_KEYS.SMA) {
         const data = transformSMAData(transformerFormat);
-        await setDeltaCacheEntry(cacheKey, data, version, true);
+        if (!skipAppCacheWrite) await setDeltaCacheEntry(cacheKey, data, version, true);
       } else if (cacheKey === CACHE_KEYS.SCORE_BOARD) {
         const peData = await getCachedData<PEIndustryData[]>(CACHE_KEYS.PE_INDUSTRY);
         const smaData = await getCachedData<SMAData[]>(CACHE_KEYS.SMA);
@@ -158,7 +160,7 @@ async function persistSnapshotToCache(
         });
         const transformer = createScoreBoardTransformer(industryPe1Map, industryPe2Map, smaDataMap);
         const data = transformer(transformerFormat);
-        await setDeltaCacheEntry(cacheKey, data, version, true);
+        if (!skipAppCacheWrite) await setDeltaCacheEntry(cacheKey, data, version, true);
       }
     } catch (err) {
       logger.warn('Failed to persist cache key in background sync', {
@@ -175,7 +177,19 @@ async function persistSnapshotToCache(
  * Sync a single sheet in the background (one fetch per sheet, persist to all its cache keys)
  */
 async function syncSheet(sheetName: string, cacheKeys: string[]): Promise<void> {
-  if (!APPS_SCRIPT_URL) {
+  let apiBaseUrl: string;
+  try {
+    apiBaseUrl = getApiBaseUrlForDeltaSync();
+  } catch (err) {
+    logger.warn('Cannot use direct Apps Script with API_TOKEN. Set VITE_APPS_SCRIPT_PROXY_URL. Skipping background sync.', {
+      component: 'backgroundSyncService',
+      sheetName,
+      error: err,
+    });
+    return;
+  }
+
+  if (!apiBaseUrl) {
     logger.debug('Apps Script URL not configured, skipping background sync', {
       component: 'backgroundSyncService',
       sheetName,
@@ -208,7 +222,7 @@ async function syncSheet(sheetName: string, cacheKeys: string[]): Promise<void> 
 
     const result = await requestBackgroundSync(
       sheetName,
-      APPS_SCRIPT_URL,
+      apiBaseUrl,
       APPS_SCRIPT_TOKEN || undefined
     ) as { type: string; sheetName?: string; snapshot?: SnapshotResponse };
 

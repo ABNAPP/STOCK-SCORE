@@ -267,8 +267,62 @@
       "step4": "Check that RefreshProvider is not conditionally rendered"
     }
   },
+  "help": {
+    "title": "Help",
+    "sections": {
+      "conditions": {
+        "title": "What does Conditions mean?",
+        "content": "Conditions describe rules and thresholds for each column in the table. Each column has a data source (where data comes from), optional formula (how values are calculated), and conditions that control color coding and filtering. Green = good, blue = medium, red = bad."
+      },
+      "filters": {
+        "title": "How filtering works",
+        "content": "You can filter in two ways: 1) Column filters – click the filter icon in the column header to filter directly in that column. 2) Advanced filters – open the filter menu to combine multiple conditions. Column filters and advanced filters can be combined."
+      },
+      "score": {
+        "title": "How Score & breakdown works",
+        "content": "Score is a composite rating based on multiple metrics. Breakdown shows how each part contributes to the total score. Higher scores indicate better valuation according to the selected criteria."
+      },
+      "shareExport": {
+        "title": "Share and Export",
+        "content": "Shareable links save your current view (filters, sort, columns). The link respects permissions – recipients see only their allowed data. Export to CSV or Excel saves the filtered data."
+      }
+    },
+    "thisView": "This view",
+    "close": "Close"
+  },
+  "helpThisView": {
+    "score": "View for summary score and overview.",
+    "score-board": "Detailed table with all metrics and industry comparisons.",
+    "entry-exit-benjamin-graham": "Entry/Exit values and Benjamin Graham valuations.",
+    "fundamental-pe-industry": "P/E comparisons by industry.",
+    "threshold-industry": "Threshold values per industry.",
+    "personal-portfolio": "Your personal stock portfolio.",
+    "default": "Table view with search, filters and sorting."
+  },
+  "onboarding": {
+    "title": "Welcome to Stock Score",
+    "step1": {"title": "Welcome", "content": "This is your guide. Click Next to learn more. You can close anytime."},
+    "step2": {"title": "Tables", "content": "Tables support search, filtering, sorting and column visibility. Use the toolbars above each table."},
+    "step3": {"title": "Conditions and colors", "content": "Values are color-coded: GREEN = good, BLUE = medium, RED = bad. Hover over column names for more info."},
+    "stepScoreBoard": {"title": "Score Board", "content": "Score Board shows all metrics and industry comparisons. Use the Score view for 0-100 scoring."},
+    "stepEntryExit": {"title": "Entry/Exit", "content": "The Entry/Exit table shows Benjamin Graham valuations and manual entry/exit values."},
+    "stepPEIndustry": {"title": "P/E Industry", "content": "P/E Industry compares P/E values by industry to find undervalued stocks."},
+    "stepThreshold": {"title": "Threshold", "content": "Threshold Industry shows threshold values per industry that control color coding."},
+    "step4": {"title": "Offline", "content": "You are offline. Some views may be limited. Cached data is shown when available."},
+    "step5": {"title": "Done", "content": "You can always open this guide again via the Help menu. Good luck!"},
+    "skip": "Skip",
+    "previous": "Previous",
+    "next": "Next",
+    "done": "Done",
+    "showAgain": "Show onboarding again",
+    "help": "Help"
+  },
   "offline": {
-    "indicator": "Offline - Showing cached data"
+    "readOnly": "Read-only (offline)",
+    "indicator": "Offline – data may be outdated",
+    "showingCached": "Showing cached data",
+    "tryAgain": "Try again",
+    "dataUnavailable": "Data cannot be loaded offline. Check your connection and try again."
   },
   "pullToRefresh": {
     "pull": "Pull to refresh",

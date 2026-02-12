@@ -4,6 +4,8 @@
  * Type definitions for advanced filtering with groups and AND/OR logic.
  */
 
+import type { ColumnFilters } from '../hooks/useColumnFilters';
+
 export type FilterType = 'text' | 'number' | 'numberRange' | 'select' | 'boolean';
 
 export interface FilterConfig {
@@ -31,4 +33,12 @@ export interface FilterGroup {
 export interface FilterGroupState {
   groups: FilterGroup[];
   groupOperator: FilterOperator; // Operator between groups
+}
+
+/** State from a shareable link for hydrating table filter/sort/search on load */
+export interface ShareableTableState {
+  filterState?: FilterValues;
+  columnFilters?: ColumnFilters;
+  searchValue?: string;
+  sortConfig?: { key: string; direction: 'asc' | 'desc' };
 }

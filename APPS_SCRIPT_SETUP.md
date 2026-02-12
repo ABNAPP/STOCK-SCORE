@@ -116,16 +116,22 @@ VITE_APPS_SCRIPT_TOKEN=your-token-here
    - **Key**: `VITE_APPS_SCRIPT_URL`
    - **Value**: `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec` (ersätt YOUR_SCRIPT_ID med ditt Script ID från deployment)
    - **Environment**: Välj alla (Production, Preview, Development)
-6. (Valfritt) Lägg till delta-sync inställningar:
+6. **Secure mode och proxy** (rekommenderat för prod):
+   - `VITE_APPS_SCRIPT_TOKEN`: API-token (samma som i Apps Script)
+   - `VITE_APPS_SCRIPT_PROXY_URL`: URL till proxy som vidarebefordrar till Apps Script (krävs i secure mode)
+   - Alternativt: `VITE_APPS_SCRIPT_SECURE_MODE=true` för att tvinga secure beteende utan token. Se [docs/SECURITY.md](docs/SECURITY.md) "Steg C".
+8. (Valfritt) Lägg till delta-sync inställningar:
    - **Key**: `VITE_DELTA_SYNC_ENABLED`, **Value**: `true`
    - **Key**: `VITE_DELTA_SYNC_POLL_MINUTES`, **Value**: `15`
    - **Key**: `VITE_APPS_SCRIPT_TOKEN`, **Value**: `your-token-here` (samma token som i Apps Script)
-6. Klicka **Save**
-7. **VIKTIGT**: Du måste **redeploya** projektet efter att ha lagt till environment variables!
+9. Klicka **Save**
+10. **VIKTIGT**: Du måste **redeploya** projektet efter att ha lagt till environment variables!
    - Gå till **Deployments** → Välj senaste deployment → **Redeploy**
    - Eller pusha en ny commit till GitHub (detta triggar automatisk redeploy)
 
 ## Steg 6: Testa
+
+För token-transport och auth-policy, se [docs/SECURITY.md](docs/SECURITY.md) sektion "Steg B — Token & Auth".
 
 1. Starta appen: `npm run dev`
 2. Öppna Developer Tools → Network tab
@@ -153,8 +159,12 @@ Om du ser CORS-fel i konsolen:
    - ✅ Rätt: `https://script.google.com/macros/s/SCRIPT_ID/exec`
    - ❌ Fel: `https://script.google.com/macros/library/LIBRARY_ID/...`
 
+### Övervakade sheets och threshold-industry
+- **DashBoard** och **SMA** används för score-board, benjamin-graham och pe-industry.
+- **ThresholdIndustry**: För att adminRefreshCache ska kunna refresha threshold-industry måste ett ark med namnet "ThresholdIndustry" finnas i Google Sheet. Kolumner som stöds: Industry, IRR, Leverage F2 Min, Leverage F2 Max, Ro40 Min, Ro40 Max, Cash/SDebt Min, Cash/SDebt Max, Current Ratio Min, Current Ratio Max.
+
 ### Data kommer inte
-- Kontrollera att sheet-namnet matchar exakt ("DashBoard" eller "SMA" - case-sensitive!)
+- Kontrollera att sheet-namnet matchar exakt ("DashBoard", "SMA" eller "ThresholdIndustry" - case-sensitive!)
 - Testa Apps Script URL direkt i webbläsaren med parameter: `?sheet=DashBoard`
 - Kontrollera att sheet-ID är korrekt i Apps Script-koden
 
@@ -188,5 +198,4 @@ För att kontrollera om Apps Script URL är korrekt konfigurerad:
    Du bör se JSON-data direkt. Om du ser en inloggningssida eller fel, kontrollera deployment-inställningarna.
 
 4. **Testa delta-sync endpoints** (om delta-sync är aktiverat):
-   - Snapshot: `?action=snapshot&sheet=DashBoard&token=your-token`
-   - Changes: `?action=changes&sheet=DashBoard&since=0&token=your-token`
+   - Client→Proxy: header. Function→Apps Script: body. Se [docs/SECURITY.md](docs/SECURITY.md) för fullständigt kontrakt.

@@ -1,10 +1,15 @@
 /**
  * Google Apps Script for Delta Sync API
- * 
- * This script provides delta-sync endpoints for Google Sheets data:
- * - GET /snapshot?sheet={name}&token={token} - Returns full snapshot
- * - GET /changes?sheet={name}&since={version}&token={token} - Returns changes since version
- * 
+ *
+ * Endpoints:
+ * - POST (prod): Token in header (Authorization Bearer or X-API-Token) preferred.
+ *   Apps Script Web App does NOT expose headers; token in body when request comes via appsScriptProxy (proxy adds it).
+ *   JSON body { action, sheet, since? } from client; proxy forwards with token in body.
+ * - GET: No token in URL. When API_TOKEN is set, POST is required.
+ *
+ * Fail-closed: When API_TOKEN is set in Script Properties, token is required. Missing/invalid => 401.
+ * When API_TOKEN is not set: allow access, log warning, include authMode: 'open' in response.
+ *
  * Setup:
  * 1. Copy this code to Apps Script bound to your Google Sheet
  * 2. Set API token in Script Properties: key="API_TOKEN", value="your-secret-token"
@@ -19,29 +24,119 @@ const KEY_COLUMN_NAME = 'Ticker'; // Column used as unique key
 const MONITORED_SHEETS = ['DashBoard', 'SMA']; // Sheets to track changes for
 
 /**
- * Main entry point for GET requests
+ * Get token from request. Header-first when Apps Script exposes headers; body fallback.
+ * Apps Script Web App does NOT expose e.headers - we read from body (proxy adds token when forwarding).
+ * Querystring token is NOT supported (return null to force 401 when API_TOKEN set).
+ */
+function getRequestToken(e) {
+  // A) Header first (Apps Script does not expose e.headers yet - placeholder for future API)
+  var tokenFromHeader = null;
+  if (e && e.headers) {
+    var ah = e.headers['Authorization'] || e.headers['authorization'];
+    if (ah && ah.indexOf('Bearer ') === 0) tokenFromHeader = ah.substring(7);
+    if (!tokenFromHeader) tokenFromHeader = e.headers['X-Api-Token'] || e.headers['x-api-token'] || null;
+  }
+
+  // B) Body (JSON): used when request comes via appsScriptProxy - proxy adds token to body
+  var tokenFromBody = null;
+  if (e && e.postData && e.postData.contents) {
+    try {
+      var body = JSON.parse(e.postData.contents);
+      tokenFromBody = body.token || null;
+    } catch (err) { /* invalid JSON */ }
+  }
+
+  // C) Querystring: NOT supported - never use params.token for security
+  return tokenFromHeader || tokenFromBody;
+}
+
+/**
+ * Main entry point for GET requests (querystring params; no token in URL)
  */
 function doGet(e) {
   try {
-    // Check authentication
-    const authError = checkAuth(e.parameter.token);
-    if (authError) {
-      return authError;
+    var params = e && e.parameter ? e.parameter : {};
+    if (params.token) {
+      return createErrorResponse('Unauthorized: Token in URL not allowed. Use POST with token in header or body.', 401);
+    }
+    // When API_TOKEN is set, GET is not allowed (Apps Script cannot receive token via GET)
+    var hasApiToken = PropertiesService.getScriptProperties().getProperty('API_TOKEN');
+    if (hasApiToken) {
+      return createErrorResponse('Use POST with token in body. GET not allowed when API_TOKEN is set.', 405);
+    }
+    var token = null;
+    var authResult = checkAuth(token);
+    if (authResult.error) {
+      return authResult.response;
     }
     
-    const action = e.parameter.action || 'snapshot';
-    const sheetName = e.parameter.sheet || 'DashBoard';
+    var action = params.action || 'snapshot';
+    var sheetName = params.sheet || 'DashBoard';
     
-    if (action === 'snapshot' || !e.parameter.action) {
-      return handleSnapshot(sheetName);
+    if (action === 'snapshot' || !params.action) {
+      return addAuthMeta(handleSnapshot(sheetName), authResult.authMode);
     } else if (action === 'changes') {
-      const sinceVersion = e.parameter.since ? parseInt(e.parameter.since, 10) : 0;
-      return handleChanges(sheetName, sinceVersion);
+      var sinceVersion = params.since ? parseInt(params.since, 10) : 0;
+      return addAuthMeta(handleChanges(sheetName, sinceVersion), authResult.authMode);
     } else {
       return createErrorResponse('Invalid action. Use "snapshot" or "changes"', 400);
     }
   } catch (error) {
     return createErrorResponse('Server error: ' + error.toString(), 500);
+  }
+}
+
+/**
+ * Main entry point for POST requests (JSON body - token via header or proxy body)
+ */
+function doPost(e) {
+  try {
+    var token = getRequestToken(e);
+    var action = 'snapshot';
+    var sheetName = 'DashBoard';
+    var sinceVersion = 0;
+
+    if (e && e.postData && e.postData.contents) {
+      try {
+        var body = JSON.parse(e.postData.contents);
+        action = body.action || 'snapshot';
+        sheetName = body.sheet || 'DashBoard';
+        sinceVersion = body.since ? parseInt(body.since, 10) : 0;
+      } catch (parseErr) {
+        return createErrorResponse('Invalid JSON body', 400);
+      }
+    }
+
+    var authResult = checkAuth(token);
+    if (authResult.error) {
+      return authResult.response;
+    }
+    
+    if (action === 'snapshot' || !action) {
+      return addAuthMeta(handleSnapshot(sheetName), authResult.authMode);
+    } else if (action === 'changes') {
+      return addAuthMeta(handleChanges(sheetName, sinceVersion), authResult.authMode);
+    } else {
+      return createErrorResponse('Invalid action. Use "snapshot" or "changes"', 400);
+    }
+  } catch (error) {
+    return createErrorResponse('Server error: ' + error.toString(), 500);
+  }
+}
+
+/**
+ * Wrap JSON response with auth meta when authMode is open (for dev)
+ */
+function addAuthMeta(output, authMode) {
+  if (!authMode) return output;
+  try {
+    var text = output.getContent();
+    var data = JSON.parse(text);
+    data.meta = data.meta || {};
+    data.meta.authMode = authMode;
+    return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return output;
   }
 }
 
@@ -378,26 +473,33 @@ function getNextChangeId() {
 }
 
 /**
- * Check authentication token
+ * Check authentication token. Fail-closed when API_TOKEN is configured.
+ * Returns { error: boolean, response?: TextOutput, authMode?: string }
+ * - If API_TOKEN set and token missing/invalid: { error: true, response: 401 }
+ * - If API_TOKEN not set: { error: false, authMode: 'open' } - allow but log warning
+ * - If auth passes: { error: false }
  */
 function checkAuth(token) {
   try {
     var props = PropertiesService.getScriptProperties();
     var validToken = props.getProperty('API_TOKEN');
     
-    // If no token is configured, allow access (for easier setup)
     if (!validToken) {
-      return null; // Allow access
+      console.warn('API_TOKEN not configured in Script Properties - authMode: open (not for prod)');
+      return { error: false, authMode: 'open' };
     }
     
     if (!token || token !== validToken) {
-      return createErrorResponse('Unauthorized: Invalid or missing token', 401);
+      return {
+        error: true,
+        response: createErrorResponse('Unauthorized: Invalid or missing API token', 401)
+      };
     }
     
-    return null; // Auth passed
-  } catch (error) {
-    // On error, allow access (fail open for easier setup)
-    return null;
+    return { error: false };
+  } catch (err) {
+    console.error('checkAuth error:', err);
+    return { error: true, response: createErrorResponse('Authentication error', 500) };
   }
 }
 

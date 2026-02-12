@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ThresholdIndustryTable from '../ThresholdIndustryTable';
-import { ThemeProvider } from '../../contexts/ThemeContext';
-import { EntryExitProvider } from '../../contexts/EntryExitContext';
+import { renderWithAuth } from '../../test/helpers/renderHelpers';
 import {
   createMockThresholdData,
   generateLargeThresholdDataSet,
@@ -11,28 +10,18 @@ import {
 import { ThresholdIndustryData } from '../../types/stock';
 import '../../i18n/config';
 
-// Test wrapper
-function TestWrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <ThemeProvider>
-      <EntryExitProvider>
-        {children}
-      </EntryExitProvider>
-    </ThemeProvider>
-  );
-}
+// renderWithAuth provides all providers and defaults to admin role for editable threshold table
 
 describe('ThresholdIndustryTable Integration Tests', () => {
   describe('Rendering', () => {
     it('should render with empty data', () => {
-      render(
-        <ThresholdIndustryTable
-          data={[]}
-          loading={false}
-          error={null}
-        />,
-        { wrapper: TestWrapper }
-      );
+renderWithAuth(
+          <ThresholdIndustryTable
+            data={[]}
+            loading={false}
+            error={null}
+          />
+        );
 
       expect(screen.getByText(/Inga resultat|No data/i)).toBeInTheDocument();
     });
@@ -53,13 +42,12 @@ describe('ThresholdIndustryTable Integration Tests', () => {
         }),
       ];
 
-      render(
+      renderWithAuth(
         <ThresholdIndustryTable
           data={data}
           loading={false}
           error={null}
         />,
-        { wrapper: TestWrapper }
       );
 
       expect(screen.getByText('Technology')).toBeInTheDocument();
@@ -68,13 +56,12 @@ describe('ThresholdIndustryTable Integration Tests', () => {
     it('should render with large dataset', () => {
       const data = generateLargeThresholdDataSet(50);
 
-      render(
+      renderWithAuth(
         <ThresholdIndustryTable
           data={data}
           loading={false}
           error={null}
         />,
-        { wrapper: TestWrapper }
       );
 
       expect(screen.getByText('Technology 1')).toBeInTheDocument();
@@ -89,13 +76,12 @@ describe('ThresholdIndustryTable Integration Tests', () => {
         createMockThresholdData({ industry: 'Finance', irr: 20 }),
       ];
 
-      render(
+      renderWithAuth(
         <ThresholdIndustryTable
           data={data}
           loading={false}
           error={null}
         />,
-        { wrapper: TestWrapper }
       );
 
       // Open filters
@@ -127,13 +113,12 @@ describe('ThresholdIndustryTable Integration Tests', () => {
         createMockThresholdData({ industry: 'Industry 3', irr: 35 }),
       ];
 
-      render(
+      renderWithAuth(
         <ThresholdIndustryTable
           data={data}
           loading={false}
           error={null}
         />,
-        { wrapper: TestWrapper }
       );
 
       // Open filters
@@ -169,13 +154,12 @@ describe('ThresholdIndustryTable Integration Tests', () => {
         createMockThresholdData({ industry: 'Industry 3', irr: 25 }),
       ];
 
-      render(
+      renderWithAuth(
         <ThresholdIndustryTable
           data={data}
           loading={false}
           error={null}
         />,
-        { wrapper: TestWrapper }
       );
 
       // Click IRR header
@@ -197,13 +181,12 @@ describe('ThresholdIndustryTable Integration Tests', () => {
         createMockThresholdData({ industry: 'Industry 3', leverageF2Min: 2.0 }),
       ];
 
-      render(
+      renderWithAuth(
         <ThresholdIndustryTable
           data={data}
           loading={false}
           error={null}
         />,
-        { wrapper: TestWrapper }
       );
 
       // Click leverageF2Min header
@@ -220,13 +203,12 @@ describe('ThresholdIndustryTable Integration Tests', () => {
 
   describe('Loading and error states', () => {
     it('should show loading state', () => {
-      render(
+      renderWithAuth(
         <ThresholdIndustryTable
           data={[]}
           loading={true}
           error={null}
         />,
-        { wrapper: TestWrapper }
       );
 
       const table = screen.getByRole('table');
@@ -234,13 +216,12 @@ describe('ThresholdIndustryTable Integration Tests', () => {
     });
 
     it('should show error state', () => {
-      render(
+      renderWithAuth(
         <ThresholdIndustryTable
           data={[]}
           loading={false}
           error="Failed to load data"
         />,
-        { wrapper: TestWrapper }
       );
 
       expect(screen.getByText(/error|Error/i)).toBeInTheDocument();

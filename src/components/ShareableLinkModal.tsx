@@ -10,6 +10,7 @@ import {
   ShareableLink,
 } from '../services/shareableLinkService';
 import { FilterValues } from '../types/filters';
+import type { ColumnFilters } from '../hooks/useColumnFilters';
 import Button from './ui/Button';
 
 interface ShareableLinkModalProps {
@@ -19,6 +20,8 @@ interface ShareableLinkModalProps {
   viewId: string;
   tableId: string;
   sortConfig?: { key: string; direction: 'asc' | 'desc' };
+  columnFilters?: ColumnFilters;
+  searchValue?: string;
 }
 
 export default function ShareableLinkModal({
@@ -28,6 +31,8 @@ export default function ShareableLinkModal({
   viewId,
   tableId,
   sortConfig,
+  columnFilters,
+  searchValue,
 }: ShareableLinkModalProps) {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
@@ -76,6 +81,8 @@ export default function ShareableLinkModal({
         description: linkDescription.trim() || undefined,
         expiresInDays,
         sortConfig,
+        columnFilters,
+        searchValue: searchValue || undefined,
       });
 
       setSavedLinkId(linkId);
@@ -98,7 +105,7 @@ export default function ShareableLinkModal({
     } finally {
       setSaving(false);
     }
-  }, [currentUser, filterState, viewId, tableId, linkName, linkDescription, expiresInDays, sortConfig, saving, createNotification, loadUserLinks]);
+  }, [currentUser, filterState, viewId, tableId, linkName, linkDescription, expiresInDays, sortConfig, columnFilters, searchValue, saving, createNotification, loadUserLinks]);
 
   const handleCopyLink = useCallback((linkId: string) => {
     const url = generateShareableUrl(linkId);

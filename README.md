@@ -90,6 +90,7 @@ Appen använder Firebase Authentication för användarautentisering och rollbase
 ### Dokumentation
 
 - `env.template` - Mall för environment variables (kopiera till `.env.local`)
+- `docs/SECURITY.md` - Token policy och säkerhet
 - `docs/SECRETS.md` - Hur man sätter nycklar lokalt och secret scan
 - `APPS_SCRIPT_SETUP.md` - Detaljerad guide för att sätta upp Google Apps Script
 - `SETUP_APPS_SCRIPT.md` / `QUICK_FIX.md` - Snabb guide för att konfigurera Apps Script URL
@@ -179,7 +180,7 @@ flowchart TD
 
 ### Cache Strategy
 
-Data-cache hanteras i **Firestore appCache** (collection `appCache`). Admin uppdaterar cachen via Refresh Now; viewers läser endast whitelistade nycklar (scoreBoard, benjaminGraham, peIndustry, sma, currency_rates_usd). TTL och timestamp styr freshness; ingen localStorage används för data-cache. Offline-visning bygger på Firestore (ev. persistence) och UI (t.ex. OfflineIndicator), inte på localStorage-data-cache.
+Data-cache hanteras i **Firestore appCache** (collection `appCache`). Admin uppdaterar cachen via Refresh Now; viewers läser endast whitelistade nycklar (scoreBoard, benjaminGraham, peIndustry, sma, currency_rates_usd). TTL och timestamp styr freshness; ingen localStorage används för data-cache. Offline-visning bygger på Firestore (ev. persistence) och UI (t.ex. OfflineIndicator), inte på localStorage-data-cache. För verifiering och offline-checklist, se [docs/CACHE_OFFLINE.md](docs/CACHE_OFFLINE.md). Auditpunkt 3.3 (localStorage data-cache) är N/A — design är Firestore som enda data-cache.
 
 ```mermaid
 flowchart TD

@@ -7,7 +7,15 @@ import type { DataRow } from '../services/sheets';
 import { ScoreBoardData, PEIndustryData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
 import { useRefreshOptional } from '../contexts/RefreshContext';
-import { getCachedData, getDeltaCacheEntry, setDeltaCacheEntry, CACHE_KEYS } from '../services/firestoreCacheService';
+import {
+  getCachedData,
+  getDeltaCacheEntry,
+  setDeltaCacheEntry,
+  setViewData,
+  getViewDataWithFallback,
+  CACHE_KEYS,
+  VIEWDATA_MIGRATION_MODE,
+} from '../services/firestoreCacheService';
 import { createErrorHandler, logError, formatError, isErrorType } from '../utils/errorHandler';
 import { useNotifications } from '../contexts/NotificationContext';
 import { detectDataChanges, formatChangeSummary } from '../utils/dataChangeDetector';
@@ -20,9 +28,11 @@ import {
   isDeltaSyncEnabled,
   getPollIntervalMs,
   snapshotToTransformerFormat,
+  getApiBaseUrlForDeltaSync,
   type DeltaSyncConfig
 } from '../services/deltaSyncService';
 import { usePageVisibility } from './usePageVisibility';
+import { useTranslation } from 'react-i18next';
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
 const SHEET_NAME = 'DashBoard';
@@ -61,13 +71,19 @@ const CACHE_KEY = CACHE_KEYS.SCORE_BOARD;
  * refetch(true);
  * ```
  */
+const OFFLINE_ERROR_KEY = 'offline.dataUnavailable';
+
+type DataSource = 'viewData' | 'appCache' | 'network';
+
 export function useScoreBoardData() {
   const [data, setData] = useState<ScoreBoardData[]>([]);
   const [loading, setLoading] = useState(true); // Start with loading state
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [dataSource, setDataSource] = useState<DataSource | null>(null);
   const { updateProgress } = useLoadingProgress();
   const isPageVisible = usePageVisibility();
+  const { t } = useTranslation();
   const currentVersionRef = useRef<number>(0);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { createNotification } = useNotifications();
@@ -158,6 +174,30 @@ export function useScoreBoardData() {
         setLoading(true);
       }
       setError(null);
+
+      // Fail fast when offline: try cache first, otherwise set error immediately
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const fallbackFn = async () => {
+          const delta = await getDeltaCacheEntry<ScoreBoardData[]>(CACHE_KEY);
+          const regular = delta ? null : await getCachedData<ScoreBoardData[]>(CACHE_KEY);
+          const arr = delta?.data ?? regular;
+          return arr && arr.length > 0 ? { scoreBoard: arr } : null;
+        };
+        let result = await getViewDataWithFallback<{ scoreBoard: ScoreBoardData[] }>('score-board', { fallback: fallbackFn });
+        if (!result) {
+          result = await getViewDataWithFallback<{ scoreBoard: ScoreBoardData[] }>('score', { fallback: fallbackFn });
+        }
+        if (result?.data?.scoreBoard?.length) {
+          setData(result.data.scoreBoard);
+          previousDataRef.current = result.data.scoreBoard;
+          setLastUpdated(result.timestamp ? new Date(result.timestamp) : new Date());
+          setDataSource(result.source);
+        } else {
+          setError(t(OFFLINE_ERROR_KEY));
+        }
+        if (!isBackground) setLoading(false);
+        return;
+      }
       
       if (!isBackground) {
         updateProgress('score-board', {
@@ -175,7 +215,7 @@ export function useScoreBoardData() {
 
           const config: DeltaSyncConfig = {
             sheetName: SHEET_NAME,
-            apiBaseUrl: APPS_SCRIPT_URL,
+            apiBaseUrl: getApiBaseUrlForDeltaSync(),
             dataTypeName: 'Score Board',
             additionalData,
           };
@@ -199,7 +239,13 @@ export function useScoreBoardData() {
           previousDataRef.current = result.data;
           currentVersionRef.current = result.version;
           setLastUpdated(new Date());
-          
+          setDataSource('network');
+          setViewData('score-board', { scoreBoard: result.data }, { source: 'client-refresh' }).catch((e) =>
+            logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
+          );
+          setViewData('score', { scoreBoard: result.data }, { source: 'client-refresh' }).catch((e) =>
+            logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
+          );
           // Show notification if significant changes detected
           if (changes.hasSignificantChanges && !isBackground) {
             const changeMessage = formatChangeSummary(changes);
@@ -294,7 +340,13 @@ export function useScoreBoardData() {
       setData(fetchedData);
       previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
-      
+      setDataSource('network');
+      setViewData('score-board', { scoreBoard: fetchedData }, { source: 'client-refresh' }).catch((e) =>
+        logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
+      );
+      setViewData('score', { scoreBoard: fetchedData }, { source: 'client-refresh' }).catch((e) =>
+        logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
+      );
       logger.info('Score Board state updated successfully', { 
         component: 'useScoreBoardData', 
         operation: 'loadData',
@@ -322,18 +374,26 @@ export function useScoreBoardData() {
         });
       }
     } catch (err: unknown) {
-      const errorHandler = createErrorHandler({
-        operation: 'fetch Score Board data',
-        component: 'useScoreBoardData',
-        additionalInfo: { forceRefresh, isBackground },
-      });
-      const formatted = errorHandler(err);
-      setError(formatted.userMessage);
+      // Fail fast: when offline, show offline message instead of generic error
+      let errorMessage: string;
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        errorMessage = t(OFFLINE_ERROR_KEY);
+        setError(errorMessage);
+      } else {
+        const errorHandler = createErrorHandler({
+          operation: 'fetch Score Board data',
+          component: 'useScoreBoardData',
+          additionalInfo: { forceRefresh, isBackground },
+        });
+        const formatted = errorHandler(err);
+        errorMessage = formatted.userMessage;
+        setError(errorMessage);
+      }
       if (!isBackground) {
         updateProgress('score-board', {
           status: 'error',
           progress: 0,
-          message: formatted.userMessage,
+          message: errorMessage,
         });
       }
     } finally {
@@ -341,7 +401,7 @@ export function useScoreBoardData() {
         setLoading(false);
       }
     }
-  }, [updateProgress, createNotification, fetchDependenciesAndCreateTransformer]);
+  }, [updateProgress, createNotification, fetchDependenciesAndCreateTransformer, t]);
 
   // Poll for changes using delta-sync
   const pollForChanges = useCallback(async () => {
@@ -357,7 +417,7 @@ export function useScoreBoardData() {
     try {
       const config: DeltaSyncConfig = {
         sheetName: SHEET_NAME,
-        apiBaseUrl: APPS_SCRIPT_URL,
+        apiBaseUrl: getApiBaseUrlForDeltaSync(),
         dataTypeName: 'Score Board',
       };
 
@@ -373,8 +433,16 @@ export function useScoreBoardData() {
         const snapshot = await loadSnapshot(config);
         const transformerFormat = snapshotToTransformerFormat(snapshot);
         const transformedData = transformer(transformerFormat);
-        setDeltaCacheEntry(CACHE_KEY, transformedData, snapshot.version, true);
-        
+        // cutover: no appCache writes for view-docs
+        if (VIEWDATA_MIGRATION_MODE !== 'cutover') {
+          setDeltaCacheEntry(CACHE_KEY, transformedData, snapshot.version, true);
+        }
+        setViewData('score-board', { scoreBoard: transformedData }, { source: 'client-refresh' }).catch((e) =>
+          logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
+        );
+        setViewData('score', { scoreBoard: transformedData }, { source: 'client-refresh' }).catch((e) =>
+          logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
+        );
         // Detect data changes
         const dataChanges = detectDataChanges(
           previousDataRef.current,
@@ -423,36 +491,38 @@ export function useScoreBoardData() {
     }
   }, [isPageVisible, createNotification, fetchDependenciesAndCreateTransformer]);
 
-  // Load cache on mount - check Firestore cache first
+  // Load cache on mount - viewData first (dual-read/cutover), then appCache fallback
   useEffect(() => {
     const loadCache = async () => {
       if (cacheLoadedRef.current) return;
       cacheLoadedRef.current = true;
       
       try {
-        // Try delta cache first, then fallback to regular cache
-        const deltaCacheEntry = await getDeltaCacheEntry<ScoreBoardData[]>(CACHE_KEY);
-        const regularCache = deltaCacheEntry ? null : await getCachedData<ScoreBoardData[]>(CACHE_KEY);
-        const cachedData = deltaCacheEntry?.data || regularCache;
-        
-        if (cachedData && cachedData.length > 0) {
+        const fallbackFn = async () => {
+          const delta = await getDeltaCacheEntry<ScoreBoardData[]>(CACHE_KEY);
+          const regular = delta ? null : await getCachedData<ScoreBoardData[]>(CACHE_KEY);
+          const arr = delta?.data ?? regular;
+          return arr && arr.length > 0 ? { scoreBoard: arr } : null;
+        };
+        let result = await getViewDataWithFallback<{ scoreBoard: ScoreBoardData[] }>('score-board', { fallback: fallbackFn });
+        if (!result) {
+          result = await getViewDataWithFallback<{ scoreBoard: ScoreBoardData[] }>('score', { fallback: fallbackFn });
+        }
+        if (result && result.data.scoreBoard.length > 0) {
+          const cachedData = result.data.scoreBoard;
           setData(cachedData);
           previousDataRef.current = cachedData;
-          currentVersionRef.current = deltaCacheEntry?.version || 0;
+          setLastUpdated(result.timestamp ? new Date(result.timestamp) : null);
+          setDataSource(result.source);
+          const delta = await getDeltaCacheEntry<ScoreBoardData[]>(CACHE_KEY);
+          currentVersionRef.current = delta?.version ?? 0;
           setLoading(false);
-          // Don't fetch if we have valid cache - hard cache, no initial fetch; polling still updates in background
           return;
         }
-        // No cache, fetch fresh data
       } catch (err) {
-        // If cache load fails, log and continue to fetch fresh data
-        logger.warn('Failed to load cache, fetching fresh data', { 
-          component: 'useScoreBoardData', 
-          error: err 
-        });
+        logger.warn('Failed to load cache, fetching fresh data', { component: 'useScoreBoardData', error: err });
       }
       
-      // If no cache or cache load failed, fetch fresh data
       loadData(false, false);
     };
     
@@ -490,15 +560,42 @@ export function useScoreBoardData() {
     }
   }, [pollForChanges, isPageVisible]);
 
-  const refetch = useCallback((forceRefresh?: boolean) => {
-    loadData(forceRefresh ?? false);
-  }, [loadData]);
+  const refetch = useCallback(
+    async (forceRefresh?: boolean | { skipFetch?: boolean }) => {
+      const opts = typeof forceRefresh === 'object' ? forceRefresh : { skipFetch: false };
+      if (opts?.skipFetch) {
+        setLoading(true);
+        try {
+          const fallbackFn = async () => {
+            const delta = await getDeltaCacheEntry<ScoreBoardData[]>(CACHE_KEY);
+            const regular = delta ? null : await getCachedData<ScoreBoardData[]>(CACHE_KEY);
+            const arr = delta?.data ?? regular;
+            return arr && arr.length > 0 ? { scoreBoard: arr } : null;
+          };
+          let result = await getViewDataWithFallback<{ scoreBoard: ScoreBoardData[] }>('score-board', { fallback: fallbackFn });
+          if (!result) result = await getViewDataWithFallback<{ scoreBoard: ScoreBoardData[] }>('score', { fallback: fallbackFn });
+          if (result?.data?.scoreBoard?.length) {
+            setData(result.data.scoreBoard);
+            previousDataRef.current = result.data.scoreBoard;
+            setLastUpdated(result.timestamp ? new Date(result.timestamp) : new Date());
+            setDataSource(result.source);
+          }
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+      loadData(typeof forceRefresh === 'boolean' ? forceRefresh : false);
+    },
+    [loadData]
+  );
 
-  // Register with RefreshContext so Refresh All triggers this hook's refetch
   const refreshContext = useRefreshOptional();
   useEffect(() => {
     if (!refreshContext) return;
-    const unregister = refreshContext.registerRefetch('score-board', () => refetch(true));
+    const unregister = refreshContext.registerRefetch('score-board', (options) =>
+      refetch(options?.skipFetch ? { skipFetch: true } : true)
+    );
     return unregister;
   }, [refreshContext, refetch]);
 
@@ -507,6 +604,7 @@ export function useScoreBoardData() {
     loading,
     error,
     lastUpdated,
+    dataSource,
     refetch,
   };
 }

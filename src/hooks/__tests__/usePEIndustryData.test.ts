@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { usePEIndustryData } from '../usePEIndustryData';
 import { fetchPEIndustryData } from '../../services/sheets';
-import { getCachedData } from '../../services/cacheService';
+import { getCachedData, getDeltaCacheEntry } from '../../services/firestoreCacheService';
 import { createMockPEIndustryData } from '../../test/helpers';
 
 // Mock dependencies
@@ -10,15 +10,26 @@ vi.mock('../../services/sheets', () => ({
   fetchPEIndustryData: vi.fn(),
 }));
 
-vi.mock('../../services/cacheService', async () => {
-  const actual = await vi.importActual('../../services/cacheService');
+vi.mock('../../services/firestoreCacheService', async () => {
+  const actual = await vi.importActual('../../services/firestoreCacheService');
   return {
     ...actual,
     getCachedData: vi.fn(),
-    isCacheFresh: vi.fn(),
-    isCacheStale: vi.fn(),
+    getDeltaCacheEntry: vi.fn(),
+    setCachedData: vi.fn(),
+    setDeltaCacheEntry: vi.fn(),
   };
 });
+
+vi.mock('../../services/deltaSyncService', () => ({
+  isDeltaSyncEnabled: vi.fn(() => false),
+  initSync: vi.fn(),
+  pollChanges: vi.fn(),
+  loadSnapshot: vi.fn(),
+  applyChangesToCache: vi.fn(),
+  getPollIntervalMs: vi.fn(() => 900000),
+  snapshotToTransformerFormat: vi.fn(),
+}));
 
 vi.mock('../../contexts/LoadingProgressContext', () => ({
   useLoadingProgress: () => ({
@@ -59,17 +70,21 @@ describe('usePEIndustryData', () => {
     vi.restoreAllMocks();
   });
 
-  it('should load data from cache initially', () => {
-    (getCachedData as any).mockReturnValue(mockData);
+  it('should load data from cache initially', async () => {
+    (getDeltaCacheEntry as any).mockResolvedValue(null);
+    (getCachedData as any).mockResolvedValue(mockData);
 
     const { result } = renderHook(() => usePEIndustryData());
 
-    expect(result.current.data).toEqual(mockData);
-    expect(result.current.loading).toBe(false);
+    await waitFor(() => {
+      expect(result.current.data).toEqual(mockData);
+      expect(result.current.loading).toBe(false);
+    });
   });
 
   it('should fetch data when cache is empty', async () => {
-    (getCachedData as any).mockReturnValue(null);
+    (getDeltaCacheEntry as any).mockResolvedValue(null);
+    (getCachedData as any).mockResolvedValue(null);
     (fetchPEIndustryData as any).mockResolvedValue(mockData);
 
     const { result } = renderHook(() => usePEIndustryData());
@@ -83,7 +98,8 @@ describe('usePEIndustryData', () => {
   });
 
   it('should handle fetch errors', async () => {
-    (getCachedData as any).mockReturnValue(null);
+    (getDeltaCacheEntry as any).mockResolvedValue(null);
+    (getCachedData as any).mockResolvedValue(null);
     (fetchPEIndustryData as any).mockRejectedValue(new Error('Fetch error'));
 
     const { result } = renderHook(() => usePEIndustryData());

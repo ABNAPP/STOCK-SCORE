@@ -135,6 +135,22 @@ describe('logger', () => {
     });
   });
 
+  describe('redaction - token never in logs', () => {
+    it('redacts token and Authorization from log output', () => {
+      logger.configure({ level: 'debug', enableInProduction: true });
+      const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+      logger.info('Test message', { token: 'abc', Authorization: 'Bearer xyz' });
+
+      const callArg = spy.mock.calls[0]?.[0] ?? '';
+      expect(callArg).toContain('[REDACTED]');
+      expect(callArg).not.toContain('abc');
+      expect(callArg).not.toContain('xyz');
+
+      spy.mockRestore();
+    });
+  });
+
   describe('production vs development', () => {
     it('should show all logs in development', () => {
       vi.stubEnv('DEV', 'true');

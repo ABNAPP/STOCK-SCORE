@@ -30,7 +30,7 @@ export default function OfflineIndicator() {
         />
       </svg>
       <span className="text-sm font-medium">
-        {t('offline.indicator', 'Offline - Visar cachad data')}
+        {t('offline.indicator', 'Offline – data kan vara inaktuell')}
       </span>
     </div>
   );

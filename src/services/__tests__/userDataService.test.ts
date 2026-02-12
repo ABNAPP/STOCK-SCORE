@@ -4,8 +4,6 @@ import {
   loadEntryExitValues,
   saveCurrencyValues,
   loadCurrencyValues,
-  saveThresholdValues,
-  loadThresholdValues,
 } from '../userDataService';
 import { User } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -22,7 +20,7 @@ vi.mock('firebase/firestore', () => ({
   serverTimestamp: vi.fn(() => mockServerTimestamp()),
 }));
 
-vi.mock('../config/firebase', () => ({
+vi.mock('../../config/firebase', () => ({
   db: {},
 }));
 
@@ -345,111 +343,4 @@ describe('userDataService', () => {
     });
   });
 
-  describe('saveThresholdValues', () => {
-    const testValues = {
-      'Technology': {
-        irr: 15,
-        leverageF2Min: 0.5,
-        leverageF2Max: 2.0,
-        ro40Min: 10,
-        ro40Max: 20,
-        cashSdebtMin: 0.5,
-        cashSdebtMax: 1.5,
-        currentRatioMin: 1.0,
-        currentRatioMax: 2.0,
-      },
-    };
-
-    it('should save to Firestore when user is authenticated', async () => {
-      mockSetDoc.mockResolvedValue(undefined);
-
-      await saveThresholdValues(mockUser, testValues);
-
-      expect(mockSetDoc).toHaveBeenCalledWith(
-        expect.any(Object),
-        {
-          values: testValues,
-          updatedAt: expect.any(Object),
-        },
-        { merge: true }
-      );
-    });
-
-    it('should fallback to localStorage when user is not authenticated', async () => {
-      await saveThresholdValues(null, testValues);
-
-      expect(mockSetDoc).not.toHaveBeenCalled();
-      const stored = localStorage.getItem('thresholdValues');
-      expect(JSON.parse(stored!)).toEqual(testValues);
-    });
-
-    it('should fallback to localStorage when Firestore save fails', async () => {
-      mockSetDoc.mockRejectedValue(new Error('Firestore error'));
-
-      await saveThresholdValues(mockUser, testValues);
-
-      const stored = localStorage.getItem('thresholdValues');
-      expect(JSON.parse(stored!)).toEqual(testValues);
-    });
-  });
-
-  describe('loadThresholdValues', () => {
-    it('should load from Firestore when user is authenticated', async () => {
-      const testValues = {
-        'Technology': {
-          irr: 15,
-          leverageF2Min: 0.5,
-          leverageF2Max: 2.0,
-          ro40Min: 10,
-          ro40Max: 20,
-          cashSdebtMin: 0.5,
-          cashSdebtMax: 1.5,
-          currentRatioMin: 1.0,
-          currentRatioMax: 2.0,
-        },
-      };
-
-      mockGetDoc.mockResolvedValue({
-        exists: () => true,
-        data: () => ({ values: testValues }),
-      });
-
-      const result = await loadThresholdValues(mockUser);
-
-      expect(result).toEqual(testValues);
-    });
-
-    it('should fallback to localStorage when user is not authenticated', async () => {
-      const testValues = {
-        'Technology': {
-          irr: 15,
-          leverageF2Min: 0.5,
-          leverageF2Max: 2.0,
-          ro40Min: 10,
-          ro40Max: 20,
-          cashSdebtMin: 0.5,
-          cashSdebtMax: 1.5,
-          currentRatioMin: 1.0,
-          currentRatioMax: 2.0,
-        },
-      };
-
-      localStorage.setItem('thresholdValues', JSON.stringify(testValues));
-
-      const result = await loadThresholdValues(null);
-
-      expect(result).toEqual(testValues);
-    });
-
-    it('should return null when no data exists', async () => {
-      mockGetDoc.mockResolvedValue({
-        exists: () => false,
-        data: () => null,
-      });
-
-      const result = await loadThresholdValues(mockUser);
-
-      expect(result).toBeNull();
-    });
-  });
 });

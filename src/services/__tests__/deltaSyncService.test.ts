@@ -184,6 +184,179 @@ describe('deltaSyncService Error Handling', () => {
     });
   });
 
+  describe('getApiBaseUrlForDeltaSync', () => {
+    it('throws when token is set, apiBaseUrl is direct Apps Script, and proxy URL is not configured', async () => {
+      vi.stubEnv('VITE_APPS_SCRIPT_TOKEN', 'secret');
+      vi.stubEnv('VITE_APPS_SCRIPT_PROXY_URL', '');
+      vi.stubEnv('VITE_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/ABC/exec');
+      vi.resetModules();
+
+      const { getApiBaseUrlForDeltaSync: getUrl } = await import('../deltaSyncService');
+
+      expect(() => getUrl()).toThrow(/VITE_APPS_SCRIPT_PROXY_URL is required|Direct Apps Script calls are not allowed/);
+
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    });
+
+    it('Steg C: throws when VITE_APPS_SCRIPT_SECURE_MODE=true, URL set, proxy empty', async () => {
+      vi.stubEnv('VITE_APPS_SCRIPT_TOKEN', '');
+      vi.stubEnv('VITE_APPS_SCRIPT_SECURE_MODE', 'true');
+      vi.stubEnv('VITE_APPS_SCRIPT_PROXY_URL', '');
+      vi.stubEnv('VITE_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/ABC/exec');
+      vi.resetModules();
+
+      const { getApiBaseUrlForDeltaSync: getUrl } = await import('../deltaSyncService');
+
+      expect(() => getUrl()).toThrow(/VITE_APPS_SCRIPT_PROXY_URL is required/);
+
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    });
+
+    it('Steg C: returns proxy URL when secure mode and proxy configured', async () => {
+      vi.stubEnv('VITE_APPS_SCRIPT_SECURE_MODE', 'true');
+      vi.stubEnv('VITE_APPS_SCRIPT_PROXY_URL', 'https://proxy.example.com/exec');
+      vi.stubEnv('VITE_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/ABC/exec');
+      vi.resetModules();
+
+      const { getApiBaseUrlForDeltaSync: getUrl } = await import('../deltaSyncService');
+
+      expect(getUrl()).toBe('https://proxy.example.com/exec');
+
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    });
+
+    it('returns proxy URL when token and proxy are configured', async () => {
+      vi.stubEnv('VITE_APPS_SCRIPT_TOKEN', 'secret');
+      vi.stubEnv('VITE_APPS_SCRIPT_PROXY_URL', 'https://proxy.example.com/exec');
+      vi.stubEnv('VITE_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/ABC/exec');
+      vi.resetModules();
+
+      const { getApiBaseUrlForDeltaSync: getUrl } = await import('../deltaSyncService');
+
+      expect(getUrl()).toBe('https://proxy.example.com/exec');
+
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    });
+
+    it('returns Apps Script URL when no token', async () => {
+      vi.stubEnv('VITE_APPS_SCRIPT_TOKEN', '');
+      vi.stubEnv('VITE_APPS_SCRIPT_PROXY_URL', '');
+      vi.stubEnv('VITE_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/ABC/exec');
+      vi.resetModules();
+
+      const { getApiBaseUrlForDeltaSync: getUrl } = await import('../deltaSyncService');
+
+      expect(getUrl()).toBe('https://script.google.com/macros/s/ABC/exec');
+
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    });
+  });
+
+  describe('loadSnapshot token handling', () => {
+    it('should NOT put token in URL or body when token is set (use POST with token in header only)', async () => {
+      const config: DeltaSyncConfig = {
+        sheetName: 'TestSheet',
+        apiBaseUrl: 'https://script.google.com/macros/s/test/exec',
+        token: 'secret-token',
+      };
+
+      const snapshot: SnapshotResponse = {
+        ok: true,
+        version: 1,
+        headers: ['col1', 'col2'],
+        rows: [],
+        generatedAt: new Date().toISOString(),
+      };
+
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(snapshot),
+      } as unknown as Response);
+      global.fetch = fetchSpy;
+
+      await loadSnapshot(config);
+
+      expect(fetchSpy).toHaveBeenCalled();
+      const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+      expect(url).not.toContain('token=');
+      expect(url).toBe('https://script.google.com/macros/s/test/exec');
+      expect(init?.method).toBe('POST');
+      const body = JSON.parse((init?.body as string) || '{}');
+      expect(body.action).toBe('snapshot');
+      expect(body.sheet).toBe('TestSheet');
+      // Steg B.1: token must NOT be in body when Authorization header is used
+      expect(body).not.toHaveProperty('token');
+      // Authorization header must be set when token is used
+      const headers = init?.headers as Record<string, string> | undefined;
+      expect(headers?.['Authorization']).toBe('Bearer secret-token');
+      expect(headers?.['Accept']).toBe('application/json');
+    });
+
+    it('should use GET without token in URL when no token', async () => {
+      const config: DeltaSyncConfig = {
+        sheetName: 'TestSheet',
+        apiBaseUrl: 'https://script.google.com/macros/s/test/exec',
+      };
+
+      const snapshot: SnapshotResponse = {
+        ok: true,
+        version: 1,
+        headers: ['col1', 'col2'],
+        rows: [],
+        generatedAt: new Date().toISOString(),
+      };
+
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(snapshot),
+      } as unknown as Response);
+      global.fetch = fetchSpy;
+
+      await loadSnapshot(config);
+
+      const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+      expect(url).not.toContain('token=');
+      expect(init?.method).toBe('GET');
+    });
+
+    it('should NOT put token in body when pollChanges uses token (header only)', async () => {
+      const config: DeltaSyncConfig = {
+        sheetName: 'TestSheet',
+        apiBaseUrl: 'https://script.google.com/macros/s/test/exec',
+        token: 'secret-token',
+      };
+
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          ok: true,
+          fromVersion: 0,
+          toVersion: 1,
+          changes: [],
+        }),
+      } as unknown as Response);
+      global.fetch = fetchSpy;
+
+      await pollChanges(config, 0);
+
+      const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+      expect(url).not.toContain('token=');
+      expect(init?.method).toBe('POST');
+      const body = JSON.parse((init?.body as string) || '{}');
+      expect(body).not.toHaveProperty('token');
+      expect(body.action).toBe('changes');
+      expect(body.sheet).toBe('TestSheet');
+      expect(body.since).toBe(0);
+      const headers = init?.headers as Record<string, string> | undefined;
+      expect(headers?.['Authorization']).toBe('Bearer secret-token');
+    });
+  });
+
   describe('loadSnapshot error cases', () => {
     it('should handle network errors', async () => {
       const config: DeltaSyncConfig = {

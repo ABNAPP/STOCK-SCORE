@@ -8,9 +8,14 @@ import { collection, doc, setDoc, getDoc, deleteDoc, Timestamp, query, where, ge
 import { db } from '../config/firebase';
 import { FilterValues } from '../types/filters';
 import { logger } from '../utils/logger';
+import type { ColumnFilters } from '../hooks/useColumnFilters';
+
+/** Schema version for backward compatibility when loading stored links */
+export const SHAREABLE_LINK_SCHEMA_VERSION = 1;
 
 export interface ShareableLink {
   id: string;
+  schemaVersion: number;
   filterState: FilterValues;
   viewId: string;
   sortConfig?: {
@@ -23,6 +28,10 @@ export interface ShareableLink {
   createdBy: string;
   name?: string;
   description?: string;
+  /** Column filters (per-column). When present, overrides filterState for column filtering. */
+  columnFilters?: ColumnFilters;
+  /** Search text applied to the table. */
+  searchValue?: string;
 }
 
 const COLLECTION_NAME = 'shareableLinks';
@@ -48,6 +57,8 @@ export async function saveShareableLink(
     description?: string;
     expiresInDays?: number;
     sortConfig?: { key: string; direction: 'asc' | 'desc' };
+    columnFilters?: ColumnFilters;
+    searchValue?: string;
   }
 ): Promise<string> {
   try {
@@ -58,6 +69,7 @@ export async function saveShareableLink(
       : new Date(now.getTime() + DEFAULT_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
 
     const linkData: Omit<ShareableLink, 'id'> = {
+      schemaVersion: SHAREABLE_LINK_SCHEMA_VERSION,
       filterState,
       viewId,
       tableId,
@@ -67,6 +79,8 @@ export async function saveShareableLink(
       name: options?.name,
       description: options?.description,
       sortConfig: options?.sortConfig,
+      columnFilters: options?.columnFilters,
+      searchValue: options?.searchValue,
     };
 
     const docRef = doc(collection(db, COLLECTION_NAME), linkId);
@@ -127,8 +141,11 @@ export async function loadShareableLink(linkId: string): Promise<ShareableLink |
       }
     }
 
+    const schemaVersion = (data.schemaVersion as number) ?? 1;
+
     const link: ShareableLink = {
       id: linkId,
+      schemaVersion,
       filterState: data.filterState as FilterValues,
       viewId: data.viewId as string,
       tableId: data.tableId as string,
@@ -138,6 +155,8 @@ export async function loadShareableLink(linkId: string): Promise<ShareableLink |
       name: data.name as string | undefined,
       description: data.description as string | undefined,
       sortConfig: data.sortConfig as { key: string; direction: 'asc' | 'desc' } | undefined,
+      columnFilters: data.columnFilters as ColumnFilters | undefined,
+      searchValue: data.searchValue as string | undefined,
     };
 
     return link;
@@ -180,6 +199,7 @@ export async function getUserShareableLinks(userId: string, limitCount: number =
 
       links.push({
         id: doc.id,
+        schemaVersion: (data.schemaVersion as number) ?? 1,
         filterState: data.filterState as FilterValues,
         viewId: data.viewId as string,
         tableId: data.tableId as string,
@@ -189,6 +209,8 @@ export async function getUserShareableLinks(userId: string, limitCount: number =
         name: data.name as string | undefined,
         description: data.description as string | undefined,
         sortConfig: data.sortConfig as { key: string; direction: 'asc' | 'desc' } | undefined,
+        columnFilters: data.columnFilters as ColumnFilters | undefined,
+        searchValue: data.searchValue as string | undefined,
       });
     });
 

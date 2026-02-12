@@ -15,9 +15,18 @@ import {
   isDeltaSyncEnabled,
   getPollIntervalMs,
   snapshotToTransformerFormat,
+  getApiBaseUrlForDeltaSync,
   type DeltaSyncConfig
 } from '../services/deltaSyncService';
-import { setDeltaCacheEntry, getDeltaCacheEntry, getCachedData, CACHE_KEYS } from '../services/firestoreCacheService';
+import {
+  setDeltaCacheEntry,
+  getDeltaCacheEntry,
+  getCachedData,
+  VIEWDATA_MIGRATION_MODE,
+  setViewData,
+  getViewDataWithFallback,
+  CACHE_KEYS,
+} from '../services/firestoreCacheService';
 import { BenjaminGrahamData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
 import { useRefreshOptional } from '../contexts/RefreshContext';
@@ -159,7 +168,7 @@ export function useBenjaminGrahamData() {
         try {
           const config: DeltaSyncConfig = {
             sheetName: SHEET_NAME,
-            apiBaseUrl: APPS_SCRIPT_URL,
+            apiBaseUrl: getApiBaseUrlForDeltaSync(),
             dataTypeName: 'Benjamin Graham',
           };
 
@@ -182,7 +191,9 @@ export function useBenjaminGrahamData() {
           previousDataRef.current = result.data;
           currentVersionRef.current = result.version;
           setLastUpdated(new Date());
-          
+          setViewData('entry-exit-benjamin-graham', { benjaminGraham: result.data }, { source: 'client-refresh' }).catch((e) =>
+            logger.warn('Failed to write viewData', { component: 'useBenjaminGrahamData', error: e })
+          );
           // Show notification if significant changes detected
           if (changes.hasSignificantChanges && !isBackground) {
             const changeMessage = formatChangeSummary(changes);
@@ -276,7 +287,9 @@ export function useBenjaminGrahamData() {
       setData(fetchedData);
       previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
-      
+      setViewData('entry-exit-benjamin-graham', { benjaminGraham: fetchedData }, { source: 'client-refresh' }).catch((e) =>
+        logger.warn('Failed to write viewData', { component: 'useBenjaminGrahamData', error: e })
+      );
       logger.info('Benjamin Graham state updated successfully', { 
         component: 'useBenjaminGrahamData', 
         operation: 'loadData',
@@ -339,7 +352,7 @@ export function useBenjaminGrahamData() {
     try {
       const config: DeltaSyncConfig = {
         sheetName: SHEET_NAME,
-        apiBaseUrl: APPS_SCRIPT_URL,
+        apiBaseUrl: getApiBaseUrlForDeltaSync(),
         dataTypeName: 'Benjamin Graham',
       };
 
@@ -351,8 +364,13 @@ export function useBenjaminGrahamData() {
         const snapshot = await loadSnapshot(config);
         const transformerFormat = snapshotToTransformerFormat(snapshot);
         const transformedData = transformBenjaminGrahamData(transformerFormat);
-        setDeltaCacheEntry(CACHE_KEY, transformedData, snapshot.version, true);
-        
+        // cutover: no appCache writes for view-docs
+        if (VIEWDATA_MIGRATION_MODE !== 'cutover') {
+          setDeltaCacheEntry(CACHE_KEY, transformedData, snapshot.version, true);
+        }
+        setViewData('entry-exit-benjamin-graham', { benjaminGraham: transformedData }, { source: 'client-refresh' }).catch((e) =>
+          logger.warn('Failed to write viewData', { component: 'useBenjaminGrahamData', error: e })
+        );
         // Detect data changes
         const changes = detectDataChanges(
           previousDataRef.current,
@@ -400,36 +418,34 @@ export function useBenjaminGrahamData() {
     }
   }, [isPageVisible]);
 
-  // Load cache on mount - check Firestore cache first
+  // Load cache on mount - viewData first (dual-read/cutover), then appCache fallback
   useEffect(() => {
     const loadCache = async () => {
       if (cacheLoadedRef.current) return;
       cacheLoadedRef.current = true;
       
       try {
-        // Try delta cache first, then fallback to regular cache
-        const deltaCacheEntry = await getDeltaCacheEntry<BenjaminGrahamData[]>(CACHE_KEY);
-        const regularCache = deltaCacheEntry ? null : await getCachedData<BenjaminGrahamData[]>(CACHE_KEY);
-        const cachedData = deltaCacheEntry?.data || regularCache;
-        
-        if (cachedData && cachedData.length > 0) {
+        const result = await getViewDataWithFallback<{ benjaminGraham: BenjaminGrahamData[] }>('entry-exit-benjamin-graham', {
+          fallback: async () => {
+            const delta = await getDeltaCacheEntry<BenjaminGrahamData[]>(CACHE_KEY);
+            const regular = delta ? null : await getCachedData<BenjaminGrahamData[]>(CACHE_KEY);
+            const arr = delta?.data ?? regular;
+            return arr && arr.length > 0 ? { benjaminGraham: arr } : null;
+          },
+        });
+        if (result && result.data.benjaminGraham.length > 0) {
+          const cachedData = result.data.benjaminGraham;
           setData(cachedData);
           previousDataRef.current = cachedData;
-          currentVersionRef.current = deltaCacheEntry?.version || 0;
+          const delta = await getDeltaCacheEntry<BenjaminGrahamData[]>(CACHE_KEY);
+          currentVersionRef.current = delta?.version ?? 0;
           setLoading(false);
-          // Don't fetch if we have valid cache - hard cache, no initial fetch; polling still updates in background
           return;
         }
-        // No cache, fetch fresh data
       } catch (err) {
-        // If cache load fails, log and continue to fetch fresh data
-        logger.warn('Failed to load cache, fetching fresh data', { 
-          component: 'useBenjaminGrahamData', 
-          error: err 
-        });
+        logger.warn('Failed to load cache, fetching fresh data', { component: 'useBenjaminGrahamData', error: err });
       }
       
-      // If no cache or cache load failed, fetch fresh data
       loadData(false, false);
     };
     
@@ -467,15 +483,41 @@ export function useBenjaminGrahamData() {
     }
   }, [pollForChanges, isPageVisible]);
 
-  const refetch = useCallback((forceRefresh?: boolean) => {
-    loadData(forceRefresh ?? false);
-  }, [loadData]);
+  const refetch = useCallback(
+    async (forceRefresh?: boolean | { skipFetch?: boolean }) => {
+      const opts = typeof forceRefresh === 'object' ? forceRefresh : { skipFetch: false };
+      if (opts?.skipFetch) {
+        setLoading(true);
+        try {
+          const result = await getViewDataWithFallback<{ benjaminGraham: BenjaminGrahamData[] }>('entry-exit-benjamin-graham', {
+            fallback: async () => {
+              const delta = await getDeltaCacheEntry<BenjaminGrahamData[]>(CACHE_KEY);
+              const regular = delta ? null : await getCachedData<BenjaminGrahamData[]>(CACHE_KEY);
+              const arr = delta?.data ?? regular;
+              return arr && arr.length > 0 ? { benjaminGraham: arr } : null;
+            },
+          });
+          if (result?.data?.benjaminGraham?.length) {
+            setData(result.data.benjaminGraham);
+            previousDataRef.current = result.data.benjaminGraham;
+            setLastUpdated(new Date());
+          }
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+      loadData(typeof forceRefresh === 'boolean' ? forceRefresh : false);
+    },
+    [loadData]
+  );
 
-  // Register with RefreshContext so Refresh All triggers this hook's refetch
   const refreshContext = useRefreshOptional();
   useEffect(() => {
     if (!refreshContext) return;
-    const unregister = refreshContext.registerRefetch('benjamin-graham', () => refetch(true));
+    const unregister = refreshContext.registerRefetch('benjamin-graham', (options) =>
+      refetch(options?.skipFetch ? { skipFetch: true } : true)
+    );
     return unregister;
   }, [refreshContext, refetch]);
 

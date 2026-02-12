@@ -19,6 +19,7 @@ interface UseColumnFiltersOptions<T> {
   data: T[];
   tableId: string;
   onFiltersChange?: (filters: ColumnFilters) => void;
+  initialFilters?: ColumnFilters;
 }
 
 interface UseColumnFiltersReturn<T> {
@@ -51,11 +52,15 @@ export function useColumnFilters<T extends Record<string, unknown>>({
   data,
   tableId,
   onFiltersChange,
+  initialFilters,
 }: UseColumnFiltersOptions<T>): UseColumnFiltersReturn<T> {
   const storageKey = `${STORAGE_KEY_PREFIX}${tableId}`;
   
-  // Load filters from localStorage on mount
+  // Load filters from localStorage on mount, or use initialFilters if provided and non-empty
   const [filters, setFilters] = useState<ColumnFilters>(() => {
+    if (initialFilters && Object.keys(initialFilters).length > 0) {
+      return initialFilters;
+    }
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) {

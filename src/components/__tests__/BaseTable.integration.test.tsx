@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import BaseTable, { ColumnDefinition } from '../BaseTable';
 import { FilterConfig } from '../AdvancedFilters';
-import { ThemeProvider } from '../../contexts/ThemeContext';
-import { EntryExitProvider } from '../../contexts/EntryExitContext';
+import { renderWithAuth } from '../../test/helpers/renderHelpers';
+import { setupStableRandom, teardownStableRandom } from '../../test/utils/determinism';
 import '../../i18n/config';
 
 // Test data type
@@ -16,18 +16,10 @@ interface TestData {
   status: string;
 }
 
-// Test wrapper component
-function TestWrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <ThemeProvider>
-      <EntryExitProvider>
-        {children}
-      </EntryExitProvider>
-    </ThemeProvider>
-  );
-}
-
 describe('BaseTable Integration Tests', () => {
+  beforeEach(() => setupStableRandom(1));
+  afterEach(() => teardownStableRandom());
+
   const mockColumns: ColumnDefinition<TestData>[] = [
     { key: 'id', label: 'ID', required: true, sticky: true, sortable: true },
     { key: 'name', label: 'Name', required: true, sticky: true, sortable: true },
@@ -76,7 +68,7 @@ describe('BaseTable Integration Tests', () => {
 
   describe('Rendering with different data sizes', () => {
     it('should render with empty data', () => {
-      render(
+      renderWithAuth(
         <BaseTable
           data={[]}
           loading={false}
@@ -87,8 +79,7 @@ describe('BaseTable Integration Tests', () => {
           renderCell={renderCell}
           searchFields={['name', 'category']}
           emptyMessage="No data available"
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       expect(screen.getByText('No data available')).toBeInTheDocument();
@@ -96,7 +87,7 @@ describe('BaseTable Integration Tests', () => {
 
     it('should render with single row', () => {
       const data = createTestData(1);
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -106,8 +97,7 @@ describe('BaseTable Integration Tests', () => {
           tableId="test-table"
           renderCell={renderCell}
           searchFields={['name', 'category']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       expect(screen.getByText('Item 1')).toBeInTheDocument();
@@ -115,7 +105,7 @@ describe('BaseTable Integration Tests', () => {
 
     it('should render with small dataset (< 10 rows)', () => {
       const data = createTestData(5);
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -125,8 +115,7 @@ describe('BaseTable Integration Tests', () => {
           tableId="test-table"
           renderCell={renderCell}
           searchFields={['name', 'category']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       expect(screen.getByText('Item 1')).toBeInTheDocument();
@@ -135,7 +124,7 @@ describe('BaseTable Integration Tests', () => {
 
     it('should render with large dataset (> 100 rows)', () => {
       const data = createTestData(150);
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -147,8 +136,7 @@ describe('BaseTable Integration Tests', () => {
           searchFields={['name', 'category']}
           enablePagination={true}
           itemsPerPage={50}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       expect(screen.getByText('Item 1')).toBeInTheDocument();
@@ -162,7 +150,7 @@ describe('BaseTable Integration Tests', () => {
       const user = userEvent.setup();
       const data = createTestData(10);
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -172,8 +160,7 @@ describe('BaseTable Integration Tests', () => {
           tableId="test-table"
           renderCell={renderCell}
           searchFields={['name', 'category']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       const searchInput = screen.getByPlaceholderText(/Sök/i);
@@ -193,7 +180,7 @@ describe('BaseTable Integration Tests', () => {
         { id: 3, name: 'Carrot', value: 30, category: 'Vegetable', status: 'Inactive' },
       ];
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -203,8 +190,7 @@ describe('BaseTable Integration Tests', () => {
           tableId="test-table"
           renderCell={renderCell}
           searchFields={['name', 'category']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       const searchInput = screen.getByPlaceholderText(/Sök/i);
@@ -223,7 +209,7 @@ describe('BaseTable Integration Tests', () => {
       const user = userEvent.setup();
       const data = createTestData(10);
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -233,8 +219,7 @@ describe('BaseTable Integration Tests', () => {
           tableId="test-table"
           renderCell={renderCell}
           searchFields={['name', 'category']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       // Open filters
@@ -258,7 +243,7 @@ describe('BaseTable Integration Tests', () => {
         { id: 3, name: 'Item 3', value: 30, category: 'C', status: 'Inactive' },
       ];
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -268,8 +253,7 @@ describe('BaseTable Integration Tests', () => {
           tableId="test-table"
           renderCell={renderCell}
           searchFields={['name', 'category']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       // Open filters
@@ -303,7 +287,7 @@ describe('BaseTable Integration Tests', () => {
         { id: 3, name: 'Item 3', value: 90, category: 'C', status: 'Inactive' },
       ];
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -313,8 +297,7 @@ describe('BaseTable Integration Tests', () => {
           tableId="test-table"
           renderCell={renderCell}
           searchFields={['name', 'category']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       // Open filters
@@ -346,7 +329,7 @@ describe('BaseTable Integration Tests', () => {
         { id: 3, name: 'Carrot', value: 30, category: 'B', status: 'Inactive' },
       ];
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -356,8 +339,7 @@ describe('BaseTable Integration Tests', () => {
           tableId="test-table"
           renderCell={renderCell}
           searchFields={['name', 'category']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       // Open filters
@@ -383,7 +365,7 @@ describe('BaseTable Integration Tests', () => {
       const user = userEvent.setup();
       const data = createTestData(10);
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -393,8 +375,7 @@ describe('BaseTable Integration Tests', () => {
           tableId="test-table"
           renderCell={renderCell}
           searchFields={['name', 'category']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       // Apply search
@@ -422,7 +403,7 @@ describe('BaseTable Integration Tests', () => {
         { id: 2, name: 'Banana', value: 20, category: 'B', status: 'Active' },
       ];
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -433,8 +414,7 @@ describe('BaseTable Integration Tests', () => {
           renderCell={renderCell}
           searchFields={['name', 'category']}
           defaultSortKey="name"
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       // Click name column to sort
@@ -456,7 +436,7 @@ describe('BaseTable Integration Tests', () => {
         { id: 3, name: 'Zebra', value: 30, category: 'C', status: 'Active' },
       ];
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -467,8 +447,7 @@ describe('BaseTable Integration Tests', () => {
           renderCell={renderCell}
           searchFields={['name', 'category']}
           defaultSortKey="name"
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       const nameHeader = screen.getByText('Name');
@@ -489,7 +468,7 @@ describe('BaseTable Integration Tests', () => {
       const user = userEvent.setup();
       const data = createTestData(150);
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -501,8 +480,7 @@ describe('BaseTable Integration Tests', () => {
           searchFields={['name', 'category']}
           enablePagination={true}
           itemsPerPage={50}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       // Should show first page
@@ -523,7 +501,7 @@ describe('BaseTable Integration Tests', () => {
       const user = userEvent.setup();
       const data = createTestData(150);
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -535,8 +513,7 @@ describe('BaseTable Integration Tests', () => {
           searchFields={['name', 'category']}
           enablePagination={true}
           itemsPerPage={50}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       // Apply search
@@ -561,7 +538,7 @@ describe('BaseTable Integration Tests', () => {
       const user = userEvent.setup();
       const data = createTestData(5);
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -571,8 +548,7 @@ describe('BaseTable Integration Tests', () => {
           tableId="test-table"
           renderCell={renderCell}
           searchFields={['name', 'category']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       // Open column visibility toggle
@@ -594,7 +570,7 @@ describe('BaseTable Integration Tests', () => {
 
   describe('Loading and error states', () => {
     it('should show loading state', () => {
-      render(
+      renderWithAuth(
         <BaseTable
           data={[]}
           loading={true}
@@ -604,8 +580,7 @@ describe('BaseTable Integration Tests', () => {
           tableId="test-table"
           renderCell={renderCell}
           searchFields={['name', 'category']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       // Should show skeleton/loading state
@@ -614,7 +589,7 @@ describe('BaseTable Integration Tests', () => {
     });
 
     it('should show error state', () => {
-      render(
+      renderWithAuth(
         <BaseTable
           data={[]}
           loading={false}
@@ -624,8 +599,7 @@ describe('BaseTable Integration Tests', () => {
           tableId="test-table"
           renderCell={renderCell}
           searchFields={['name', 'category']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       expect(screen.getByText(/error|Error/i)).toBeInTheDocument();
@@ -633,11 +607,72 @@ describe('BaseTable Integration Tests', () => {
     });
   });
 
+  describe('Shareable link hydration (initial state)', () => {
+    it('should apply initialFilterState and initialSearchValue on mount', async () => {
+      const data = [
+        { id: 1, name: 'Apple', value: 10, category: 'A', status: 'Active' },
+        { id: 2, name: 'Banana', value: 20, category: 'B', status: 'Active' },
+        { id: 3, name: 'Apricot', value: 30, category: 'C', status: 'Inactive' },
+      ];
+
+      renderWithAuth(
+        <BaseTable
+          data={data}
+          loading={false}
+          error={null}
+          columns={mockColumns}
+          filters={mockFilters}
+          tableId="test-hydration"
+          renderCell={renderCell}
+          searchFields={['name', 'category']}
+          initialFilterState={{ name: 'Apple' }}
+          initialSearchValue="Apple"
+        />
+      );
+
+      await waitFor(() => {
+        // Search input should show initial value
+        const searchInput = screen.getByPlaceholderText(/Sök/i);
+        expect(searchInput).toHaveValue('Apple');
+      });
+      // Filtered by search: only Apple matches "Apple" (substring)
+      expect(screen.getByText('Apple')).toBeInTheDocument();
+      expect(screen.queryByText('Banana')).not.toBeInTheDocument();
+    });
+
+    it('should apply initialSortConfig on mount', () => {
+      const data = [
+        { id: 3, name: 'Zebra', value: 30, category: 'C', status: 'Active' },
+        { id: 1, name: 'Apple', value: 10, category: 'A', status: 'Active' },
+        { id: 2, name: 'Banana', value: 20, category: 'B', status: 'Active' },
+      ];
+
+      renderWithAuth(
+        <BaseTable
+          data={data}
+          loading={false}
+          error={null}
+          columns={mockColumns}
+          filters={mockFilters}
+          tableId="test-hydration-sort"
+          renderCell={renderCell}
+          searchFields={['name', 'category']}
+          defaultSortKey="name"
+          initialSortConfig={{ key: 'name', direction: 'desc' }}
+        />
+      );
+
+      // With desc sort by name, Zebra should be first
+      const rows = screen.getAllByRole('row');
+      expect(rows[1]).toHaveTextContent('Zebra');
+    });
+  });
+
   describe('Sticky columns', () => {
     it('should render sticky columns', () => {
       const data = createTestData(5);
       
-      render(
+      renderWithAuth(
         <BaseTable
           data={data}
           loading={false}
@@ -648,8 +683,7 @@ describe('BaseTable Integration Tests', () => {
           renderCell={renderCell}
           searchFields={['name', 'category']}
           stickyColumns={['id', 'name']}
-        />,
-        { wrapper: TestWrapper }
+        />
       );
 
       // Sticky columns should be rendered

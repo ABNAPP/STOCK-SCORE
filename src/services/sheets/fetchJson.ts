@@ -10,6 +10,8 @@ import { transformInWorker, getTransformerId } from '../workerService';
 import type { DataRow, ProgressCallback } from './types';
 import { APPS_SCRIPT_URL } from './fetchConfig';
 import { convert2DArrayToObjects, createMockParseResult } from './fetchDataConversion';
+import { isSecureMode } from '../../config/securityMode';
+import { SecurityError } from '../../utils/securityErrors';
 
 export async function fetchJSONData<T>(
   sheetName: string,
@@ -44,6 +46,17 @@ export async function fetchJSONData<T>(
       rateLimitResult,
     });
     throw error;
+  }
+
+  if (isSecureMode()) {
+    logger.warn('Secure mode: legacy GET to Apps Script blocked', {
+      component: 'fetchService',
+      dataTypeName,
+      operation: 'fetchJSONData',
+    });
+    throw new SecurityError(
+      'Secure mode: legacy GET to Apps Script is disabled. Use delta sync or admin refresh. Set VITE_APPS_SCRIPT_PROXY_URL for client fetch.'
+    );
   }
 
   if (!APPS_SCRIPT_URL) {

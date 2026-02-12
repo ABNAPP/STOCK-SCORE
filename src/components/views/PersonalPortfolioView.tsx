@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
+import { useShareableHydration } from '../../contexts/ShareableHydrationContext';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
@@ -18,9 +19,13 @@ import { DEFAULT_BROKERS, BROKER_OTHER } from '../../config/brokers';
 import { PORTFOLIO_COLUMNS, type PortfolioTableItem } from './PersonalPortfolioColumns';
 import { PersonalPortfolioExpandedRow } from './PersonalPortfolioExpandedRow';
 
+const VIEW_ID = 'personal-portfolio';
+const TABLE_ID = 'personal-portfolio';
+
 // Inner component that uses EntryExitContext
 function PersonalPortfolioViewInner() {
   const { t } = useTranslation();
+  const { link, consume } = useShareableHydration();
   const { currentUser } = useAuth();
   const { data: benjaminGrahamData, loading: benjaminGrahamLoading } = useBenjaminGrahamData();
   const { entryExitValues, initializeFromData } = useEntryExitValues();
@@ -487,8 +492,23 @@ function PersonalPortfolioViewInner() {
     return { transformedPortfolio: transformed, totalMarketValue: total, totalInvested };
   }, [portfolio, benjaminGrahamData, entryExitValues, exchangeRatesByCurrency]);
 
-  // Row key for expand; must match getRowKey passed to BaseTable
-  const getRowKey = useCallback((item: PortfolioTableItem, index: number) => `${item.ticker}-${index}`, []);
+  const initialTableState = useMemo(() => {
+    if (!link || link.viewId !== VIEW_ID || link.tableId !== TABLE_ID) return undefined;
+    return {
+      filterState: link.filterState ?? {},
+      columnFilters: link.columnFilters ?? {},
+      searchValue: link.searchValue ?? '',
+      sortConfig: link.sortConfig,
+    };
+  }, [link]);
+
+  useEffect(() => {
+    if (initialTableState) consume();
+  }, [initialTableState, consume]);
+
+  // Row key for expand; must match getRowKey passed to BaseTable.
+  // Stable identifier (ticker-companyName) so expanded state survives sort/filter changes.
+  const getRowKey = useCallback((item: PortfolioTableItem) => `${item.ticker}-${item.companyName}`, []);
 
   // Render cell content
   const renderCell = useCallback((
@@ -499,7 +519,7 @@ function PersonalPortfolioViewInner() {
     expandedRows?: { [key: string]: boolean },
     toggleRow?: (rowKey: string) => void
   ) => {
-    const rowKey = getRowKey(item, globalIndex);
+    const rowKey = getRowKey(item);
     const isExpanded = expandedRows?.[rowKey] ?? false;
 
     // Get currency from entryExitValues in real-time
@@ -1194,6 +1214,10 @@ function PersonalPortfolioViewInner() {
               columns={PORTFOLIO_COLUMNS}
               filters={[]}
               tableId="personal-portfolio"
+              initialFilterState={initialTableState?.filterState}
+              initialColumnFilters={initialTableState?.columnFilters}
+              initialSearchValue={initialTableState?.searchValue}
+              initialSortConfig={initialTableState?.sortConfig}
               renderCell={renderCell}
               renderHeader={renderHeader}
               searchFields={['companyName', 'ticker']}

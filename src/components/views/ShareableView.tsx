@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { loadShareableLink, ShareableLink } from '../../services/shareableLinkService';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { useTranslation } from 'react-i18next';
+import { useUserRole } from '../../hooks/useUserRole';
+import type { ViewId } from '../../types/navigation';
 import LoadingFallback from '../LoadingFallback';
 
 interface ShareableViewProps {
@@ -14,6 +16,7 @@ export default function ShareableView({ onLoadLink }: ShareableViewProps) {
   const navigate = useNavigate();
   const { createNotification } = useNotifications();
   const { t } = useTranslation();
+  const { canView } = useUserRole();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,6 +35,13 @@ export default function ShareableView({ onLoadLink }: ShareableViewProps) {
         if (!link) {
           setError(t('shareableLinks.linkNotFound', 'Link not found or expired'));
           setLoading(false);
+          return;
+        }
+
+        if (!canView(link.viewId as ViewId)) {
+          setError(t('common.unauthorizedView', 'Du saknar behörighet till denna vy'));
+          setLoading(false);
+          navigate('/', { replace: true });
           return;
         }
 
@@ -62,7 +72,7 @@ export default function ShareableView({ onLoadLink }: ShareableViewProps) {
     };
 
     loadLink();
-  }, [linkId, navigate, onLoadLink, createNotification, t]);
+  }, [linkId, navigate, onLoadLink, createNotification, t, canView]);
 
   if (loading) {
     return <LoadingFallback />;

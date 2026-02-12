@@ -8,14 +8,16 @@
  * - Retry logic with exponential backoff
  */
 
-import { getDeltaCacheEntry, setDeltaCacheEntry, getLastVersion } from './firestoreCacheService';
+import { getDeltaCacheEntry, setDeltaCacheEntry, getLastVersion, VIEWDATA_MIGRATION_MODE } from './firestoreCacheService';
 import { logger } from '../utils/logger';
+import { isSecureMode, requireProxyInSecureMode } from '../config/securityMode';
 import { isArray, isString } from '../utils/typeGuards';
 import { transformInWorker, getTransformerId } from './workerService';
 import type { DataRow } from './sheets';
 
 // Configuration
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
+const APPS_SCRIPT_PROXY_URL = import.meta.env.VITE_APPS_SCRIPT_PROXY_URL || '';
 const DELTA_SYNC_ENABLED = import.meta.env.VITE_DELTA_SYNC_ENABLED !== 'false'; // Default: true
 const POLL_INTERVAL_MINUTES = parseInt(import.meta.env.VITE_DELTA_SYNC_POLL_MINUTES || '15', 10);
 const API_TOKEN = import.meta.env.VITE_APPS_SCRIPT_TOKEN || ''; // Optional token
@@ -28,6 +30,36 @@ const FETCH_TIMEOUT_SECONDS = parseInt(import.meta.env.VITE_FETCH_TIMEOUT_SECOND
 const FETCH_TIMEOUT = FETCH_TIMEOUT_SECONDS * 1000;
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000; // 1 second
+
+function isDirectAppsScriptUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.hostname.includes('script.google.com') || u.pathname.includes('/macros/s/');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolve API base URL for delta sync. When API_TOKEN is set, proxy must be used (Apps Script cannot read headers).
+ * Steg C: in secure mode, require proxy when Apps Script URL is configured.
+ */
+export function getApiBaseUrlForDeltaSync(): string {
+  if (isSecureMode()) {
+    requireProxyInSecureMode();
+    return APPS_SCRIPT_PROXY_URL;
+  }
+  if (API_TOKEN && APPS_SCRIPT_PROXY_URL) {
+    return APPS_SCRIPT_PROXY_URL;
+  }
+  if (API_TOKEN && isDirectAppsScriptUrl(APPS_SCRIPT_URL)) {
+    throw new Error(
+      'Direct Apps Script calls are not allowed when API_TOKEN is enabled. ' +
+      'Set VITE_APPS_SCRIPT_PROXY_URL to your appsScriptProxy Cloud Function URL.'
+    );
+  }
+  return APPS_SCRIPT_URL;
+}
 
 /**
  * Snapshot response from Apps Script API
@@ -282,8 +314,10 @@ export async function initSync<T>(
     transformedData = transformer(transformerFormat);
   }
   
-  // Cache the snapshot
-  setDeltaCacheEntry(cacheKey, transformedData, snapshot.version, true);
+  // Cache the snapshot (cutover: no appCache writes for view-docs)
+  if (VIEWDATA_MIGRATION_MODE !== 'cutover') {
+    setDeltaCacheEntry(cacheKey, transformedData, snapshot.version, true);
+  }
 
   return {
     data: transformedData,
@@ -310,20 +344,25 @@ export async function initSync<T>(
  * ```
  */
 export async function loadSnapshot(config: DeltaSyncConfig): Promise<SnapshotResponse> {
-  const url = buildSnapshotUrl(config);
+  const token = config.token || API_TOKEN || undefined;
+  const usePost = !!token || isSecureMode();
+  const url = usePost ? config.apiBaseUrl : buildSnapshotUrl(config);
+  const headers = buildAuthHeaders(token);
   
   try {
-    // Use longer timeout for delta sync snapshot requests (45 seconds default, configurable via VITE_DELTA_SYNC_TIMEOUT_SECONDS)
+    const init: RequestInit = usePost
+      ? {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'snapshot', sheet: config.sheetName }),
+        }
+      : { method: 'GET', headers };
+    
     const rawResponse = await fetchWithRetry<unknown>(
       url,
-      {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-      },
+      init,
       MAX_RETRIES,
-      DELTA_SYNC_TIMEOUT // Use longer timeout for delta sync
+      DELTA_SYNC_TIMEOUT
     );
     
     // Handle case where API returns a 2D array directly (legacy format)
@@ -397,13 +436,13 @@ export async function loadSnapshot(config: DeltaSyncConfig): Promise<SnapshotRes
     if (isTimeout) {
       logger.warn(
         `Snapshot request timed out for sheet "${config.sheetName}" (will use fallback if available)`,
-        { component: 'deltaSyncService', operation: 'loadSnapshot', sheetName: config.sheetName, url }
+        { component: 'deltaSyncService', operation: 'loadSnapshot', sheetName: config.sheetName, url, hasAuth: !!token }
       );
     } else {
       logger.error(
         `Failed to load snapshot for sheet "${config.sheetName}"`,
         error,
-        { component: 'deltaSyncService', operation: 'loadSnapshot', sheetName: config.sheetName, url }
+        { component: 'deltaSyncService', operation: 'loadSnapshot', sheetName: config.sheetName, url, hasAuth: !!token }
       );
     }
     throw error;
@@ -433,14 +472,20 @@ export async function pollChanges(
   config: DeltaSyncConfig,
   sinceVersion: number
 ): Promise<ChangesResponse> {
-  const url = buildChangesUrl(config, sinceVersion);
+  const token = config.token || API_TOKEN || undefined;
+  const usePost = !!token || isSecureMode();
+  const url = usePost ? config.apiBaseUrl : buildChangesUrl(config, sinceVersion);
+  const headers = buildAuthHeaders(token);
   
-  return fetchWithRetry<ChangesResponse>(url, {
-    method: 'GET',
-    headers: {
-      'Accept': 'application/json',
-    },
-  });
+  const init: RequestInit = usePost
+    ? {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'changes', sheet: config.sheetName, since: sinceVersion }),
+      }
+    : { method: 'GET', headers };
+  
+  return fetchWithRetry<ChangesResponse>(url, init);
 }
 
 /**
@@ -537,30 +582,35 @@ export async function applyChangesToCache<T>(
 }
 
 /**
- * Build snapshot URL
+ * Build snapshot URL. No token in URL or body — header only.
  */
 function buildSnapshotUrl(config: DeltaSyncConfig): string {
   const url = new URL(config.apiBaseUrl);
   url.searchParams.set('action', 'snapshot');
   url.searchParams.set('sheet', config.sheetName);
-  if (config.token || API_TOKEN) {
-    url.searchParams.set('token', config.token || API_TOKEN);
-  }
   return url.toString();
 }
 
 /**
- * Build changes URL
+ * Build changes URL (no token in querystring - use header or POST body)
  */
 function buildChangesUrl(config: DeltaSyncConfig, sinceVersion: number): string {
   const url = new URL(config.apiBaseUrl);
   url.searchParams.set('action', 'changes');
   url.searchParams.set('sheet', config.sheetName);
   url.searchParams.set('since', String(sinceVersion));
-  if (config.token || API_TOKEN) {
-    url.searchParams.set('token', config.token || API_TOKEN);
-  }
   return url.toString();
+}
+
+/**
+ * Build request headers. Token in Authorization header only (no token in body).
+ */
+function buildAuthHeaders(token: string | undefined): Record<string, string> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
 }
 
 /**

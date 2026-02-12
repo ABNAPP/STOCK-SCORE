@@ -5,6 +5,7 @@ import ColumnTooltip from './ColumnTooltip';
 import ColumnFilterMenu from './ColumnFilterMenu';
 import { getColumnMetadata } from '../config/tableMetadata';
 import { FilterConfig } from './AdvancedFilters';
+import { ShareableTableState } from '../types/filters';
 import { useTranslation } from 'react-i18next';
 
 interface PEIndustryTableProps {
@@ -22,7 +23,7 @@ const PE_INDUSTRY_COLUMNS: ColumnDefinition<PEIndustryData>[] = [
   { key: 'companyCount', label: 'Antal bolag', defaultVisible: true, sortable: true, align: 'center' },
 ];
 
-export default function PEIndustryTable({ data, loading, error }: PEIndustryTableProps) {
+export default function PEIndustryTable({ data, loading, error, initialTableState }: PEIndustryTableProps) {
   const { t } = useTranslation();
   
   // Get unique industries for filter dropdown
@@ -363,7 +364,11 @@ export default function PEIndustryTable({ data, loading, error }: PEIndustryTabl
       stickyColumns={['antal', 'industry']}
       ariaLabel="P/E Industry"
       minTableWidth="800px"
-      getRowKey={(item, index) => `${item.industry}-${index}`}
+      getRowKey={(item) => item.industry}
+      initialFilterState={initialTableState?.filterState}
+      initialColumnFilters={initialTableState?.columnFilters}
+      initialSearchValue={initialTableState?.searchValue}
+      initialSortConfig={initialTableState?.sortConfig}
     />
   );
 }

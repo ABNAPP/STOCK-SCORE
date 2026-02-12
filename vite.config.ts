@@ -1,9 +1,18 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  resolve: {
+    alias: process.env.VITEST
+      ? { 'firebase-admin': path.resolve(__dirname, 'src/test/mocks/firebaseAdmin.ts') }
+      : {},
+  },
   server: {
     port: 5173, // Default Vite port
     strictPort: false, // If port is in use, try next available port

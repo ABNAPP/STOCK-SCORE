@@ -17,9 +17,21 @@ service cloud.firestore {
       return getUserRole() == 'viewer' || isAdmin();
     }
     
-    // Helper function to get viewer allowed views from custom claims
-    function getViewerAllowedViews() {
+    // Helper function to check if user is viewer (not admin)
+    function isViewer() {
+      return getUserRole() == 'viewer';
+    }
+    
+    // Helper function to get viewer allowed views from custom claims (MAP format)
+    function getViewerAllowedViewsMap() {
       return request.auth.token.allowedViews;
+    }
+    
+    // Helper: can user read viewId? Admin: yes. Viewer: only if allowedViews[viewId] == true
+    function canView(viewId) {
+      return isAdmin() || (isViewer() &&
+        request.auth.token.allowedViews != null &&
+        request.auth.token.allowedViews[viewId] == true);
     }
     
     // Helper function to validate EntryExit value structure
@@ -45,9 +57,10 @@ service cloud.firestore {
              true;
     }
     
-    // sharedData/threshold document - only admin can read/write (overrides catch-all below)
+    // sharedData/threshold - read: canView(threshold-industry) or admin; write: admin only
     match /sharedData/threshold {
-      allow read, write: if isAdmin();
+      allow read: if request.auth != null && canView('threshold-industry');
+      allow write: if request.auth != null && isAdmin();
     }
     
     // Shared data - read requires authentication and role (viewer or admin), write only for admin
@@ -57,12 +70,14 @@ service cloud.firestore {
         allow read, write: if isAdmin();
       }
       
-      // EntryExit data - available for Score table
+      // EntryExit data - canView-styrd: only viewers with score/score-board/entry-exit-benjamin-graham may read
       match /entryExit {
-        // Read: Authenticated users with role (viewer or admin)
-        allow read: if request.auth != null && hasRole();
-        
-        // Write: Only admin
+        allow read: if request.auth != null && (
+          isAdmin() ||
+          canView('score') ||
+          canView('score-board') ||
+          canView('entry-exit-benjamin-graham')
+        );
         allow write: if request.auth != null && 
                         isAdmin() && 
                         request.resource.data.size() <= 1048576 &&
@@ -127,13 +142,14 @@ service cloud.firestore {
     
     // App cache - shared cache; Viewer can read only Score-view docs, Admin can read all
     match /appCache/{cacheKey} {
-      // Read: Admin all; Viewer only scoreBoard, benjaminGraham, peIndustry, sma, currency_rates_usd
+      // Read: Admin all; Viewer only scoreBoard, benjaminGraham, peIndustry, sma, thresholdIndustry, currency_rates_usd
       allow read: if request.auth != null && (
         isAdmin() ||
         cacheKey == 'scoreBoard' ||
         cacheKey == 'benjaminGraham' ||
         cacheKey == 'peIndustry' ||
         cacheKey == 'sma' ||
+        cacheKey == 'thresholdIndustry' ||
         cacheKey == 'currency_rates_usd'
       );
       
@@ -150,6 +166,17 @@ service cloud.firestore {
                               request.resource.data.ttl is number;
     }
     
+    // viewData - per-view data; read: canView(viewId); write: admin only
+    match /viewData/{viewId} {
+      allow read: if request.auth != null && canView(viewId);
+      allow create, update, delete: if request.auth != null && isAdmin()
+        && request.resource.data.size() <= 10485760
+        && request.resource.data.data != null
+        && request.resource.data.timestamp is number
+        && request.resource.data.ttl is number
+        && request.resource.data.schemaVersion is number;
+    }
+    
     // Shareable links - authenticated users can read (to load shared links); create/update/delete only by creator
     match /shareableLinks/{linkId} {
       allow read: if request.auth != null;
@@ -161,6 +188,12 @@ service cloud.firestore {
     match /userData/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
       allow write: if request.auth != null && isAdmin();
+    }
+    
+    // Admin actions audit log - written by Cloud Functions (Admin SDK); only admin can read
+    match /adminActions/{actionId} {
+      allow read: if request.auth != null && isAdmin();
+      allow create, update, delete: if false; // Only server (Admin SDK) can write
     }
     
     // Deny all other access by default

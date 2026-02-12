@@ -101,17 +101,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Get viewer permissions (allowedViews) from custom claims
+  // Backward compat: supports both ARRAY and MAP format (MAP recommended for Firestore rules)
   const getViewerPermissions = useCallback(async (user: User | null): Promise<ViewerPermissions | null> => {
     if (!user) return null;
     
     try {
       const tokenResult = await getIdTokenResult(user, true); // Force refresh to get latest claims
-      const allowedViews = tokenResult.claims.allowedViews as string[] | undefined;
-      
-      if (allowedViews && Array.isArray(allowedViews)) {
+      const av = tokenResult.claims.allowedViews;
+      let allowedViews: string[] = [];
+      if (Array.isArray(av)) {
+        allowedViews = av.filter((v): v is string => typeof v === 'string');
+      } else if (av && typeof av === 'object' && !Array.isArray(av)) {
+        allowedViews = Object.keys(av).filter((k) => (av as Record<string, unknown>)[k] === true);
+      }
+      if (allowedViews.length > 0) {
         return { allowedViews };
       }
-      
       return null;
     } catch (error) {
       logger.error('Error getting viewer permissions', error, { component: 'AuthContext', operation: 'getViewerPermissions' });

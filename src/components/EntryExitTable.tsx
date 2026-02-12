@@ -5,6 +5,7 @@ import ColumnTooltip from './ColumnTooltip';
 import ColumnFilterMenu from './ColumnFilterMenu';
 import { getColumnMetadata } from '../config/tableMetadata';
 import { FilterConfig } from './AdvancedFilters';
+import { ShareableTableState } from '../types/filters';
 import { useTranslation } from 'react-i18next';
 import { useEntryExitValues } from '../contexts/EntryExitContext';
 import { useUserRole } from '../hooks/useUserRole';
@@ -22,6 +23,7 @@ interface EntryExitTableProps {
   data: BenjaminGrahamData[];
   loading: boolean;
   error: string | null;
+  initialTableState?: ShareableTableState;
 }
 
 const CURRENCIES = ['USD', 'EUR', 'SEK', 'DKK', 'NOK', 'GBP', 'AUD', 'CAD', 'NZD'];
@@ -111,7 +113,11 @@ const ENTRY_EXIT_FILTERS: FilterConfig[] = [
   },
 ];
 
-function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
+function generateRowKey(item: BenjaminGrahamData): string {
+  return `${item.ticker}-${item.companyName}`;
+}
+
+function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTableProps) {
   const { t } = useTranslation();
   const [expandedRows, setExpandedRows] = useState<{ [key: string]: boolean }>({});
   const { getEntryExitValue, getFieldValue, setFieldValue, commitField, initializeFromData } = useEntryExitValues();
@@ -703,7 +709,7 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
 
   // Render mobile card
   const renderMobileCard = useCallback((item: BenjaminGrahamData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
-    const rowKey = `${item.ticker}-${item.companyName}-${globalIndex}`;
+    const rowKey = generateRowKey(item);
     const rowBgClass = globalIndex % 2 === 0 
       ? 'bg-white dark:bg-gray-800' 
       : 'bg-gray-50 dark:bg-gray-800/50';
@@ -953,7 +959,11 @@ function EntryExitTable({ data, loading, error }: EntryExitTableProps) {
       stickyColumns={['antal', 'companyName', 'ticker', 'currency']}
       ariaLabel="Entry Exit"
       minTableWidth="800px"
-      getRowKey={(item, index) => `${item.ticker}-${item.companyName}-${index}`}
+      getRowKey={(item) => generateRowKey(item)}
+      initialFilterState={initialTableState?.filterState}
+      initialColumnFilters={initialTableState?.columnFilters}
+      initialSearchValue={initialTableState?.searchValue}
+      initialSortConfig={initialTableState?.sortConfig}
     />
   );
 }

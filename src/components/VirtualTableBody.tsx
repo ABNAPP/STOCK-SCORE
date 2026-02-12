@@ -3,6 +3,7 @@ import React, { ReactNode, useRef, useEffect, useState, useMemo, useCallback } f
 interface VirtualTableBodyProps<T> {
   data: T[];
   renderRow: (item: T, index: number, globalIndex: number) => ReactNode;
+  getRowKey?: (item: T, index: number) => string;
   rowHeight?: number;
   overscan?: number;
   className?: string;
@@ -11,6 +12,7 @@ interface VirtualTableBodyProps<T> {
 export default function VirtualTableBody<T>({
   data,
   renderRow,
+  getRowKey,
   rowHeight = 60,
   overscan = 5,
   className = '',
@@ -142,8 +144,9 @@ export default function VirtualTableBody<T>({
       {/* Visible rows */}
       {visibleItems.map((item, relativeIndex) => {
         const globalIndex = startIndex + relativeIndex;
+        const rowKey = getRowKey ? getRowKey(item, globalIndex) : String(globalIndex);
         return (
-          <React.Fragment key={globalIndex}>
+          <React.Fragment key={rowKey}>
             {memoizedRenderRow(item, relativeIndex, globalIndex)}
           </React.Fragment>
         );

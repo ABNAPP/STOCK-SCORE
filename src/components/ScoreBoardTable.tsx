@@ -5,6 +5,7 @@ import ColumnTooltip from './ColumnTooltip';
 import ColumnFilterMenu from './ColumnFilterMenu';
 import { getColumnMetadata } from '../config/tableMetadata';
 import { FilterConfig } from './AdvancedFilters';
+import { ShareableTableState } from '../types/filters';
 import { useTranslation } from 'react-i18next';
 import { useEntryExitValues } from '../contexts/EntryExitContext';
 import { useBenjaminGrahamData } from '../hooks/useBenjaminGrahamData';
@@ -29,6 +30,8 @@ interface ScoreBoardTableProps {
   loading: boolean;
   error: string | null;
   thresholdData?: ThresholdIndustryData[];
+  initialTableState?: ShareableTableState;
+  onRetry?: () => void;
 }
 
 const SCORE_BOARD_COLUMNS: ColumnDefinition[] = [
@@ -52,7 +55,7 @@ const SCORE_BOARD_COLUMNS: ColumnDefinition[] = [
   { key: 'theoEntry', label: 'TheoEntry', defaultVisible: true, sortable: false, align: 'center' },
 ];
 
-export default function ScoreBoardTable({ data, loading, error, thresholdData = [] }: ScoreBoardTableProps) {
+export default function ScoreBoardTable({ data, loading, error, thresholdData = [], initialTableState, onRetry }: ScoreBoardTableProps) {
   const { t } = useTranslation();
   const { getEntryExitValue } = useEntryExitValues();
   const { data: benjaminGrahamData } = useBenjaminGrahamData();
@@ -509,11 +512,16 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
       stickyColumns={['antal', 'companyName', 'ticker']}
       ariaLabel={t('navigation.scoreBoard')}
       minTableWidth="800px"
-      getRowKey={(item, index) => `${item.ticker}-${item.companyName}-${index}`}
+      getRowKey={(item) => `${item.ticker}-${item.companyName}`}
       enableExport={true}
       enablePrint={true}
       enableShareableLink={true}
       viewId="score-board"
+      initialFilterState={initialTableState?.filterState}
+      initialColumnFilters={initialTableState?.columnFilters}
+      initialSearchValue={initialTableState?.searchValue}
+      initialSortConfig={initialTableState?.sortConfig}
+      onRetry={onRetry}
     />
   );
 }
