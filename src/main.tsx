@@ -200,7 +200,7 @@ if (import.meta.env.PROD) {
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename={(import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'}>
         <ThemeProvider>
           <ToastProvider>
             <AuthProvider>
