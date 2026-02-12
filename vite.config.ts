@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vitejs.dev/config/
-// Set VITE_BASE_PATH when deploying to a subpath (e.g. GitHub Pages: VITE_BASE_PATH=/STOCK-SCORE/)
+// base: "/" for Vercel root (e.g. https://xxx.vercel.app/). Set VITE_BASE_PATH for subpath (e.g. GitHub Pages).
 export default defineConfig({
   base: process.env.VITE_BASE_PATH ?? '/',
   resolve: {

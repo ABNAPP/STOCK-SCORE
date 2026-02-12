@@ -45,6 +45,14 @@ npm run build
 3. Vercel kommer automatiskt att detektera Vite-projektet
 4. Deploy!
 
+### Vercel Deploy Check
+
+Om du ser "Failed to load module script … MIME type text/html" på Vercel, kontrollera att assets serveras som JS/CSS:
+
+1. **Bygg lokalt:** `npm run build`
+2. **Kör preview:** `npm run preview` — öppna den angivna URL:en och verifiera att appen laddar
+3. **På Vercel:** Öppna DevTools → Network. Ladda om sidan. Kontrollera att `/assets/index-*.js` har **Content-Type: application/javascript** (inte text/html). Besök t.ex. `https://din-app.vercel.app/assets/index-XXXXX.js` direkt i webbläsaren — sidan ska visa JavaScript-kod, inte HTML.
+
 ## Konfiguration
 
 ### Datahämtning (Primär metod: Google Apps Script API)
