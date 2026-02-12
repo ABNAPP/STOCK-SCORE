@@ -141,15 +141,10 @@ export default function VirtualTableBody<T>({
         </tr>
       )}
 
-      {/* Visible rows */}
+      {/* Visible rows - key is set by renderRow (BaseTable uses domKey) */}
       {visibleItems.map((item, relativeIndex) => {
         const globalIndex = startIndex + relativeIndex;
-        const rowKey = getRowKey ? getRowKey(item, globalIndex) : String(globalIndex);
-        return (
-          <React.Fragment key={rowKey}>
-            {memoizedRenderRow(item, relativeIndex, globalIndex)}
-          </React.Fragment>
-        );
+        return memoizedRenderRow(item, relativeIndex, globalIndex);
       })}
 
       {/* Spacer for items after visible range */}

@@ -291,27 +291,56 @@ export const appsScriptProxy = functions.https.onRequest(async (req, res) => {
   }
 });
 
-// Delete user account
+// Delete user account and associated Firestore data (userData, userPreferences, userPortfolios)
 export const deleteUserAccount = functions.https.onCall(async (data, context) => {
-  // Verify user is authenticated
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
   }
 
   const { userId } = data;
 
-  // User can only delete their own account
   if (!userId || userId !== context.auth.uid) {
     throw new functions.https.HttpsError('permission-denied', 'You can only delete your own account');
   }
 
-  try {
-    // Delete Firebase Authentication account
-    await admin.auth().deleteUser(userId);
+  const db = admin.firestore();
 
-    return { success: true, message: 'User account deleted successfully' };
-  } catch (error: any) {
-    console.error('Error deleting user account:', error);
-    throw new functions.https.HttpsError('internal', error.message);
+  const paths = [
+    { key: 'userData', ref: db.doc(`userData/${userId}`) },
+    { key: 'userPreferences', ref: db.doc(`userPreferences/${userId}`) },
+    { key: 'userPortfolios', ref: db.doc(`userPortfolios/${userId}`) },
+  ] as const;
+
+  const deleteResults = await Promise.allSettled(paths.map((p) => p.ref.delete()));
+
+  const deletedDocs: { userData: boolean; userPreferences: boolean; userPortfolios: boolean } = {
+    userData: false,
+    userPreferences: false,
+    userPortfolios: false,
+  };
+
+  deleteResults.forEach((result, i) => {
+    const key = paths[i].key;
+    if (result.status === 'fulfilled') {
+      deletedDocs[key] = true;
+    } else {
+      console.error(`deleteUserAccount: failed deleting ${paths[i].ref.path}`, result.reason);
+    }
+  });
+
+  try {
+    await admin.auth().deleteUser(userId);
+  } catch (authError: unknown) {
+    const msg = authError instanceof Error ? authError.message : String(authError);
+    console.error('deleteUserAccount: failed to delete Auth user', authError);
+    throw new functions.https.HttpsError('internal', msg);
   }
+
+  const allDocsOk = deletedDocs.userData && deletedDocs.userPreferences && deletedDocs.userPortfolios;
+  return {
+    success: true,
+    message: allDocsOk ? 'User account deleted successfully' : 'User account deleted; some data cleanup may have failed',
+    deletedAuth: true,
+    deletedDocs,
+  };
 });

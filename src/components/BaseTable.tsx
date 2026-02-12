@@ -942,26 +942,27 @@ export default function BaseTable<T extends Record<string, unknown>>({
                 data={displayData}
                 getRowKey={getItemRowKey}
                 renderRow={(item, index, globalIndex) => {
-                  const rowKey = getItemRowKey(item, globalIndex);
+                  const rowId = getItemRowKey(item, globalIndex);
+                  const domKey = `${rowId}__${globalIndex}`;
                   const rowBgClass = globalIndex % 2 === 0 
                     ? 'bg-white dark:bg-gray-800' 
                     : 'bg-gray-50 dark:bg-gray-800';
                   
                   const isFocused = focusedRowIndex === index;
-                  const isExpanded = expandedRows[rowKey] || false;
+                  const isExpanded = expandedRows[rowId] || false;
                   const visibleColumnsCount = orderedColumns.filter(col => isColumnVisible(col.key)).length;
                   
                   return (
-                    <React.Fragment key={rowKey}>
+                    <React.Fragment key={domKey}>
                       <tr 
                         data-row-index={index}
-                        data-rowkey={rowKey}
+                        data-rowkey={rowId}
                         className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''}`}
                         onClick={() => handleRowClick(index)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            toggleRow(rowKey);
+                            toggleRow(rowId);
                           }
                         }}
                         tabIndex={0}
