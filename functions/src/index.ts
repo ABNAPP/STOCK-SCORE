@@ -3,21 +3,6 @@ import * as admin from 'firebase-admin';
 
 admin.initializeApp();
 
-// Whitelist of viewIds for allowedViews claim validation
-const ALLOWED_VIEW_IDS = ['score', 'score-board', 'entry-exit-benjamin-graham', 'fundamental-pe-industry', 'threshold-industry'] as const;
-
-/** Convert allowedViews claim (array or map) to array for UI */
-function allowedViewsToArray(claims: Record<string, unknown>): string[] {
-  const av = claims.allowedViews;
-  if (Array.isArray(av)) {
-    return av.filter((v): v is string => typeof v === 'string');
-  }
-  if (av && typeof av === 'object' && !Array.isArray(av)) {
-    return Object.keys(av).filter((k) => (av as Record<string, unknown>)[k] === true);
-  }
-  return [];
-}
-
 // Middleware för att verifiera admin-autentisering
 async function verifyAdmin(context: functions.https.CallableContext): Promise<void> {
   if (!context.auth) {
@@ -65,83 +50,6 @@ export const claimViewerRole = functions.https.onCall(async (_data, context) => 
   }
 });
 
-// List users (admin only) - returns uid, email, role, allowedViews from custom claims
-export const listUsers = functions.https.onCall(async (_data, context) => {
-  await verifyAdmin(context);
-
-  try {
-    const listUsersResult = await admin.auth().listUsers(1000);
-    const users = listUsersResult.users.map((userRecord) => {
-      const claims = (userRecord.customClaims || {}) as Record<string, unknown>;
-      const role = (claims.role as string) || null;
-      const allowedViews = allowedViewsToArray(claims);
-      return {
-        uid: userRecord.uid,
-        email: userRecord.email || '',
-        role,
-        allowedViews,
-      };
-    });
-    return { users };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('Error listing users:', error);
-    throw new functions.https.HttpsError('internal', errorMessage);
-  }
-});
-
-// Set user role
-export const setUserRole = functions.https.onCall(async (data, context) => {
-  await verifyAdmin(context);
-
-  const adminUid = context.auth!.uid;
-  const { userId, role, allowedViews } = data;
-
-  // Accept 'viewer' or 'admin' as roles
-  if (!userId || !role || !['viewer', 'admin'].includes(role)) {
-    throw new functions.https.HttpsError('invalid-argument', 'Invalid parameters. Role must be "viewer" or "admin"');
-  }
-
-  try {
-    // Build custom claims: role + allowedViews as MAP for Firestore rules
-    const customClaims: { role: string; allowedViews?: Record<string, boolean> } = { role };
-
-    if (role === 'viewer' && allowedViews && Array.isArray(allowedViews)) {
-      // Validate each viewId against whitelist
-      const allowedViewsMap: Record<string, boolean> = {};
-      for (const viewId of allowedViews) {
-        if (typeof viewId === 'string' && (ALLOWED_VIEW_IDS as readonly string[]).includes(viewId)) {
-          allowedViewsMap[viewId] = true;
-        }
-      }
-      customClaims.allowedViews = allowedViewsMap;
-    } else if (role === 'admin') {
-      // Admin does not need allowedViews
-      customClaims.allowedViews = undefined;
-    }
-
-    await admin.auth().setCustomUserClaims(userId, customClaims);
-
-    // Audit log
-    const allowedViewsArray = role === 'viewer' && customClaims.allowedViews
-      ? Object.keys(customClaims.allowedViews).filter((k) => customClaims.allowedViews![k] === true)
-      : [];
-    await admin.firestore().collection('adminActions').add({
-      action: 'setUserRole',
-      adminUid,
-      targetUid: userId,
-      newRole: role,
-      allowedViewsArray,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    return { success: true, message: 'Role set successfully' };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('Error setting user role:', error);
-    throw new functions.https.HttpsError('internal', errorMessage);
-  }
-});
 
 // Admin refresh cache - fetches from Apps Script, writes to viewData
 export const adminRefreshCache = functions.https.onCall(async (data, context) => {

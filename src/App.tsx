@@ -33,7 +33,6 @@ const EntryExitView = lazyWithRetry<typeof import('./components/views/EntryExitV
 const FundamentalView = lazyWithRetry<typeof import('./components/views/FundamentalView').default>(() => import('./components/views/FundamentalView'), 'FundamentalView');
 const ThresholdIndustryView = lazyWithRetry<typeof import('./components/views/ThresholdIndustryView').default>(() => import('./components/views/ThresholdIndustryView'), 'ThresholdIndustryView');
 const PersonalPortfolioView = lazyWithRetry<typeof import('./components/views/PersonalPortfolioView').default>(() => import('./components/views/PersonalPortfolioView'), 'PersonalPortfolioView');
-const AdminView = lazyWithRetry<typeof import('./components/views/AdminView').default>(() => import('./components/views/AdminView'), 'AdminView');
 
 // Lazy load modal components
 const ConditionsModal = lazyWithRetry<typeof import('./components/ConditionsModal').default>(() => import('./components/ConditionsModal'), 'ConditionsModal');
@@ -47,7 +46,6 @@ const MAIN_VIEW_IDS: ViewId[] = [
   'fundamental-pe-industry',
   'threshold-industry',
   'personal-portfolio',
-  'admin',
 ];
 
 function isValidViewPath(path: string): path is ViewId {
@@ -56,7 +54,7 @@ function isValidViewPath(path: string): path is ViewId {
 
 function App() {
   const { loading: authLoading, currentUser } = useAuth();
-  const { canView, isAdmin, getDefaultLandingView } = useUserRole();
+  const { canView, getDefaultLandingView } = useUserRole();
   const { t } = useTranslation();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -86,17 +84,6 @@ function App() {
     const path = rawPath || 'score';
     const defaultView = getDefaultLandingView();
 
-    if (path === 'admin') {
-      if (isAdmin) {
-        setActiveView('admin');
-      } else {
-        navigate(`/${defaultView}`, { replace: true });
-        setActiveView(defaultView);
-        showToast(t('common.unauthorizedView') || 'Du har inte tillgång till denna vy', 'warning');
-      }
-      return;
-    }
-
     if (isValidViewPath(path)) {
       if (canView(path)) {
         setActiveView(path);
@@ -113,7 +100,7 @@ function App() {
       navigate(`/${defaultView}`, { replace: true });
       setActiveView(defaultView);
     }
-  }, [currentUser, location.pathname, isAdmin, canView, getDefaultLandingView, navigate, showToast, t]);
+  }, [currentUser, location.pathname, canView, getDefaultLandingView, navigate, showToast, t]);
 
   // Redirect if activeView becomes unauthorized (e.g. role change)
   useEffect(() => {
@@ -186,7 +173,6 @@ function App() {
       'fundamental-pe-industry': t('navigation.peIndustry'),
       'threshold-industry': t('navigation.thresholdIndustry'),
       'personal-portfolio': t('navigation.personalPortfolio'),
-      'admin': t('navigation.userManagement'),
     };
     return names[viewId] || viewId;
   };
@@ -236,14 +222,6 @@ function App() {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <PersonalPortfolioView />
-        </Suspense>
-      );
-    }
-
-    if (activeView === 'admin') {
-      return (
-        <Suspense fallback={<LoadingFallback />}>
-          <AdminView />
         </Suspense>
       );
     }
