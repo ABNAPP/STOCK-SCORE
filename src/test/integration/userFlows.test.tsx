@@ -63,8 +63,8 @@ vi.mock('../../hooks/usePEIndustryData', () => ({
   }),
 }));
 
-vi.mock('../../hooks/useThresholdIndustryData', () => ({
-  useThresholdIndustryData: () => ({
+vi.mock('../../hooks/useIndustryThresholdData', () => ({
+  useIndustryThresholdData: () => ({
     data: [],
     loading: false,
     error: null,
@@ -107,7 +107,7 @@ vi.mock('../../services/userPreferencesService', () => ({
 
 // Mock firestoreCacheService without loading real module (avoids Firestore)
 vi.mock('../../services/firestoreCacheService', () => ({
-  CACHE_KEYS: { BENJAMIN_GRAHAM: 'cache:benjaminGraham', SMA: 'cache:sma', PE_INDUSTRY: 'cache:peIndustry', SCORE_BOARD: 'cache:scoreBoard', THRESHOLD_INDUSTRY: 'cache:thresholdIndustry', CURRENCY_RATES_USD: 'cache:currency_rates_usd' },
+  CACHE_KEYS: { BENJAMIN_GRAHAM: 'cache:benjaminGraham', SMA: 'cache:sma', PE_INDUSTRY: 'cache:peIndustry', SCORE_BOARD: 'cache:scoreBoard', THRESHOLD_INDUSTRY: 'cache:industryThreshold', CURRENCY_RATES_USD: 'cache:currency_rates_usd' },
   DEFAULT_TTL: 30 * 60 * 1000,
   VIEWDATA_MIGRATION_MODE: 'dual-read',
   shouldBlockAppCacheWriteInCutover: vi.fn().mockReturnValue(false),

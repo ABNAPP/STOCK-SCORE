@@ -175,7 +175,7 @@ function calculateMedian(values: number[]): number | null {
 }
 
 // Industry threshold lookup functions (simplified - we'll pass the maps if needed)
-// For Threshold Industry transformer, we'll need to pass the maps as data
+// For Industry Threshold transformer, we'll need to pass the maps as data
 
 // ============================================================================
 // Transformer Functions (inline copies)
@@ -442,8 +442,8 @@ function transformScoreBoardData(
   return scoreBoardData;
 }
 
-// Threshold Industry uses large industry maps and runs on main thread only.
-// getTransformerId returns null for threshold-industry; no worker path.
+// Industry Threshold uses large industry maps and runs on main thread only.
+// getTransformerId returns null for industry-threshold; no worker path.
 
 // ============================================================================
 // Transformer Registry

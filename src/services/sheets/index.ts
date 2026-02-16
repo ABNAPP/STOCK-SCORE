@@ -16,11 +16,6 @@ export {
   parseNumericValueNullable,
   parsePercentageValueNullable,
   calculateMedian,
-  findIRRForIndustry,
-  findLeverageF2ForIndustry,
-  findRO40ForIndustry,
-  findCashSdebtForIndustry,
-  findCurrentRatioForIndustry,
 } from './dataTransformers';
 
 // Fetch functions
@@ -38,4 +33,4 @@ export { fetchBenjaminGrahamData } from './benjaminGrahamService';
 export { fetchSMAData } from './smaService';
 export { fetchPEIndustryData } from './peIndustryService';
 export { fetchScoreBoardData } from './scoreBoardService';
-// Note: fetchThresholdIndustryData removed - threshold data is now static (see src/config/thresholdIndustryData.ts)
+// Note: fetchIndustryThresholdData removed - threshold data is now static (see src/config/industryThresholdData.ts)

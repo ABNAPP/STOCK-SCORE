@@ -52,9 +52,9 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
     collapsible: false,
   },
   {
-    id: 'threshold-industry',
-    label: t('navigation.thresholdIndustry'),
-    items: [{ id: 'threshold-industry', label: t('navigation.thresholdIndustry') }],
+    id: 'industry-threshold',
+    label: t('navigation.industryThreshold'),
+    items: [{ id: 'industry-threshold', label: t('navigation.industryThreshold') }],
     collapsible: false,
   },
 ];
@@ -70,7 +70,7 @@ const getViewIcon = (viewId: ViewId) => {
       return CursorArrowRaysIcon;
     case 'fundamental-pe-industry':
       return ChartPieIcon;
-    case 'threshold-industry':
+    case 'industry-threshold':
       return BuildingOfficeIcon;
     default:
       return null;

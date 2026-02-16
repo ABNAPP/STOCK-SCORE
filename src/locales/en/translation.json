@@ -29,7 +29,7 @@
     "sma": "SMA:",
     "conditions": "Conditions",
     "condition": "Condition",
-    "thresholdIndustry": "Threshold INDUSTRY",
+    "industryThreshold": " Industry threshold",
     "personalPortfolio": "Personal Portfolio",
     "userManagement": "User Management"
   },
@@ -295,7 +295,7 @@
     "score-board": "Detailed table with all metrics and industry comparisons.",
     "entry-exit-benjamin-graham": "Entry/Exit values and Benjamin Graham valuations.",
     "fundamental-pe-industry": "P/E comparisons by industry.",
-    "threshold-industry": "Threshold values per industry.",
+    "industry-threshold": "Threshold values per industry.",
     "personal-portfolio": "Your personal stock portfolio.",
     "default": "Table view with search, filters and sorting."
   },
@@ -307,7 +307,7 @@
     "stepScoreBoard": {"title": "Score Board", "content": "Score Board shows all metrics and industry comparisons. Use the Score view for 0-100 scoring."},
     "stepEntryExit": {"title": "Entry/Exit", "content": "The Entry/Exit table shows Benjamin Graham valuations and manual entry/exit values."},
     "stepPEIndustry": {"title": "P/E Industry", "content": "P/E Industry compares P/E values by industry to find undervalued stocks."},
-    "stepThreshold": {"title": "Threshold", "content": "Threshold Industry shows threshold values per industry that control color coding."},
+    "stepThreshold": {"title": "Threshold", "content": "Industry Threshold shows threshold values per industry that control color coding."},
     "step4": {"title": "Offline", "content": "You are offline. Some views may be limited. Cached data is shown when available."},
     "step5": {"title": "Done", "content": "You can always open this guide again via the Help menu. Good luck!"},
     "skip": "Skip",

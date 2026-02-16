@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useMemo, lazy, Suspense, useEffect } from 'react';
 import { useShareableHydration } from '../../contexts/ShareableHydrationContext';
 import { useScoreBoardData } from '../../hooks/useScoreBoardData';
-import { useThresholdIndustryData } from '../../hooks/useThresholdIndustryData';
+import { useIndustryThresholdData } from '../../hooks/useIndustryThresholdData';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import LastUpdated from '../LastUpdated';
@@ -24,7 +24,7 @@ function ScoreBoardViewInner() {
   const { link, consume } = useShareableHydration();
   const isOnline = useOnlineStatus();
   const { data, loading, error, lastUpdated, refetch } = useScoreBoardData();
-  const { data: thresholdData, loading: thresholdLoading } = useThresholdIndustryData();
+  const { data: thresholdData, loading: thresholdLoading } = useIndustryThresholdData();
   const { data: benjaminGrahamData, loading: bgLoading } = useBenjaminGrahamData();
   const { initializeFromData } = useEntryExitValues();
   

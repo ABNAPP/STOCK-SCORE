@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useCallback } from 'react';
-import { ThresholdIndustryData } from '../types/stock';
+import React, { useMemo, useCallback } from 'react';
+import { IndustryThresholdData } from '../types/stock';
 import BaseTable, { ColumnDefinition, HeaderRenderProps } from './BaseTable';
 import ColumnTooltip from './ColumnTooltip';
 import ColumnFilterMenu from './ColumnFilterMenu';
@@ -10,14 +10,14 @@ import { useTranslation } from 'react-i18next';
 import { useThresholdValues, ThresholdValues } from '../contexts/ThresholdContext';
 import { useAuth } from '../contexts/AuthContext';
 
-interface ThresholdIndustryTableProps {
-  data: ThresholdIndustryData[];
+interface IndustryThresholdTableProps {
+  data: IndustryThresholdData[];
   loading: boolean;
   error: string | null;
   initialTableState?: ShareableTableState;
 }
 
-const THRESHOLD_INDUSTRY_COLUMNS: ColumnDefinition<ThresholdIndustryData>[] = [
+const THRESHOLD_INDUSTRY_COLUMNS: ColumnDefinition<IndustryThresholdData>[] = [
   { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
   { key: 'industry', label: 'INDUSTRY', required: true, sticky: true, sortable: true },
   { key: 'irr', label: 'IRR', defaultVisible: true, sortable: true, align: 'center' },
@@ -31,10 +31,10 @@ const THRESHOLD_INDUSTRY_COLUMNS: ColumnDefinition<ThresholdIndustryData>[] = [
   { key: 'currentRatioMax', label: 'Current Ratio MAX', defaultVisible: true, sortable: true, align: 'center' },
 ];
 
-export default function ThresholdIndustryTable({ data, loading, error, initialTableState }: ThresholdIndustryTableProps) {
+export default function IndustryThresholdTable({ data, loading, error, initialTableState }: IndustryThresholdTableProps) {
   const { t } = useTranslation();
   const { userRole } = useAuth();
-  const { thresholdValues, getThresholdValue, getFieldValue, setFieldValue, commitField, initializeFromData } = useThresholdValues();
+  const { thresholdValues, getThresholdValue, getFieldValue, setFieldValue, commitField } = useThresholdValues();
   const isReadOnly = userRole !== 'admin';
 
   // Get unique industries for filter dropdown
@@ -87,19 +87,14 @@ export default function ThresholdIndustryTable({ data, loading, error, initialTa
     },
   ], [uniqueIndustries]);
 
-  // Initialize threshold values from data
-  useEffect(() => {
-    initializeFromData(data);
-  }, [data, initializeFromData]);
-
-  const handleThresholdChange = useCallback((industry: string, field: keyof ThresholdValues, value: number) => {
-    setFieldValue(industry, field, value);
+  const handleThresholdChange = useCallback((industryKey: string, field: keyof ThresholdValues, value: number) => {
+    setFieldValue(industryKey, field, value);
   }, [setFieldValue]);
 
   const inputClass = 'px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center';
 
   const renderThresholdField = useCallback(
-    (industry: string, field: keyof ThresholdValues, value: number | string, step: string) =>
+    (industryKey: string, field: keyof ThresholdValues, value: number | string, step: string) =>
       isReadOnly ? (
         <span className="text-sm text-black dark:text-white">{value}</span>
       ) : (
@@ -109,9 +104,9 @@ export default function ThresholdIndustryTable({ data, loading, error, initialTa
           value={value || ''}
           onChange={(e) => {
             const v = parseFloat(e.target.value) || 0;
-            handleThresholdChange(industry, field, v);
+            handleThresholdChange(industryKey, field, v);
           }}
-          onBlur={() => commitField(industry, field)}
+          onBlur={() => commitField(industryKey, field)}
           className={inputClass}
           onClick={(e) => e.stopPropagation()}
         />
@@ -120,7 +115,7 @@ export default function ThresholdIndustryTable({ data, loading, error, initialTa
   );
 
   // Custom header renderer with ColumnTooltip
-  const renderHeader = useCallback((props: HeaderRenderProps<ThresholdIndustryData>) => {
+  const renderHeader = useCallback((props: HeaderRenderProps<IndustryThresholdData>) => {
     const { 
       column, 
       sortConfig, 
@@ -137,7 +132,7 @@ export default function ThresholdIndustryTable({ data, loading, error, initialTa
       handleColumnSort,
       headerRefs,
     } = props;
-    const metadata = getColumnMetadata('threshold-industry', column.key);
+    const metadata = getColumnMetadata('industry-threshold', column.key);
     const isSticky = column.sticky;
     const sortIcon = getSortIcon(column.key);
     const stickyClass = isSticky ? `sm:sticky sm:top-0 ${getStickyPosition(column.key)} z-50` : '';
@@ -291,17 +286,17 @@ export default function ThresholdIndustryTable({ data, loading, error, initialTa
   }, []);
 
   // Render cell content with editable inputs
-  const renderCell = useCallback((item: ThresholdIndustryData, column: ColumnDefinition<ThresholdIndustryData>, index: number, globalIndex: number) => {
+  const renderCell = useCallback((item: IndustryThresholdData, column: ColumnDefinition<IndustryThresholdData>, index: number, globalIndex: number) => {
     // Use getFieldValue for individual fields (supports draft)
-    const irr = getFieldValue(item.industry, 'irr');
-    const leverageF2Min = getFieldValue(item.industry, 'leverageF2Min');
-    const leverageF2Max = getFieldValue(item.industry, 'leverageF2Max');
-    const ro40Min = getFieldValue(item.industry, 'ro40Min');
-    const ro40Max = getFieldValue(item.industry, 'ro40Max');
-    const cashSdebtMin = getFieldValue(item.industry, 'cashSdebtMin');
-    const cashSdebtMax = getFieldValue(item.industry, 'cashSdebtMax');
-    const currentRatioMin = getFieldValue(item.industry, 'currentRatioMin');
-    const currentRatioMax = getFieldValue(item.industry, 'currentRatioMax');
+    const irr = getFieldValue(item.industryKey, 'irr');
+    const leverageF2Min = getFieldValue(item.industryKey, 'leverageF2Min');
+    const leverageF2Max = getFieldValue(item.industryKey, 'leverageF2Max');
+    const ro40Min = getFieldValue(item.industryKey, 'ro40Min');
+    const ro40Max = getFieldValue(item.industryKey, 'ro40Max');
+    const cashSdebtMin = getFieldValue(item.industryKey, 'cashSdebtMin');
+    const cashSdebtMax = getFieldValue(item.industryKey, 'cashSdebtMax');
+    const currentRatioMin = getFieldValue(item.industryKey, 'currentRatioMin');
+    const currentRatioMax = getFieldValue(item.industryKey, 'currentRatioMax');
     const values = { irr, leverageF2Min, leverageF2Max, ro40Min, ro40Max, cashSdebtMin, cashSdebtMax, currentRatioMin, currentRatioMax };
 
     switch (column.key) {
@@ -310,46 +305,46 @@ export default function ThresholdIndustryTable({ data, loading, error, initialTa
       case 'industry':
         return <span className="font-medium">{item.industry}</span>;
       case 'irr':
-        return renderThresholdField(item.industry, 'irr', values.irr, '0.1');
+        return renderThresholdField(item.industryKey, 'irr', values.irr, '0.1');
       case 'leverageF2Min':
-        return renderThresholdField(item.industry, 'leverageF2Min', values.leverageF2Min, '0.1');
+        return renderThresholdField(item.industryKey, 'leverageF2Min', values.leverageF2Min, '0.1');
       case 'leverageF2Max':
-        return renderThresholdField(item.industry, 'leverageF2Max', values.leverageF2Max, '0.1');
+        return renderThresholdField(item.industryKey, 'leverageF2Max', values.leverageF2Max, '0.1');
       case 'ro40Min':
-        return renderThresholdField(item.industry, 'ro40Min', values.ro40Min, '0.01');
+        return renderThresholdField(item.industryKey, 'ro40Min', values.ro40Min, '0.01');
       case 'ro40Max':
-        return renderThresholdField(item.industry, 'ro40Max', values.ro40Max, '0.01');
+        return renderThresholdField(item.industryKey, 'ro40Max', values.ro40Max, '0.01');
       case 'cashSdebtMin':
-        return renderThresholdField(item.industry, 'cashSdebtMin', values.cashSdebtMin, '0.1');
+        return renderThresholdField(item.industryKey, 'cashSdebtMin', values.cashSdebtMin, '0.1');
       case 'cashSdebtMax':
-        return renderThresholdField(item.industry, 'cashSdebtMax', values.cashSdebtMax, '0.1');
+        return renderThresholdField(item.industryKey, 'cashSdebtMax', values.cashSdebtMax, '0.1');
       case 'currentRatioMin':
-        return renderThresholdField(item.industry, 'currentRatioMin', values.currentRatioMin, '0.1');
+        return renderThresholdField(item.industryKey, 'currentRatioMin', values.currentRatioMin, '0.1');
       case 'currentRatioMax':
-        return renderThresholdField(item.industry, 'currentRatioMax', values.currentRatioMax, '0.1');
+        return renderThresholdField(item.industryKey, 'currentRatioMax', values.currentRatioMax, '0.1');
       default:
         return null;
     }
   }, [getFieldValue, renderThresholdField]);
 
   // Render mobile card
-  const renderMobileCard = useCallback((item: ThresholdIndustryData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
-    const rowKey = `${item.industry}-${globalIndex}`;
+  const renderMobileCard = useCallback((item: IndustryThresholdData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
+    const rowKey = `${item.industryKey}-${globalIndex}`;
     const rowBgClass = globalIndex % 2 === 0 
       ? 'bg-white dark:bg-gray-800' 
       : 'bg-gray-50 dark:bg-gray-800/50';
     
     // Use getFieldValue for individual fields (supports draft)
     const values = {
-      irr: getFieldValue(item.industry, 'irr'),
-      leverageF2Min: getFieldValue(item.industry, 'leverageF2Min'),
-      leverageF2Max: getFieldValue(item.industry, 'leverageF2Max'),
-      ro40Min: getFieldValue(item.industry, 'ro40Min'),
-      ro40Max: getFieldValue(item.industry, 'ro40Max'),
-      cashSdebtMin: getFieldValue(item.industry, 'cashSdebtMin'),
-      cashSdebtMax: getFieldValue(item.industry, 'cashSdebtMax'),
-      currentRatioMin: getFieldValue(item.industry, 'currentRatioMin'),
-      currentRatioMax: getFieldValue(item.industry, 'currentRatioMax'),
+      irr: getFieldValue(item.industryKey, 'irr'),
+      leverageF2Min: getFieldValue(item.industryKey, 'leverageF2Min'),
+      leverageF2Max: getFieldValue(item.industryKey, 'leverageF2Max'),
+      ro40Min: getFieldValue(item.industryKey, 'ro40Min'),
+      ro40Max: getFieldValue(item.industryKey, 'ro40Max'),
+      cashSdebtMin: getFieldValue(item.industryKey, 'cashSdebtMin'),
+      cashSdebtMax: getFieldValue(item.industryKey, 'cashSdebtMax'),
+      currentRatioMin: getFieldValue(item.industryKey, 'currentRatioMin'),
+      currentRatioMax: getFieldValue(item.industryKey, 'currentRatioMax'),
     };
 
     return (
@@ -408,7 +403,7 @@ export default function ThresholdIndustryTable({ data, loading, error, initialTa
             }).map(([key, config]) => (
               <div key={key} className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{config.label}</span>
-                {renderThresholdField(item.industry, key as keyof ThresholdValues, values[key as keyof ThresholdValues], config.step)}
+                {renderThresholdField(item.industryKey, key as keyof ThresholdValues, values[key as keyof ThresholdValues], config.step)}
               </div>
             ))}
           </div>
@@ -418,13 +413,13 @@ export default function ThresholdIndustryTable({ data, loading, error, initialTa
   }, [getFieldValue, renderThresholdField]);
 
   return (
-    <BaseTable<ThresholdIndustryData>
+    <BaseTable<IndustryThresholdData>
       data={data}
       loading={loading}
       error={error}
       columns={THRESHOLD_INDUSTRY_COLUMNS}
       filters={thresholdFilters}
-      tableId="threshold-industry"
+      tableId="industry-threshold"
       renderCell={renderCell}
       renderHeader={renderHeader}
       renderMobileCard={renderMobileCard}
@@ -437,9 +432,9 @@ export default function ThresholdIndustryTable({ data, loading, error, initialTa
       defaultSortKey="industry"
       defaultSortDirection="asc"
       stickyColumns={['antal', 'industry']}
-      ariaLabel="Threshold Industry"
+      ariaLabel="Industry Threshold"
       minTableWidth="800px"
-      getRowKey={(item) => item.industry}
+      getRowKey={(item) => item.industryKey}
       initialFilterState={initialTableState?.filterState}
       initialColumnFilters={initialTableState?.columnFilters}
       initialSearchValue={initialTableState?.searchValue}

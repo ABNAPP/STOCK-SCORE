@@ -3,7 +3,7 @@
  * Used by calculateScore, calculateScoreDetailed, and ScoreBoardTable (via cssMapping).
  */
 
-import type { ThresholdIndustryData } from '../../types/stock';
+import type { IndustryThresholdData } from '../../types/stock';
 import {
   MUNGER_QUALITY_SCORE_RED_THRESHOLD,
   MUNGER_QUALITY_SCORE_GREEN_THRESHOLD,
@@ -14,7 +14,7 @@ import type { ColorType } from './types';
 export function getIRRColor(
   irrValue: number | null,
   industry: string,
-  thresholdData: ThresholdIndustryData[]
+  thresholdData: IndustryThresholdData[]
 ): ColorType {
   if (irrValue === null || !isFinite(irrValue)) return 'BLANK';
   if (!industry || industry.trim() === '') return 'BLANK';
@@ -47,7 +47,7 @@ export function getValueCreationColor(valueCreation: number | null): ColorType {
 export function getRo40Color(
   ro40Value: number | null,
   industry: string,
-  thresholdData: ThresholdIndustryData[]
+  thresholdData: IndustryThresholdData[]
 ): ColorType {
   if (ro40Value === null || !isFinite(ro40Value)) return 'BLANK';
   if (!industry || industry.trim() === '') return 'BLANK';
@@ -67,7 +67,7 @@ export function getRo40Color(
 export function getLeverageF2Color(
   leverageF2Value: number | null,
   industry: string,
-  thresholdData: ThresholdIndustryData[]
+  thresholdData: IndustryThresholdData[]
 ): ColorType {
   if (leverageF2Value === null || !isFinite(leverageF2Value)) return 'BLANK';
   if (!industry || industry.trim() === '') return 'BLANK';
@@ -87,7 +87,7 @@ export function getCashSdebtColor(
   cashSdebt: number | null,
   isDivZero: boolean,
   industry: string,
-  thresholdData: ThresholdIndustryData[]
+  thresholdData: IndustryThresholdData[]
 ): ColorType {
   if (isDivZero) return 'GREEN';
   if (cashSdebt === null || !isFinite(cashSdebt)) return 'BLANK';
@@ -107,7 +107,7 @@ export function getCashSdebtColor(
 export function getCurrentRatioColor(
   currentRatio: number | null,
   industry: string,
-  thresholdData: ThresholdIndustryData[]
+  thresholdData: IndustryThresholdData[]
 ): ColorType {
   if (currentRatio === null || !isFinite(currentRatio)) return 'BLANK';
   if (!industry || industry.trim() === '') return 'BLANK';

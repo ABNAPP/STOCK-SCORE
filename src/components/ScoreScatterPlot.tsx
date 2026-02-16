@@ -3,13 +3,13 @@ import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, Tooltip, Cart
 import { Card, CardContent } from './ui/Card';
 import { useTheme } from '../contexts/ThemeContext';
 import { ScoreData } from './views/ScoreView';
-import { ThresholdIndustryData, BenjaminGrahamData } from '../types/stock';
+import { IndustryThresholdData, BenjaminGrahamData } from '../types/stock';
 import { EntryExitValues } from '../contexts/EntryExitContext';
 import { calculateDetailedScoreBreakdown } from '../utils/calculateScoreDetailed';
 
 interface ScoreScatterPlotProps {
   data: ScoreData[];
-  thresholdData?: ThresholdIndustryData[];
+  thresholdData?: IndustryThresholdData[];
   benjaminGrahamData?: BenjaminGrahamData[];
   entryExitValues?: Map<string, EntryExitValues>;
 }

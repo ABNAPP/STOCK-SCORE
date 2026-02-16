@@ -11,6 +11,6 @@ export const CACHE_KEYS = {
   SMA: 'cache:sma',
   PE_INDUSTRY: 'cache:peIndustry',
   SCORE_BOARD: 'cache:scoreBoard',
-  THRESHOLD_INDUSTRY: 'cache:thresholdIndustry',
+  THRESHOLD_INDUSTRY: 'cache:industryThreshold',
   CURRENCY_RATES_USD: 'cache:currency_rates_usd',
 } as const;

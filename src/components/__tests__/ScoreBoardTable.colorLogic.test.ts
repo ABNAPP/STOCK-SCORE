@@ -11,11 +11,11 @@ import {
   COLORS,
 } from '../../utils/colorThresholds';
 import type { ColorType } from '../../utils/colorThresholds';
-import { ThresholdIndustryData } from '../../types/stock';
+import { IndustryThresholdData } from '../../types/stock';
 import { createMockThresholdData } from '../../test/helpers';
 
 describe('Color Logic Functions (ScoreBoardTable integration)', () => {
-  const mockThresholdData: ThresholdIndustryData[] = [
+  const mockThresholdData: IndustryThresholdData[] = [
     createMockThresholdData({
       industry: 'Test Industry',
       irr: 25,

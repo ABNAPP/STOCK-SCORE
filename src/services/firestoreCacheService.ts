@@ -901,7 +901,7 @@ export async function runTruncatedCacheMigrations(): Promise<void> {
 }
 
 /** ViewIds for viewData collection (used when clearing all) */
-const VIEWDATA_VIEW_IDS = ['score', 'score-board', 'entry-exit-benjamin-graham', 'fundamental-pe-industry', 'threshold-industry'] as const;
+const VIEWDATA_VIEW_IDS = ['score', 'score-board', 'entry-exit-benjamin-graham', 'fundamental-pe-industry', 'industry-threshold'] as const;
 
 /**
  * Clear viewData docs (admin only, for refresh)

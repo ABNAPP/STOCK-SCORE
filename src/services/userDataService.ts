@@ -3,7 +3,7 @@
  *
  * Provides functionality to save and load shared manual data to Firebase Firestore.
  * This includes Entry/Exit values and Currency values.
- * Threshold values are managed by sharedThresholdService (sharedData/threshold).
+ * Threshold values are managed by ThresholdContext/industryThresholds collection.
  * Falls back to localStorage if user is not authenticated or Firestore is unavailable.
  */
 

@@ -29,7 +29,7 @@ function getViewLabel(viewId: ViewId, t: (key: string) => string): string {
     'fundamental-ro40-cy': t('navigation.ro40Cy'),
     'fundamental-ro40-f1': t('navigation.ro40F1'),
     'fundamental-ro40-f2': t('navigation.ro40F2'),
-    'threshold-industry': t('navigation.thresholdIndustry'),
+    'industry-threshold': t('navigation.industryThreshold'),
     'personal-portfolio': t('navigation.personalPortfolio'),
     'teknikal-tachart': t('navigation.tachart'),
   };

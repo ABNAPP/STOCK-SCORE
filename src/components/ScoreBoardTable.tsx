@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import { ScoreBoardData, ThresholdIndustryData } from '../types/stock';
+import { ScoreBoardData, IndustryThresholdData } from '../types/stock';
 import BaseTable, { ColumnDefinition, HeaderRenderProps } from './BaseTable';
 import ColumnTooltip from './ColumnTooltip';
 import ColumnFilterMenu from './ColumnFilterMenu';
@@ -29,7 +29,7 @@ interface ScoreBoardTableProps {
   data: ScoreBoardData[];
   loading: boolean;
   error: string | null;
-  thresholdData?: ThresholdIndustryData[];
+  thresholdData?: IndustryThresholdData[];
   initialTableState?: ShareableTableState;
   onRetry?: () => void;
 }

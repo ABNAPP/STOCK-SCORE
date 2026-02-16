@@ -29,8 +29,8 @@ vi.mock('../usePEIndustryData', () => ({
   }),
 }));
 
-vi.mock('../useThresholdIndustryData', () => ({
-  useThresholdIndustryData: () => ({
+vi.mock('../useIndustryThresholdData', () => ({
+  useIndustryThresholdData: () => ({
     data: [
       createMockThresholdData({ industry: 'Technology' }),
     ],
@@ -85,7 +85,7 @@ describe('useGlobalSearch', () => {
     const types = results.map(r => r.type);
     expect(types).toContain('score-board');
     expect(types).toContain('pe-industry');
-    expect(types).toContain('threshold-industry');
+    expect(types).toContain('industry-threshold');
   });
 
   it('should limit results to 50', () => {

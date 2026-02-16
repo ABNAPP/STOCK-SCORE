@@ -10,7 +10,7 @@ import { logger } from '../utils/logger';
 import { 
   fetchScoreBoardData, 
   fetchPEIndustryData, 
-  // Note: fetchThresholdIndustryData removed - threshold data is now static
+  // Note: fetchIndustryThresholdData removed - threshold data is now static
   fetchBenjaminGrahamData 
 } from './sheets';
 
@@ -41,7 +41,7 @@ export async function warmCache(): Promise<void> {
 
   // Warm cache for all data types in parallel
   // Use Promise.allSettled to avoid failures in one affecting others
-  // Note: Threshold industry data is now static and not cached/warmed
+  // Note:  Industry threshold data is now static and not cached/warmed
   const warmingPromises = [
     warmCacheForKey(CACHE_KEYS.SCORE_BOARD, () => fetchScoreBoardData(false)),
     warmCacheForKey(CACHE_KEYS.PE_INDUSTRY, () => fetchPEIndustryData(false)),

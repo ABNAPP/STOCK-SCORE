@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateScore } from '../calculateScore';
-import { ScoreBoardData, ThresholdIndustryData, BenjaminGrahamData } from '../../types/stock';
+import { ScoreBoardData, IndustryThresholdData, BenjaminGrahamData } from '../../types/stock';
 import {
   createMockScoreBoardData,
   createMockThresholdData,
@@ -9,7 +9,7 @@ import {
 } from '../../test/helpers';
 
 describe('calculateScore', () => {
-  const mockThresholdData: ThresholdIndustryData[] = [
+  const mockThresholdData: IndustryThresholdData[] = [
     createMockThresholdData({
       industry: 'Test Industry',
       irr: 25,

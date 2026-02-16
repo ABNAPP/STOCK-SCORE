@@ -34,7 +34,7 @@ All metadata definieras centralt i `src/config/tableMetadata.ts`. Denna fil inne
 - **score-board** - Detaljerad poängtabell med alla metrics
 - **benjamin-graham** - Benjamin Graham-värderingar
 - **pe-industry** - P/E-industri-medianer
-- **threshold-industry** - Tröskelvärden per industri
+- **industry-threshold** - Tröskelvärden per industri
 - **entry-exit-entry1** - Manuella entry/exit-värden
 - **sma-100** - SMA-tekniska indikatorer
 
@@ -91,7 +91,7 @@ interface ConditionsSidebarProps {
 'entry-exit-benjamin-graham' → 'benjamin-graham'
 'fundamental-pe-industry' → 'pe-industry'
 'entry-exit-entry1' → 'entry-exit-entry1'
-'threshold-industry' → 'threshold-industry'
+'industry-threshold' → 'industry-threshold'
 ```
 
 #### ColumnTooltip (`src/components/ColumnTooltip.tsx`)

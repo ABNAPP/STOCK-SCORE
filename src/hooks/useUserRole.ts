@@ -56,7 +56,7 @@ export function useUserRole() {
     'score-board',
     'entry-exit-benjamin-graham',
     'fundamental-pe-industry',
-    'threshold-industry',
+    'industry-threshold',
     'personal-portfolio',
   ];
 

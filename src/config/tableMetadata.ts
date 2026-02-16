@@ -336,9 +336,9 @@ export const tableMetadata: TableMetadata[] = [
           'Visa faktiska 0-värden som "0%"',
           'Formateras som procent med %-tecken och noll decimaler',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Threshold Industry:',
-          '  - GRÖN om IRR >= IRR threshold (från Threshold Industry baserat på industry)',
-          '  - RÖD om IRR < IRR threshold (från Threshold Industry baserat på industry)',
+          'Färgmarkering baserat på threshold-värden från Industry Threshold:',
+          '  - GRÖN om IRR >= IRR threshold (från Industry Threshold baserat på industry)',
+          '  - RÖD om IRR < IRR threshold (från Industry Threshold baserat på industry)',
           '  - Ingen färg om industry inte hittas eller värdet är null/N/A'
         ]
       },
@@ -390,10 +390,10 @@ export const tableMetadata: TableMetadata[] = [
           'Visa faktiska 0-värden som "0.0%"',
           'Formateras som procent med %-tecken och en decimal',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Threshold Industry:',
-          '  - RÖD om Ro40-värdet ≤ RO40 MIN (från Threshold Industry baserat på industry)',
-          '  - GRÖN om Ro40-värdet ≥ RO40 MAX (från Threshold Industry baserat på industry)',
-          '  - BLÅ om RO40 MIN < Ro40-värdet < RO40 MAX (från Threshold Industry baserat på industry)',
+          'Färgmarkering baserat på threshold-värden från Industry Threshold:',
+          '  - RÖD om Ro40-värdet ≤ RO40 MIN (från Industry Threshold baserat på industry)',
+          '  - GRÖN om Ro40-värdet ≥ RO40 MAX (från Industry Threshold baserat på industry)',
+          '  - BLÅ om RO40 MIN < Ro40-värdet < RO40 MAX (från Industry Threshold baserat på industry)',
           '  - Ingen färg om industry inte hittas eller värdet är null/N/A',
           'Konverterar procent till decimal för jämförelse (t.ex. 25.0% → 0.25)'
         ]
@@ -406,10 +406,10 @@ export const tableMetadata: TableMetadata[] = [
           'Visa faktiska 0-värden som "0.0%"',
           'Formateras som procent med %-tecken och en decimal',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Threshold Industry:',
-          '  - RÖD om Ro40-värdet ≤ RO40 MIN (från Threshold Industry baserat på industry)',
-          '  - GRÖN om Ro40-värdet ≥ RO40 MAX (från Threshold Industry baserat på industry)',
-          '  - BLÅ om RO40 MIN < Ro40-värdet < RO40 MAX (från Threshold Industry baserat på industry)',
+          'Färgmarkering baserat på threshold-värden från Industry Threshold:',
+          '  - RÖD om Ro40-värdet ≤ RO40 MIN (från Industry Threshold baserat på industry)',
+          '  - GRÖN om Ro40-värdet ≥ RO40 MAX (från Industry Threshold baserat på industry)',
+          '  - BLÅ om RO40 MIN < Ro40-värdet < RO40 MAX (från Industry Threshold baserat på industry)',
           '  - Ingen färg om industry inte hittas eller värdet är null/N/A',
           'Konverterar procent till decimal för jämförelse (t.ex. 25.0% → 0.25)'
         ]
@@ -422,10 +422,10 @@ export const tableMetadata: TableMetadata[] = [
           'Visa faktiska 0-värden som "0.00"',
           'Formateras med två decimaler',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Threshold Industry:',
-          '  - RÖD om Current Ratio < Current Ratio MIN (från Threshold Industry baserat på industry)',
-          '  - GRÖN om Current Ratio MIN ≤ Current Ratio < Current Ratio MAX (från Threshold Industry baserat på industry)',
-          '  - BLÅ om Current Ratio ≥ Current Ratio MAX (från Threshold Industry baserat på industry)',
+          'Färgmarkering baserat på threshold-värden från Industry Threshold:',
+          '  - RÖD om Current Ratio < Current Ratio MIN (från Industry Threshold baserat på industry)',
+          '  - GRÖN om Current Ratio MIN ≤ Current Ratio < Current Ratio MAX (från Industry Threshold baserat på industry)',
+          '  - BLÅ om Current Ratio ≥ Current Ratio MAX (från Industry Threshold baserat på industry)',
           '  - Ingen färg om industry inte hittas eller värdet är null/N/A'
         ]
       },
@@ -437,11 +437,11 @@ export const tableMetadata: TableMetadata[] = [
           'Visa faktiska 0-värden som "0.00"',
           'Formateras med två decimaler',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Threshold Industry:',
+          'Färgmarkering baserat på threshold-värden från Industry Threshold:',
           '  - GRÖN om division-by-zero (#DIV/0!)',
-          '  - RÖD om Cash/SDebt ≤ Cash/SDebt MIN (från Threshold Industry baserat på industry)',
-          '  - GRÖN om Cash/SDebt ≥ Cash/SDebt MAX (från Threshold Industry baserat på industry)',
-          '  - BLÅ om Cash/SDebt MIN < Cash/SDebt < Cash/SDebt MAX (från Threshold Industry baserat på industry)',
+          '  - RÖD om Cash/SDebt ≤ Cash/SDebt MIN (från Industry Threshold baserat på industry)',
+          '  - GRÖN om Cash/SDebt ≥ Cash/SDebt MAX (från Industry Threshold baserat på industry)',
+          '  - BLÅ om Cash/SDebt MIN < Cash/SDebt < Cash/SDebt MAX (från Industry Threshold baserat på industry)',
           '  - Ingen färg om industry inte hittas eller värdet är null/N/A'
         ]
       },
@@ -452,10 +452,10 @@ export const tableMetadata: TableMetadata[] = [
           'Visa N/A om värdet är null eller ogiltigt',
           'Visa faktiska 0-värden som "0"',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Threshold Industry:',
-          '  - GRÖN om Leverage F2 ≤ Leverage F2 MIN (från Threshold Industry baserat på industry)',
-          '  - BLÅ om Leverage F2 MIN < Leverage F2 ≤ Leverage F2 MAX (från Threshold Industry baserat på industry)',
-          '  - RÖD om Leverage F2 > Leverage F2 MAX (från Threshold Industry baserat på industry)',
+          'Färgmarkering baserat på threshold-värden från Industry Threshold:',
+          '  - GRÖN om Leverage F2 ≤ Leverage F2 MIN (från Industry Threshold baserat på industry)',
+          '  - BLÅ om Leverage F2 MIN < Leverage F2 ≤ Leverage F2 MAX (från Industry Threshold baserat på industry)',
+          '  - RÖD om Leverage F2 > Leverage F2 MAX (från Industry Threshold baserat på industry)',
           '  - Ingen färg om industry inte hittas eller värdet är null/N/A'
         ]
       },
@@ -531,7 +531,7 @@ export const tableMetadata: TableMetadata[] = [
     ]
   },
   {
-    tableId: 'threshold-industry',
+    tableId: 'industry-threshold',
     columns: [
       {
         columnKey: 'industry',

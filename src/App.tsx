@@ -31,7 +31,7 @@ const ScoreBoardView = lazyWithRetry<typeof import('./components/views/ScoreBoar
 const ScoreView = lazyWithRetry<typeof import('./components/views/ScoreView').default>(() => import('./components/views/ScoreView'), 'ScoreView');
 const EntryExitView = lazyWithRetry<typeof import('./components/views/EntryExitView').default>(() => import('./components/views/EntryExitView'), 'EntryExitView');
 const FundamentalView = lazyWithRetry<typeof import('./components/views/FundamentalView').default>(() => import('./components/views/FundamentalView'), 'FundamentalView');
-const ThresholdIndustryView = lazyWithRetry<typeof import('./components/views/ThresholdIndustryView').default>(() => import('./components/views/ThresholdIndustryView'), 'ThresholdIndustryView');
+const IndustryThresholdView = lazyWithRetry<typeof import('./components/views/IndustryThresholdView').default>(() => import('./components/views/IndustryThresholdView'), 'IndustryThresholdView');
 const PersonalPortfolioView = lazyWithRetry<typeof import('./components/views/PersonalPortfolioView').default>(() => import('./components/views/PersonalPortfolioView'), 'PersonalPortfolioView');
 
 // Lazy load modal components
@@ -44,7 +44,7 @@ const MAIN_VIEW_IDS: ViewId[] = [
   'score-board',
   'entry-exit-benjamin-graham',
   'fundamental-pe-industry',
-  'threshold-industry',
+  'industry-threshold',
   'personal-portfolio',
 ];
 
@@ -171,7 +171,7 @@ function App() {
       'score': t('navigation.score'),
       'entry-exit-benjamin-graham': t('navigation.benjaminGraham'),
       'fundamental-pe-industry': t('navigation.peIndustry'),
-      'threshold-industry': t('navigation.thresholdIndustry'),
+      'industry-threshold': t('navigation.industryThreshold'),
       'personal-portfolio': t('navigation.personalPortfolio'),
     };
     return names[viewId] || viewId;
@@ -210,10 +210,10 @@ function App() {
       );
     }
 
-    if (activeView === 'threshold-industry') {
+    if (activeView === 'industry-threshold') {
       return (
         <Suspense fallback={<LoadingFallback />}>
-          <ThresholdIndustryView />
+          <IndustryThresholdView />
         </Suspense>
       );
     }

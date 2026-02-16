@@ -12,7 +12,7 @@ import {
   generateLargeScoreDataSet,
 } from '../../test/helpers';
 import { ScoreData } from '../views/ScoreView';
-import { ThresholdIndustryData, BenjaminGrahamData } from '../../types/stock';
+import { IndustryThresholdData, BenjaminGrahamData } from '../../types/stock';
 import { EntryExitValues } from '../../contexts/EntryExitContext';
 import '../../i18n/config';
 
@@ -28,7 +28,7 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe('ScoreTable Integration Tests', () => {
-  const mockThresholdData: ThresholdIndustryData[] = [
+  const mockThresholdData: IndustryThresholdData[] = [
     createMockThresholdData({ industry: 'Technology' }),
   ];
 

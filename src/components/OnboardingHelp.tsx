@@ -73,7 +73,7 @@ export default function OnboardingHelp({ isOpen: externalIsOpen, onClose: extern
     if (canView('fundamental-pe-industry')) {
       steps.push({ key: 'stepPEIndustry', icon: '🏭' });
     }
-    if (canView('threshold-industry')) {
+    if (canView('industry-threshold')) {
       steps.push({ key: 'stepThreshold', icon: '📊' });
     }
     return steps;

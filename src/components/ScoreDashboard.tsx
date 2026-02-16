@@ -3,13 +3,13 @@ import { Card, CardContent } from './ui/Card';
 import { ScoreData } from './views/ScoreView';
 import { useTheme } from '../contexts/ThemeContext';
 import ScoreScatterPlot from './ScoreScatterPlot';
-import { ThresholdIndustryData, BenjaminGrahamData } from '../types/stock';
+import { IndustryThresholdData, BenjaminGrahamData } from '../types/stock';
 import { EntryExitValues } from '../contexts/EntryExitContext';
 
 interface ScoreDashboardProps {
   data: ScoreData[];
   loading?: boolean;
-  thresholdData?: ThresholdIndustryData[];
+  thresholdData?: IndustryThresholdData[];
   benjaminGrahamData?: BenjaminGrahamData[];
   entryExitValues?: Map<string, EntryExitValues>;
 }

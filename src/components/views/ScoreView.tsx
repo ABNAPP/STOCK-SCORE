@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useMemo, lazy, Suspense, useEffect } from 'react';
 import { useShareableHydration } from '../../contexts/ShareableHydrationContext';
 import { useScoreBoardData } from '../../hooks/useScoreBoardData';
-import { useThresholdIndustryData } from '../../hooks/useThresholdIndustryData';
+import { useIndustryThresholdData } from '../../hooks/useIndustryThresholdData';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
 import { EntryExitData, ScoreBoardData } from '../../types/stock';
 import ProgressIndicator from '../ProgressIndicator';
@@ -35,7 +35,7 @@ function ScoreViewInner() {
   const { t } = useTranslation();
   const { link, consume } = useShareableHydration();
   const { data: scoreBoardData, loading, error } = useScoreBoardData();
-  const { data: thresholdData, loading: thresholdLoading } = useThresholdIndustryData();
+  const { data: thresholdData, loading: thresholdLoading } = useIndustryThresholdData();
   const { data: benjaminGrahamData, loading: bgLoading } = useBenjaminGrahamData();
   const { initializeFromData, entryExitValues } = useEntryExitValues();
   

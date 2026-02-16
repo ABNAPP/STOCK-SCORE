@@ -4,7 +4,7 @@ import { getCachedData, getCacheAge, setCachedData, CACHE_KEYS } from '../firest
 import { 
   fetchScoreBoardData, 
   fetchPEIndustryData, 
-  // Note: fetchThresholdIndustryData removed - threshold data is now static
+  // Note: fetchIndustryThresholdData removed - threshold data is now static
   fetchBenjaminGrahamData 
 } from '../sheets';
 
@@ -12,7 +12,7 @@ import {
 vi.mock('../sheets', () => ({
   fetchScoreBoardData: vi.fn(),
   fetchPEIndustryData: vi.fn(),
-  // Note: fetchThresholdIndustryData removed - threshold data is now static
+  // Note: fetchIndustryThresholdData removed - threshold data is now static
   fetchBenjaminGrahamData: vi.fn(),
 }));
 
@@ -74,7 +74,7 @@ describe('cacheWarmingService', () => {
       
       expect(fetchScoreBoardData).not.toHaveBeenCalled();
       expect(fetchPEIndustryData).not.toHaveBeenCalled();
-      // Note: fetchThresholdIndustryData removed - threshold data is now static
+      // Note: fetchIndustryThresholdData removed - threshold data is now static
       expect(fetchBenjaminGrahamData).not.toHaveBeenCalled();
     });
 
@@ -88,7 +88,7 @@ describe('cacheWarmingService', () => {
       const mockData = [{ companyName: 'Test', ticker: 'TEST' }];
       (fetchScoreBoardData as any).mockResolvedValue(mockData);
       (fetchPEIndustryData as any).mockResolvedValue(mockData);
-      // Note: fetchThresholdIndustryData removed - threshold data is now static
+      // Note: fetchIndustryThresholdData removed - threshold data is now static
       (fetchBenjaminGrahamData as any).mockResolvedValue(mockData);
 
       const warmPromise = warmCache();
@@ -99,7 +99,7 @@ describe('cacheWarmingService', () => {
 
       expect(fetchScoreBoardData).toHaveBeenCalledWith(false);
       expect(fetchPEIndustryData).toHaveBeenCalledWith(false);
-      // Note: fetchThresholdIndustryData removed - threshold data is now static
+      // Note: fetchIndustryThresholdData removed - threshold data is now static
       expect(fetchBenjaminGrahamData).toHaveBeenCalledWith(false);
 
       vi.useRealTimers();
@@ -120,7 +120,7 @@ describe('cacheWarmingService', () => {
       // Should not fetch since cache is fresh
       expect(fetchScoreBoardData).not.toHaveBeenCalled();
       expect(fetchPEIndustryData).not.toHaveBeenCalled();
-      // Note: fetchThresholdIndustryData removed - threshold data is now static
+      // Note: fetchIndustryThresholdData removed - threshold data is now static
       expect(fetchBenjaminGrahamData).not.toHaveBeenCalled();
 
       vi.useRealTimers();
@@ -136,7 +136,7 @@ describe('cacheWarmingService', () => {
 
       (fetchScoreBoardData as any).mockResolvedValue(mockData);
       (fetchPEIndustryData as any).mockResolvedValue(mockData);
-      // Note: fetchThresholdIndustryData removed - threshold data is now static
+      // Note: fetchIndustryThresholdData removed - threshold data is now static
       (fetchBenjaminGrahamData as any).mockResolvedValue(mockData);
 
       const warmPromise = warmCache();
@@ -146,7 +146,7 @@ describe('cacheWarmingService', () => {
       // Should fetch since cache is stale
       expect(fetchScoreBoardData).toHaveBeenCalledWith(false);
       expect(fetchPEIndustryData).toHaveBeenCalledWith(false);
-      // Note: fetchThresholdIndustryData removed - threshold data is now static
+      // Note: fetchIndustryThresholdData removed - threshold data is now static
       expect(fetchBenjaminGrahamData).toHaveBeenCalledWith(false);
 
       vi.useRealTimers();
@@ -160,7 +160,7 @@ describe('cacheWarmingService', () => {
       
       (fetchScoreBoardData as any).mockRejectedValue(new Error('Network error'));
       (fetchPEIndustryData as any).mockResolvedValue([]);
-      // Note: fetchThresholdIndustryData removed - threshold data is now static
+      // Note: fetchIndustryThresholdData removed - threshold data is now static
       (fetchBenjaminGrahamData as any).mockResolvedValue([]);
 
       const warmPromise = warmCache();
@@ -171,7 +171,7 @@ describe('cacheWarmingService', () => {
 
       // Other fetches should still be called
       expect(fetchPEIndustryData).toHaveBeenCalled();
-      // Note: fetchThresholdIndustryData removed - threshold data is now static
+      // Note: fetchIndustryThresholdData removed - threshold data is now static
       expect(fetchBenjaminGrahamData).toHaveBeenCalled();
 
       vi.useRealTimers();
@@ -187,7 +187,7 @@ describe('cacheWarmingService', () => {
       const mockData = [{ companyName: 'Test', ticker: 'TEST' }];
       (fetchScoreBoardData as any).mockResolvedValue(mockData);
       (fetchPEIndustryData as any).mockResolvedValue(mockData);
-      // Note: fetchThresholdIndustryData removed - threshold data is now static
+      // Note: fetchIndustryThresholdData removed - threshold data is now static
       (fetchBenjaminGrahamData as any).mockResolvedValue(mockData);
 
       const warmPromise = warmCache();
@@ -197,7 +197,7 @@ describe('cacheWarmingService', () => {
       // All should be called
       expect(fetchScoreBoardData).toHaveBeenCalled();
       expect(fetchPEIndustryData).toHaveBeenCalled();
-      // Note: fetchThresholdIndustryData removed - threshold data is now static
+      // Note: fetchIndustryThresholdData removed - threshold data is now static
       expect(fetchBenjaminGrahamData).toHaveBeenCalled();
 
       vi.useRealTimers();
