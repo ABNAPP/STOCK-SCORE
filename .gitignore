@@ -11,6 +11,7 @@ lerna-debug.log*
 temp-set-admin/
 serviceAccountKey.json
 *.json.key
+stock-score-df698-firebase-adminsdk-fbsvc-3c84e363ea.json
 
 node_modules
 dist

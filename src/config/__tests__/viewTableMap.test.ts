@@ -37,10 +37,6 @@ describe('viewTableMap', () => {
       expect(metadata?.tableId).toBe('personal-portfolio');
     });
 
-    it('returns null for admin', () => {
-      expect(getTableId('admin' as ViewId)).toBeNull();
-    });
-
     it('returns null for other ViewIds without table mapping', () => {
       expect(getTableId('entry-exit-entry2' as ViewId)).toBeNull();
       expect(getTableId('fundamental-current-ratio' as ViewId)).toBeNull();
