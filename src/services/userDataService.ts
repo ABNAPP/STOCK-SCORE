@@ -7,13 +7,14 @@
  * Falls back to localStorage if user is not authenticated or Firestore is unavailable.
  */
 
-import { 
-  doc, 
-  setDoc, 
-  getDoc, 
+import {
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
   collection,
   writeBatch,
-  serverTimestamp 
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { User } from 'firebase/auth';
@@ -23,7 +24,7 @@ import { isCurrencyString } from '../utils/typeGuards';
 // Firestore collection names
 const COLLECTIONS = {
   SHARED_DATA: 'sharedData',
-  ENTRY_EXIT: 'entryExit',
+  ENTRY_EXIT: 'entiryExit',
   CURRENCY: 'currency',
 } as const;
 
@@ -33,18 +34,39 @@ const STORAGE_KEYS = {
   CURRENCY: 'tachart-currency-map',
 } as const;
 
+function toCamelCase(value: string): string {
+  const cleaned = value.replace(/&/g, 'and').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+  const parts = cleaned.split(' ').filter(Boolean);
+  if (parts.length === 0) return '';
+  const [first, ...rest] = parts;
+  return [
+    first.charAt(0).toLowerCase() + first.slice(1),
+    ...rest.map((p) => p.charAt(0).toUpperCase() + p.slice(1)),
+  ].join('');
+}
+
+function shouldPersistEntry(entry: { entry1: number; entry2: number; exit1: number; exit2: number; currency: string; dateOfUpdate: string | null }): boolean {
+  const hasValues = entry.entry1 !== 0 || entry.entry2 !== 0 || entry.exit1 !== 0 || entry.exit2 !== 0;
+  return hasValues || !!entry.dateOfUpdate;
+}
+
 /**
- * Get shared data document reference
- */
-function getSharedDataDoc(dataType: string) {
-  return doc(db, COLLECTIONS.SHARED_DATA, dataType);
+function toCamelCase(value: string): string {
+  const cleaned = value.replace(/&/g, 'and').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+  const parts = cleaned.split(' ').filter(Boolean);
+  if (parts.length === 0) return '';
+  const [first, ...rest] = parts;
+  return [
+    first.charAt(0).toLowerCase() + first.slice(1),
+    ...rest.map((p) => p.charAt(0).toUpperCase() + p.slice(1)),
+  ].join('');
 }
 
 /**
  * Save Entry/Exit values to Firestore
  * 
  * Saves Entry/Exit values (entry1, entry2, exit1, exit2, currency, dateOfUpdate)
- * to Firestore. Falls back to localStorage if user is not authenticated.
+ * to Firestore in entiryExit/{camelCaseCompanyName}.
  * Also saves to localStorage as backup even when using Firestore.
  * 
  * @param user - Firebase user object, or null if not authenticated
@@ -72,11 +94,15 @@ export async function saveEntryExitValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.ENTRY_EXIT);
-    await setDoc(docRef, {
-      values,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
+    const batch = writeBatch(db);
+    for (const [companyName, entry] of Object.entries(values)) {
+      if (!shouldPersistEntry(entry)) continue;
+      const docId = toCamelCase(companyName);
+      if (!docId) continue;
+      const docRef = doc(db, COLLECTIONS.ENTRY_EXIT, docId);
+      batch.set(docRef, { ...entry, companyName }, { merge: true });
+    }
+    await batch.commit();
     
     // Also save to localStorage as backup
     try {
@@ -130,15 +156,20 @@ export async function loadEntryExitValues(
   }
 
   try {
-    const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.ENTRY_EXIT);
-    const docSnap = await getDoc(docRef);
-    
-    let values: Record<string, { entry1: number; entry2: number; exit1: number; exit2: number; currency: string; dateOfUpdate: string | null }> = {};
-    
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      values = data.values || {};
-    }
+    const values: Record<string, { entry1: number; entry2: number; exit1: number; exit2: number; currency: string; dateOfUpdate: string | null }> = {};
+    const snapshot = await getDocs(collection(db, COLLECTIONS.ENTRY_EXIT));
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data() as Record<string, unknown>;
+      const companyName = typeof data.companyName === 'string' ? data.companyName : docSnap.id;
+      values[companyName] = {
+        entry1: typeof data.entry1 === 'number' ? data.entry1 : 0,
+        entry2: typeof data.entry2 === 'number' ? data.entry2 : 0,
+        exit1: typeof data.exit1 === 'number' ? data.exit1 : 0,
+        exit2: typeof data.exit2 === 'number' ? data.exit2 : 0,
+        currency: typeof data.currency === 'string' ? data.currency : 'USD',
+        dateOfUpdate: typeof data.dateOfUpdate === 'string' ? data.dateOfUpdate : null,
+      };
+    });
     
     // Migrate currency from old separate collection if it exists
     try {
@@ -149,7 +180,6 @@ export async function loadEntryExitValues(
         const currencyData = currencyDocSnap.data();
         const currencyValues = currencyData.values || {};
         
-        // Merge currency into entryExit values
         for (const [key, currency] of Object.entries(currencyValues)) {
           if (!values[key]) {
             values[key] = { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: isCurrencyString(currency) ? currency : 'USD', dateOfUpdate: null };
@@ -159,7 +189,6 @@ export async function loadEntryExitValues(
         }
       }
     } catch (currencyError) {
-      // If currency migration fails, continue without it
       logger.warn('Failed to migrate currency data', { component: 'userDataService', operation: 'loadEntryExitValues', error: currencyError });
     }
     

@@ -82,8 +82,7 @@ function getEntryExitValue(
   companyName: string,
   entryExitValues: Map<string, EntryExitValuesForScore>
 ): EntryExitValuesForScore | undefined {
-  const key = `${ticker}-${companyName}`;
-  return entryExitValues.get(key);
+  return entryExitValues.get(companyName);
 }
 
 /**
@@ -416,4 +415,3 @@ export function calculateDetailedScore(
   // Round to 1 decimal
   return Math.round(Math.max(0, Math.min(100, totalPoints)) * 10) / 10;
 }
-

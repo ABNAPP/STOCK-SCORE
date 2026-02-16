@@ -113,8 +113,7 @@ function getEntryExitValue(
   companyName: string,
   entryExitValues: Map<string, EntryExitValuesForScore>
 ): EntryExitValuesForScore | undefined {
-  const key = `${ticker}-${companyName}`;
-  return entryExitValues.get(key);
+  return entryExitValues.get(companyName);
 }
 
 /**
