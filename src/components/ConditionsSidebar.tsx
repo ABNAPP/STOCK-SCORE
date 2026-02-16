@@ -34,9 +34,9 @@ const getNavigationSections = (t: (key: string) => string): NavigationSection[] 
     collapsible: false,
   },
   {
-    id: 'threshold-industry',
-    label: t('navigation.thresholdIndustry'),
-    items: [{ id: 'threshold-industry', label: t('navigation.thresholdIndustry') }],
+    id: 'industry-threshold',
+    label: t('navigation.industryThreshold'),
+    items: [{ id: 'industry-threshold', label: t('navigation.industryThreshold') }],
     collapsible: false,
   },
   {

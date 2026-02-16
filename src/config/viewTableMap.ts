@@ -9,7 +9,7 @@ export function getTableId(viewId: ViewId): string | null {
   if (viewId === 'score') return 'score';
   if (viewId === 'entry-exit-benjamin-graham') return 'benjamin-graham';
   if (viewId === 'fundamental-pe-industry') return 'pe-industry';
-  if (viewId === 'threshold-industry') return 'threshold-industry';
+  if (viewId === 'industry-threshold') return 'industry-threshold';
   if (viewId === 'personal-portfolio') return 'personal-portfolio';
   return null;
 }

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, memo } from 'react';
 import BaseTable, { ColumnDefinition } from './BaseTable';
 import { ScoreData } from './views/ScoreView';
-import { ScoreBoardData, ThresholdIndustryData, BenjaminGrahamData } from '../types/stock';
+import { ScoreBoardData, IndustryThresholdData, BenjaminGrahamData } from '../types/stock';
 import { EntryExitValues } from '../contexts/EntryExitContext';
 import { calculateDetailedScoreBreakdown } from '../utils/calculateScoreDetailed';
 import { FilterConfig, ShareableTableState } from '../types/filters';
@@ -16,7 +16,7 @@ const MemoizedScoreBreakdownExpandedRow = memo(function MemoizedScoreBreakdownEx
   entryExitValues,
 }: {
   scoreBoardData: ScoreBoardData;
-  thresholdData: ThresholdIndustryData[];
+  thresholdData: IndustryThresholdData[];
   benjaminGrahamData: BenjaminGrahamData[];
   entryExitValues: Map<string, EntryExitValues>;
 }) {
@@ -37,7 +37,7 @@ interface ScoreTableProps {
   data: ScoreData[];
   loading: boolean;
   error: string | null;
-  thresholdData?: ThresholdIndustryData[];
+  thresholdData?: IndustryThresholdData[];
   benjaminGrahamData?: BenjaminGrahamData[];
   entryExitValues?: Map<string, EntryExitValues>;
   initialTableState?: ShareableTableState;

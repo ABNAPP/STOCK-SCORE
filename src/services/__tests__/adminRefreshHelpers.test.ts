@@ -1,6 +1,6 @@
 /**
  * Unit tests for adminRefreshHelpers (runAdminRefresh).
- * Verifies threshold-industry is included in refresh and cutover respects VIEWDATA_MIGRATION_MODE.
+ * Verifies industry-threshold is included in refresh and cutover respects VIEWDATA_MIGRATION_MODE.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -24,7 +24,7 @@ beforeEach(() => {
   appCacheWrites.length = 0;
   mockFetch.mockImplementation((url: string | URL) => {
     const urlStr = typeof url === 'string' ? url : url.toString();
-    if (urlStr.includes('sheet=ThresholdIndustry')) {
+    if (urlStr.includes('sheet=IndustryThreshold')) {
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve(THRESHOLD_SNAPSHOT),
@@ -35,49 +35,49 @@ beforeEach(() => {
   vi.stubGlobal('fetch', mockFetch);
 });
 
-describe('adminRefreshHelpers - threshold-industry', () => {
-  it('includes threshold-industry in refresh when force=true', async () => {
+describe('adminRefreshHelpers - industry-threshold', () => {
+  it('includes industry-threshold in refresh when force=true', async () => {
     const { refreshed, errors } = await runAdminRefresh(
       'https://script.example.com/exec',
       undefined,
-      ['threshold-industry'],
+      ['industry-threshold'],
       'admin-uid',
       'cutover',
       false
     );
 
     expect(errors).toHaveLength(0);
-    const ti = refreshed.find((r) => r.viewId === 'threshold-industry');
+    const ti = refreshed.find((r) => r.viewId === 'industry-threshold');
     expect(ti).toBeDefined();
     expect(ti?.rows).toBe(1);
     expect(ti?.wroteViewData).toBe(true);
   });
 
-  it('does NOT write to appCache for threshold-industry in cutover', async () => {
+  it('does NOT write to appCache for industry-threshold in cutover', async () => {
     await runAdminRefresh(
       'https://script.example.com/exec',
       undefined,
-      ['threshold-industry'],
+      ['industry-threshold'],
       'admin-uid',
       'cutover',
       false
     );
 
-    const appCacheThreshold = appCacheWrites.filter((w) => w.docId === 'thresholdIndustry');
+    const appCacheThreshold = appCacheWrites.filter((w) => w.docId === 'industryThreshold');
     expect(appCacheThreshold).toHaveLength(0);
   });
 
-  it('DOES write to appCache for threshold-industry when migrationMode is dual-read', async () => {
+  it('DOES write to appCache for industry-threshold when migrationMode is dual-read', async () => {
     await runAdminRefresh(
       'https://script.example.com/exec',
       undefined,
-      ['threshold-industry'],
+      ['industry-threshold'],
       'admin-uid',
       'dual-read',
       false
     );
 
-    const appCacheThreshold = appCacheWrites.filter((w) => w.docId === 'thresholdIndustry');
+    const appCacheThreshold = appCacheWrites.filter((w) => w.docId === 'industryThreshold');
     expect(appCacheThreshold.length).toBeGreaterThanOrEqual(1);
   });
 });

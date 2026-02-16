@@ -1,20 +1,20 @@
 import { useTranslation } from 'react-i18next';
 import { lazy, Suspense, useMemo, useEffect } from 'react';
 import { useShareableHydration } from '../../contexts/ShareableHydrationContext';
-import { useThresholdIndustryData } from '../../hooks/useThresholdIndustryData';
+import { useIndustryThresholdData } from '../../hooks/useIndustryThresholdData';
 import { TableSkeleton } from '../SkeletonLoader';
 import { ThresholdProvider } from '../../contexts/ThresholdContext';
 
 // Lazy load table component
-const ThresholdIndustryTable = lazy(() => import('../ThresholdIndustryTable'));
+const IndustryThresholdTable = lazy(() => import('../IndustryThresholdTable'));
 
-const VIEW_ID = 'threshold-industry';
-const TABLE_ID = 'threshold-industry';
+const VIEW_ID = 'industry-threshold';
+const TABLE_ID = 'industry-threshold';
 
-export default function ThresholdIndustryView() {
+export default function IndustryThresholdView() {
   const { t } = useTranslation();
   const { link, consume } = useShareableHydration();
-  const { data, loading, error } = useThresholdIndustryData();
+  const { data, loading, error } = useIndustryThresholdData();
 
   const initialTableState = useMemo(() => {
     if (!link || link.viewId !== VIEW_ID || link.tableId !== TABLE_ID) return undefined;
@@ -37,14 +37,14 @@ export default function ThresholdIndustryView() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 flex-shrink-0 gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black dark:text-white mb-1 tracking-tight">
-                {t('navigation.thresholdIndustry')}
+                {t('navigation.industryThreshold')}
               </h1>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Tröskelvärden per bransch</p>
             </div>
           </div>
           <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
             <Suspense fallback={<TableSkeleton rows={10} columns={8} hasStickyColumns={true} />}>
-              <ThresholdIndustryTable data={data} loading={loading} error={error} initialTableState={initialTableState} />
+              <IndustryThresholdTable data={data} loading={loading} error={error} initialTableState={initialTableState} />
             </Suspense>
           </div>
         </div>

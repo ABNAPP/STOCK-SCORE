@@ -1,6 +1,6 @@
 import { 
   ScoreBoardData, 
-  ThresholdIndustryData, 
+  IndustryThresholdData, 
   BenjaminGrahamData,
   SMAData,
   EntryExitData,
@@ -39,10 +39,11 @@ export function createMockScoreBoardData(overrides: Partial<ScoreBoardData> = {}
 }
 
 /**
- * Create mock ThresholdIndustryData for testing
+ * Create mock IndustryThresholdData for testing
  */
-export function createMockThresholdData(overrides: Partial<ThresholdIndustryData> = {}): ThresholdIndustryData {
+export function createMockThresholdData(overrides: Partial<IndustryThresholdData> = {}): IndustryThresholdData {
   return {
+    industryKey: 'testIndustry',
     industry: 'Test Industry',
     irr: 25,
     leverageF2Min: 2.0,
@@ -345,11 +346,11 @@ export function generateLargeEntryExitDataSet(count: number): EntryExitData[] {
 }
 
 /**
- * Generate large array of ThresholdIndustryData
+ * Generate large array of IndustryThresholdData
  */
-export function generateLargeThresholdDataSet(count: number): ThresholdIndustryData[] {
+export function generateLargeThresholdDataSet(count: number): IndustryThresholdData[] {
   const industries = ['Technology', 'Finance', 'Healthcare', 'Energy', 'Consumer', 'Manufacturing', 'Retail', 'Telecom'];
-  const data: ThresholdIndustryData[] = [];
+  const data: IndustryThresholdData[] = [];
   
   for (let i = 0; i < count; i++) {
     const industry = industries[i % industries.length];
@@ -459,4 +460,3 @@ export const COMMON_FILTER_COMBINATIONS: FilterCombination[] = [
   { irr: { min: 0, max: 1000 } },
   { mungerQualityScore: { min: 0, max: 100 } },
 ];
-

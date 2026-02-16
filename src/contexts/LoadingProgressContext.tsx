@@ -25,7 +25,7 @@ interface LoadingProgressContextType {
 const LoadingProgressContext = createContext<LoadingProgressContextType | undefined>(undefined);
 
 // Standard estimated times for different data sources (in milliseconds)
-// Note: threshold-industry removed - data is now static and loads instantly
+// Note: industry-threshold removed - data is now static and loads instantly
 const DEFAULT_ESTIMATED_TIMES: Record<string, number> = {
   'score-board': 4000,
   'benjamin-graham': 2500,

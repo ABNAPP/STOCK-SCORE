@@ -1,22 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import ThresholdIndustryTable from '../ThresholdIndustryTable';
+import IndustryThresholdTable from '../IndustryThresholdTable';
 import { renderWithAuth } from '../../test/helpers/renderHelpers';
 import {
   createMockThresholdData,
   generateLargeThresholdDataSet,
 } from '../../test/helpers';
-import { ThresholdIndustryData } from '../../types/stock';
+import { IndustryThresholdData } from '../../types/stock';
 import '../../i18n/config';
 
 // renderWithAuth provides all providers and defaults to admin role for editable threshold table
 
-describe('ThresholdIndustryTable Integration Tests', () => {
+describe('IndustryThresholdTable Integration Tests', () => {
   describe('Rendering', () => {
     it('should render with empty data', () => {
 renderWithAuth(
-          <ThresholdIndustryTable
+          <IndustryThresholdTable
             data={[]}
             loading={false}
             error={null}
@@ -27,7 +27,7 @@ renderWithAuth(
     });
 
     it('should render with data', () => {
-      const data: ThresholdIndustryData[] = [
+      const data: IndustryThresholdData[] = [
         createMockThresholdData({
           industry: 'Technology',
           irr: 25,
@@ -43,7 +43,7 @@ renderWithAuth(
       ];
 
       renderWithAuth(
-        <ThresholdIndustryTable
+        <IndustryThresholdTable
           data={data}
           loading={false}
           error={null}
@@ -57,7 +57,7 @@ renderWithAuth(
       const data = generateLargeThresholdDataSet(50);
 
       renderWithAuth(
-        <ThresholdIndustryTable
+        <IndustryThresholdTable
           data={data}
           loading={false}
           error={null}
@@ -71,13 +71,13 @@ renderWithAuth(
   describe('Filtering', () => {
     it('should filter by industry', async () => {
       const user = userEvent.setup();
-      const data: ThresholdIndustryData[] = [
+      const data: IndustryThresholdData[] = [
         createMockThresholdData({ industry: 'Technology', irr: 25 }),
         createMockThresholdData({ industry: 'Finance', irr: 20 }),
       ];
 
       renderWithAuth(
-        <ThresholdIndustryTable
+        <IndustryThresholdTable
           data={data}
           loading={false}
           error={null}
@@ -107,14 +107,14 @@ renderWithAuth(
 
     it('should filter by IRR range', async () => {
       const user = userEvent.setup();
-      const data: ThresholdIndustryData[] = [
+      const data: IndustryThresholdData[] = [
         createMockThresholdData({ industry: 'Industry 1', irr: 15 }),
         createMockThresholdData({ industry: 'Industry 2', irr: 25 }),
         createMockThresholdData({ industry: 'Industry 3', irr: 35 }),
       ];
 
       renderWithAuth(
-        <ThresholdIndustryTable
+        <IndustryThresholdTable
           data={data}
           loading={false}
           error={null}
@@ -148,14 +148,14 @@ renderWithAuth(
   describe('Sorting', () => {
     it('should sort by IRR', async () => {
       const user = userEvent.setup();
-      const data: ThresholdIndustryData[] = [
+      const data: IndustryThresholdData[] = [
         createMockThresholdData({ industry: 'Industry 1', irr: 35 }),
         createMockThresholdData({ industry: 'Industry 2', irr: 15 }),
         createMockThresholdData({ industry: 'Industry 3', irr: 25 }),
       ];
 
       renderWithAuth(
-        <ThresholdIndustryTable
+        <IndustryThresholdTable
           data={data}
           loading={false}
           error={null}
@@ -175,14 +175,14 @@ renderWithAuth(
 
     it('should sort by leverageF2Min', async () => {
       const user = userEvent.setup();
-      const data: ThresholdIndustryData[] = [
+      const data: IndustryThresholdData[] = [
         createMockThresholdData({ industry: 'Industry 1', leverageF2Min: 3.0 }),
         createMockThresholdData({ industry: 'Industry 2', leverageF2Min: 1.0 }),
         createMockThresholdData({ industry: 'Industry 3', leverageF2Min: 2.0 }),
       ];
 
       renderWithAuth(
-        <ThresholdIndustryTable
+        <IndustryThresholdTable
           data={data}
           loading={false}
           error={null}
@@ -204,7 +204,7 @@ renderWithAuth(
   describe('Loading and error states', () => {
     it('should show loading state', () => {
       renderWithAuth(
-        <ThresholdIndustryTable
+        <IndustryThresholdTable
           data={[]}
           loading={true}
           error={null}
@@ -217,7 +217,7 @@ renderWithAuth(
 
     it('should show error state', () => {
       renderWithAuth(
-        <ThresholdIndustryTable
+        <IndustryThresholdTable
           data={[]}
           loading={false}
           error="Failed to load data"

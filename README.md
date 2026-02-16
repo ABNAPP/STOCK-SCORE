@@ -8,7 +8,7 @@ En React-webbapplikation som hämtar stock score-data från Google Sheets och vi
 
 - 📊 Hämtar data från Google Sheets automatiskt via Google Apps Script API
 - 🎯 Kategorisering av aktier baserat på score-trösklar
-- 📈 Flera vyer för olika typer av analys (Score Board, Entry/Exit, P/E Industry, Threshold Industry)
+- 📈 Flera vyer för olika typer av analys (Score Board, Entry/Exit, P/E Industry, Industry Threshold)
 - 🔄 Delta Sync support för effektivare datauppdateringar (endast ändringar istället för full reload)
 - 🔐 Firebase Authentication med rollbaserad åtkomstkontroll (admin, editor, viewer1, viewer2)
 - ⚙️ Anpassningsbara inställningar (trösklar, auto-uppdatering)

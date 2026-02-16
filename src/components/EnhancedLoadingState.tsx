@@ -16,7 +16,7 @@ export default function EnhancedLoadingState({ dataSourceNames }: EnhancedLoadin
     'benjamin-graham': 'Benjamin Graham',
     'sma': 'SMA',
     'pe-industry': 'P/E Industry',
-    'threshold-industry': 'Threshold Industry',
+    'industry-threshold': 'Industry Threshold',
     ...dataSourceNames,
   };
 

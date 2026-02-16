@@ -31,10 +31,10 @@ function isNAValue(value: unknown, key: string | number | symbol): boolean {
  * - Separates N/A values and places them at the end
  * - Handles different data types (numbers, strings)
  * - Supports ascending/descending sort with toggle
- * - Uses different N/A detection logic for ThresholdIndustryData vs other types
+ * - Uses different N/A detection logic for IndustryThresholdData vs other types
  * 
  * **N/A Handling Strategy:**
- * - **ThresholdIndustryData**: Only checks the sorted column for N/A
+ * - **IndustryThresholdData**: Only checks the sorted column for N/A
  * - **Other types**: Checks all numeric columns (except score and industry)
  * - N/A items are always sorted to the end, then sorted by company name
  * 
@@ -88,7 +88,7 @@ export function useTableSort<T>(
     }
 
     // Helper function to check if a row has N/A in the column being sorted
-    // For ThresholdIndustryData: only check the sorted column, not all columns
+    // For IndustryThresholdData: only check the sorted column, not all columns
     // For other types: check all numeric columns except score and industry
     const hasNAInSortedColumn = (item: T): boolean => {
       if (!sortConfig.key) return false;
@@ -96,7 +96,7 @@ export function useTableSort<T>(
       const value = item[sortConfig.key];
       const keyStr = String(sortConfig.key);
       
-      // For ThresholdIndustryData, only check the sorted column itself
+      // For IndustryThresholdData, only check the sorted column itself
       // Skip industry column as it's always a valid string
       if (keyStr === 'industry') {
         return false;
@@ -130,19 +130,19 @@ export function useTableSort<T>(
     };
 
     // Separate items with N/A in the sorted column from items without N/A
-    // For ThresholdIndustryData, only check the sorted column
+    // For IndustryThresholdData, only check the sorted column
     // For other types, check all columns
     const regularItems: T[] = [];
     const naItems: T[] = [];
 
-    // Check if this is ThresholdIndustryData by checking if 'industry' key exists
+    // Check if this is IndustryThresholdData by checking if 'industry' key exists
     // Type guard: ensure data[0] is an object before checking for 'industry'
-    const isThresholdIndustryData = data.length > 0 && typeof data[0] === 'object' && data[0] !== null && 'industry' in data[0];
+    const isIndustryThresholdData = data.length > 0 && typeof data[0] === 'object' && data[0] !== null && 'industry' in data[0];
     
     data.forEach((item) => {
-      // For ThresholdIndustryData, only check the sorted column
+      // For IndustryThresholdData, only check the sorted column
       // For other types, check all columns
-      const hasNA = isThresholdIndustryData 
+      const hasNA = isIndustryThresholdData 
         ? hasNAInSortedColumn(item)
         : hasNAInAnyColumn(item);
       

@@ -153,7 +153,7 @@ function transformPEIndustry(data: DataRow[]): Array<Record<string, unknown>> {
     }));
 }
 
-function transformThresholdIndustry(data: DataRow[]): Array<Record<string, unknown>> {
+function transformIndustryThreshold(data: DataRow[]): Array<Record<string, unknown>> {
   return data
     .map((row) => {
       const industry = getValue(['Industry', 'INDUSTRY', 'industry'], row);
@@ -274,16 +274,16 @@ export interface RefreshResult {
   durationMs: number;
 }
 
-const VIEWIDS_FROM_SHEETS = ['score', 'score-board', 'entry-exit-benjamin-graham', 'fundamental-pe-industry', 'threshold-industry'] as const;
+const VIEWIDS_FROM_SHEETS = ['score', 'score-board', 'entry-exit-benjamin-graham', 'fundamental-pe-industry', 'industry-threshold'] as const;
 const VIEWID_TO_SHEET: Record<string, string> = {
-  'threshold-industry': 'ThresholdIndustry',
+  'industry-threshold': 'IndustryThreshold',
 };
 const CACHE_KEYS: Record<string, string> = {
   'score-board': 'scoreBoard',
   'score': 'scoreBoard',
   'entry-exit-benjamin-graham': 'benjaminGraham',
   'fundamental-pe-industry': 'peIndustry',
-  'threshold-industry': 'thresholdIndustry',
+  'industry-threshold': 'industryThreshold',
 };
 
 export async function fetchAppsScriptSnapshot(
@@ -485,16 +485,16 @@ export async function runAdminRefresh(
           wroteAppCache: !dryRun && migrationMode !== 'cutover',
           durationMs: Date.now() - start,
         });
-      } else if (viewId === 'threshold-industry') {
-        const sheetName = VIEWID_TO_SHEET['threshold-industry'] ?? 'ThresholdIndustry';
+      } else if (viewId === 'industry-threshold') {
+        const sheetName = VIEWID_TO_SHEET['industry-threshold'] ?? 'IndustryThreshold';
         const thresholdSnapshot = await fetchAppsScriptSnapshot(baseUrl, token, sheetName);
         const thresholdData = snapshotToDataRows(thresholdSnapshot);
-        const thresholdIndustry = transformThresholdIndustry(thresholdData);
+        const industryThreshold = transformIndustryThreshold(thresholdData);
         if (!dryRun) {
           const now = Date.now();
-          await db.collection('viewData').doc('threshold-industry').set(
+          await db.collection('viewData').doc('industry-threshold').set(
             {
-              data: { thresholdIndustry },
+              data: { industryThreshold },
               timestamp: now,
               ttl: DEFAULT_TTL_MS,
               schemaVersion: 1,
@@ -504,9 +504,9 @@ export async function runAdminRefresh(
             { merge: true }
           );
           if (migrationMode !== 'cutover') {
-            await db.collection('appCache').doc(CACHE_KEYS['threshold-industry']).set(
+            await db.collection('appCache').doc(CACHE_KEYS['industry-threshold']).set(
               {
-                data: thresholdIndustry,
+                data: industryThreshold,
                 timestamp: now,
                 ttl: DEFAULT_TTL_MS,
                 version: thresholdSnapshot.version,
@@ -519,7 +519,7 @@ export async function runAdminRefresh(
         }
         refreshed.push({
           viewId,
-          rows: thresholdIndustry.length,
+          rows: industryThreshold.length,
           source: 'adminRefreshCache',
           wroteViewData: !dryRun,
           wroteAppCache: !dryRun && migrationMode !== 'cutover',

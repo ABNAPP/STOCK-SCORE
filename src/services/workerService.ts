@@ -288,9 +288,9 @@ export function getTransformerId(dataTypeName: string, sheetName?: string): stri
   if (lowerName.includes('sma')) {
     return 'sma';
   }
-  // Threshold Industry requires large industry maps - use main thread instead
-  // if (lowerName.includes('threshold industry') || lowerName.includes('threshold-industry')) {
-  //   return 'threshold-industry';
+  // Industry Threshold requires large industry maps - use main thread instead
+  // if (lowerName.includes(' Industry threshold') || lowerName.includes('industry-threshold')) {
+  //   return 'industry-threshold';
   // }
   
   // Try sheet name as fallback

@@ -1,42 +1,60 @@
 import { createContext, useContext, ReactNode, useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { ThresholdIndustryData } from '../types/stock';
+import { IndustryThresholdData } from '../types/stock';
 import { useAuth } from './AuthContext';
-import {
-  loadSharedThresholdValues,
-  saveSharedThresholdValues,
-  loadFromLocalStorage,
-  saveToLocalStorage,
-  type ThresholdValues,
-} from '../services/sharedThresholdService';
-import { onSnapshot, doc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { logger } from '../utils/logger';
 
-export type { ThresholdValues } from '../services/sharedThresholdService';
+export interface ThresholdValues {
+  irr: number;
+  leverageF2Min: number;
+  leverageF2Max: number;
+  ro40Min: number;
+  ro40Max: number;
+  cashSdebtMin: number;
+  cashSdebtMax: number;
+  currentRatioMin: number;
+  currentRatioMax: number;
+}
 
 interface ThresholdContextType {
   getThresholdValue: (industry: string) => ThresholdValues | undefined;
   getFieldValue: (industry: string, field: keyof ThresholdValues) => number;
   setFieldValue: (industry: string, field: keyof ThresholdValues, value: number) => void;
   commitField: (industry: string, field: keyof ThresholdValues) => Promise<void>;
-  initializeFromData: (data: ThresholdIndustryData[]) => void;
+  initializeFromData: (data: IndustryThresholdData[]) => void;
   thresholdValues: Map<string, ThresholdValues>; // Computed for backward compatibility
 }
 
 export const ThresholdContext = createContext<ThresholdContextType | undefined>(undefined);
 
-// Load from localStorage (fallback) - uses sharedThresholdService key
+const STORAGE_KEY = 'sharedThresholdValues';
+
 const loadFromStorage = (): Map<string, ThresholdValues> => {
-  const loaded = loadFromLocalStorage();
-  if (loaded) {
-    return new Map(Object.entries(loaded));
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as Record<string, ThresholdValues>;
+      return new Map(Object.entries(parsed));
+    }
+  } catch (error: unknown) {
+    logger.error('Error loading threshold values from localStorage', error, {
+      component: 'ThresholdContext',
+      operation: 'threshold.loadFromLocalStorage',
+    });
   }
   return new Map();
 };
 
-// Save to localStorage (read-cache only)
 const saveToStorage = (values: Map<string, ThresholdValues>) => {
-  saveToLocalStorage(Object.fromEntries(values));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(values)));
+  } catch (error: unknown) {
+    logger.error('Error saving threshold values to localStorage', error, {
+      component: 'ThresholdContext',
+      operation: 'threshold.saveToLocalStorage',
+    });
+  }
 };
 
 interface ThresholdProviderProps {
@@ -71,20 +89,21 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
       setIsLoading(true);
       isInitialLoadRef.current = true;
       try {
-        const loaded = await loadSharedThresholdValues(currentUser);
-        if (loaded) {
-          setServerRows(new Map(Object.entries(loaded)));
+        const values: Record<string, ThresholdValues> = {};
+        const snapshot = await getDocs(collection(db, 'industryThresholds'));
+        snapshot.forEach((docSnap) => {
+          values[docSnap.id] = docSnap.data() as ThresholdValues;
+        });
+        if (Object.keys(values).length > 0) {
+          setServerRows(new Map(Object.entries(values)));
         } else {
-          // If no Firestore data, try localStorage
           const localData = loadFromStorage();
-          if (localData.size > 0) {
-            setServerRows(localData);
-          }
+          if (localData.size > 0) setServerRows(localData);
         }
       } catch (error: unknown) {
         logger.error('Error loading shared threshold', error, {
           component: 'ThresholdContext',
-          operation: 'sharedThreshold.loadFailed',
+          operation: 'threshold.loadFailed',
         });
         const localData = loadFromStorage();
         if (localData.size > 0) {
@@ -102,10 +121,10 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
     loadData();
 
     // Set up real-time listener for changes from other users
-    const docRef = doc(db, 'sharedData', 'threshold');
+    const collectionRef = collection(db, 'industryThresholds');
     const unsubscribe = onSnapshot(
-      docRef,
-      (docSnapshot) => {
+      collectionRef,
+      (snapshot) => {
         // Skip during initial load
         if (isInitialLoadRef.current) {
           return;
@@ -116,59 +135,54 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
           return;
         }
         
-        if (docSnapshot.exists()) {
-          const data = docSnapshot.data();
-          const remoteValues = data.values || {};
-          
-          // MERGE remote changes - never replace everything
-          setServerRows((prev) => {
-            const next = new Map(prev);
-            let hasChanges = false;
-            
-            // Process each remote value
-            for (const [industry, remoteValue] of Object.entries(remoteValues)) {
-              const remoteThreshold = remoteValue as ThresholdValues;
-              const prevRow = next.get(industry) || {
-                irr: 0,
-                leverageF2Min: 0,
-                leverageF2Max: 0,
-                ro40Min: 0,
-                ro40Max: 0,
-                cashSdebtMin: 0,
-                cashSdebtMax: 0,
-                currentRatioMin: 0,
-                currentRatioMax: 0,
-              };
-              
-              // Merge remote into existing
-              const merged: ThresholdValues = { ...prevRow, ...remoteThreshold };
-              
-              // Keep local edits while editing (dirty fields should not be overwritten)
-              const fields: Array<keyof ThresholdValues> = [
-                'irr', 'leverageF2Min', 'leverageF2Max', 'ro40Min', 'ro40Max',
-                'cashSdebtMin', 'cashSdebtMax', 'currentRatioMin', 'currentRatioMax'
-              ];
-              
-              for (const field of fields) {
-                const dk = `${industry}.${field}`;
-                if (dirtyKeysRef.current.has(dk)) {
-                  // This field is being edited, keep the local value
-                  merged[field] = prevRow[field];
-                }
-              }
-              
-              next.set(industry, merged);
-              hasChanges = true;
-            }
-            
-            if (hasChanges) {
-              // Also update localStorage
-              saveToStorage(next);
-              return next;
-            }
-            return prev;
-          });
+        if (snapshot.empty) {
+          setServerRows(new Map());
+          return;
         }
+
+        setServerRows((prev) => {
+          const next = new Map(prev);
+          let hasChanges = false;
+
+          snapshot.forEach((docSnap) => {
+            const industryKey = docSnap.id;
+            const remoteThreshold = docSnap.data() as ThresholdValues;
+            const prevRow = next.get(industryKey) || {
+              irr: 0,
+              leverageF2Min: 0,
+              leverageF2Max: 0,
+              ro40Min: 0,
+              ro40Max: 0,
+              cashSdebtMin: 0,
+              cashSdebtMax: 0,
+              currentRatioMin: 0,
+              currentRatioMax: 0,
+            };
+
+            const merged: ThresholdValues = { ...prevRow, ...remoteThreshold };
+
+            const fields: Array<keyof ThresholdValues> = [
+              'irr', 'leverageF2Min', 'leverageF2Max', 'ro40Min', 'ro40Max',
+              'cashSdebtMin', 'cashSdebtMax', 'currentRatioMin', 'currentRatioMax'
+            ];
+
+            for (const field of fields) {
+              const dk = `${industryKey}.${field}`;
+              if (dirtyKeysRef.current.has(dk)) {
+                merged[field] = prevRow[field];
+              }
+            }
+
+            next.set(industryKey, merged);
+            hasChanges = true;
+          });
+
+          if (hasChanges) {
+            saveToStorage(next);
+            return next;
+          }
+          return prev;
+        });
       },
       (error) => {
         logger.error('Error listening to Threshold values', error, { component: 'ThresholdContext', operation: 'listenToThresholdValues' });
@@ -211,22 +225,18 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
 
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        const obj = Object.fromEntries(currentState);
-        await saveSharedThresholdValues(obj, { user: currentUser, userRole });
+        await Promise.all(
+          Array.from(currentState.entries()).map(([industryKey, entry]) =>
+            setDoc(doc(db, 'industryThresholds', industryKey), entry, { merge: true })
+          )
+        );
         dirtyKeysRef.current.clear();
         setDraft({});
       } catch (error: unknown) {
-        if ((error as Error).message === 'sharedThreshold.saveDenied') {
-          logger.warn('Threshold save denied (viewer)', {
-            component: 'ThresholdContext',
-            operation: 'sharedThreshold.saveDenied',
-          });
-        } else {
-          logger.error('Error saving shared threshold to Firestore', error, {
-            component: 'ThresholdContext',
-            operation: 'sharedThreshold.saveFailed',
-          });
-        }
+        logger.error('Error saving shared threshold to Firestore', error, {
+          component: 'ThresholdContext',
+          operation: 'threshold.saveFailed',
+        });
       }
     }, 1000);
 
@@ -282,7 +292,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
       if (userRole !== 'admin') {
         logger.warn('setFieldValue denied: viewer cannot edit', {
           component: 'ThresholdContext',
-          operation: 'sharedThreshold.setFieldValueDenied',
+          operation: 'threshold.setFieldValueDenied',
         });
         return;
       }
@@ -333,9 +343,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
       const updated: ThresholdValues = { ...serverEntry, [field]: value };
 
       try {
-        const allValues = Object.fromEntries(serverRows);
-        allValues[industry] = updated;
-        await saveSharedThresholdValues(allValues, { user: currentUser, userRole });
+        await setDoc(doc(db, 'industryThresholds', industry), updated, { merge: true });
         dirtyKeysRef.current.delete(dk);
         setDraft((d) => {
           const { [dk]: _, ...rest } = d;
@@ -347,23 +355,22 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
           return newRows;
         });
       } catch (error: unknown) {
-        if ((error as Error).message !== 'sharedThreshold.saveDenied') {
-          logger.error('Error committing field to Firestore', error, {
-            component: 'ThresholdContext',
-            operation: 'sharedThreshold.saveFailed',
-          });
-        }
+        logger.error('Error committing field to Firestore', error, {
+          component: 'ThresholdContext',
+          operation: 'threshold.saveFailed',
+        });
       }
     },
     [draft, serverRows, currentUser, userRole]
   );
 
-  const initializeFromData = useCallback((data: ThresholdIndustryData[]) => {
+  const initializeFromData = useCallback((data: IndustryThresholdData[]) => {
     setServerRows((prev) => {
       const newMap = new Map(prev);
       data.forEach((item) => {
-        if (!newMap.has(item.industry)) {
-          newMap.set(item.industry, {
+        const key = item.industryKey || item.industry;
+        if (!newMap.has(key)) {
+          newMap.set(key, {
             irr: item.irr || 0,
             leverageF2Min: item.leverageF2Min || 0,
             leverageF2Max: item.leverageF2Max || 0,

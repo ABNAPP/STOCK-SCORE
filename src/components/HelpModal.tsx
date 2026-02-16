@@ -13,7 +13,7 @@ const HELP_VIEW_IDS: ViewId[] = [
   'score-board',
   'entry-exit-benjamin-graham',
   'fundamental-pe-industry',
-  'threshold-industry',
+  'industry-threshold',
   'personal-portfolio',
 ];
 

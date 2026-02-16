@@ -57,9 +57,9 @@ service cloud.firestore {
              true;
     }
     
-    // sharedData/threshold - read: canView(threshold-industry) or admin; write: admin only
-    match /sharedData/threshold {
-      allow read: if request.auth != null && canView('threshold-industry');
+    // industryThresholds - per-industry docs; read: canView(industry-threshold) or admin; write: admin only
+    match /industryThresholds/{industryKey} {
+      allow read: if request.auth != null && canView('industry-threshold');
       allow write: if request.auth != null && isAdmin();
     }
     
@@ -142,14 +142,14 @@ service cloud.firestore {
     
     // App cache - shared cache; Viewer can read only Score-view docs, Admin can read all
     match /appCache/{cacheKey} {
-      // Read: Admin all; Viewer only scoreBoard, benjaminGraham, peIndustry, sma, thresholdIndustry, currency_rates_usd
+      // Read: Admin all; Viewer only scoreBoard, benjaminGraham, peIndustry, sma, industryThreshold, currency_rates_usd
       allow read: if request.auth != null && (
         isAdmin() ||
         cacheKey == 'scoreBoard' ||
         cacheKey == 'benjaminGraham' ||
         cacheKey == 'peIndustry' ||
         cacheKey == 'sma' ||
-        cacheKey == 'thresholdIndustry' ||
+        cacheKey == 'industryThreshold' ||
         cacheKey == 'currency_rates_usd'
       );
       

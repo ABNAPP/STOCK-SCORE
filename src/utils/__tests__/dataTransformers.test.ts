@@ -6,11 +6,6 @@ import {
   parsePercentageValueNullable,
   getValueAllowZero,
   calculateMedian,
-  findIRRForIndustry,
-  findLeverageF2ForIndustry,
-  findRO40ForIndustry,
-  findCashSdebtForIndustry,
-  findCurrentRatioForIndustry,
 } from '../../services/sheets/dataTransformers';
 import type { DataRow } from '../../services/sheets/types';
 
@@ -202,40 +197,4 @@ describe('dataTransformers Edge Cases', () => {
     });
   });
 
-  describe('Industry threshold finders edge cases', () => {
-    it('should handle empty industry name', () => {
-      expect(findIRRForIndustry('')).toBe(0);
-      expect(findIRRForIndustry('   ')).toBe(0);
-    });
-
-    it('should handle case-insensitive industry matching', () => {
-      // Assuming 'Technology' exists in thresholds
-      const result1 = findIRRForIndustry('Technology');
-      const result2 = findIRRForIndustry('technology');
-      const result3 = findIRRForIndustry('TECHNOLOGY');
-      expect(result1).toBe(result2);
-      expect(result2).toBe(result3);
-    });
-
-    it('should handle industry with whitespace', () => {
-      const result1 = findIRRForIndustry('Technology');
-      const result2 = findIRRForIndustry('  Technology  ');
-      expect(result1).toBe(result2);
-    });
-
-    it('should return default values for unknown industry', () => {
-      expect(findIRRForIndustry('Unknown Industry XYZ')).toBe(0);
-      expect(findLeverageF2ForIndustry('Unknown Industry XYZ')).toEqual({ min: 0, max: 0 });
-      expect(findRO40ForIndustry('Unknown Industry XYZ')).toEqual({ min: 0, max: 0 });
-      expect(findCashSdebtForIndustry('Unknown Industry XYZ')).toEqual({ min: 0, max: 0 });
-      expect(findCurrentRatioForIndustry('Unknown Industry XYZ')).toEqual({ min: 0, max: 0 });
-    });
-
-    it('should handle special characters in industry names', () => {
-      // Should not throw, even if industry doesn't exist
-      expect(() => findIRRForIndustry('Industry & Co.')).not.toThrow();
-      expect(() => findIRRForIndustry('Industry-Corp')).not.toThrow();
-      expect(() => findIRRForIndustry('Industry_Corp')).not.toThrow();
-    });
-  });
 });

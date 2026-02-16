@@ -21,8 +21,8 @@ describe('viewTableMap', () => {
       expect(getTableId('fundamental-pe-industry' as ViewId)).toBe('pe-industry');
     });
 
-    it('maps threshold-industry to threshold-industry', () => {
-      expect(getTableId('threshold-industry' as ViewId)).toBe('threshold-industry');
+    it('maps industry-threshold to industry-threshold', () => {
+      expect(getTableId('industry-threshold' as ViewId)).toBe('industry-threshold');
     });
 
     it('maps personal-portfolio to personal-portfolio', () => {

@@ -1,4 +1,4 @@
-import { ScoreBoardData, ThresholdIndustryData, BenjaminGrahamData } from '../types/stock';
+import { ScoreBoardData, IndustryThresholdData, BenjaminGrahamData } from '../types/stock';
 import { EntryExitValuesForScore } from '../types/score';
 import {
   COLOR_FACTOR_GREEN,
@@ -170,7 +170,7 @@ export interface ScoreBreakdown {
  */
 export function calculateDetailedScoreBreakdown(
   scoreBoardData: ScoreBoardData,
-  thresholdData: ThresholdIndustryData[],
+  thresholdData: IndustryThresholdData[],
   benjaminGrahamData: BenjaminGrahamData[],
   entryExitValues: Map<string, EntryExitValuesForScore>
 ): ScoreBreakdown {
@@ -332,7 +332,7 @@ export function calculateDetailedScoreBreakdown(
  */
 export function calculateDetailedScore(
   scoreBoardData: ScoreBoardData,
-  thresholdData: ThresholdIndustryData[],
+  thresholdData: IndustryThresholdData[],
   benjaminGrahamData: BenjaminGrahamData[],
   entryExitValues: Map<string, EntryExitValuesForScore>
 ): number {

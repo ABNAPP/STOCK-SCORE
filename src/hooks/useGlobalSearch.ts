@@ -2,12 +2,12 @@ import { useMemo } from 'react';
 import { useScoreBoardData } from './useScoreBoardData';
 import { useBenjaminGrahamData } from './useBenjaminGrahamData';
 import { usePEIndustryData } from './usePEIndustryData';
-import { useThresholdIndustryData } from './useThresholdIndustryData';
+import { useIndustryThresholdData } from './useIndustryThresholdData';
 import { ViewId } from '../types/navigation';
 
 export interface SearchResult {
   id: string;
-  type: 'score-board' | 'benjamin-graham' | 'pe-industry' | 'entry-exit' | 'threshold-industry';
+  type: 'score-board' | 'benjamin-graham' | 'pe-industry' | 'entry-exit' | 'industry-threshold';
   viewId: ViewId;
   label: string;
   companyName?: string;
@@ -20,7 +20,7 @@ export function useGlobalSearch() {
   const { data: scoreBoardData } = useScoreBoardData();
   const { data: benjaminGrahamData } = useBenjaminGrahamData();
   const { data: peIndustryData } = usePEIndustryData();
-  const { data: thresholdIndustryData } = useThresholdIndustryData();
+  const { data: industryThresholdData } = useIndustryThresholdData();
 
   const search = useMemo(() => {
     return (query: string): SearchResult[] => {
@@ -106,14 +106,14 @@ export function useGlobalSearch() {
         }
       });
 
-      // Search in ThresholdIndustryData
-      thresholdIndustryData.forEach((item, index) => {
+      // Search in IndustryThresholdData
+      industryThresholdData.forEach((item, index) => {
         const industry = item.industry?.toLowerCase() || '';
         if (industry.includes(normalizedQuery)) {
           results.push({
-            id: `threshold-industry-${index}`,
-            type: 'threshold-industry',
-            viewId: 'threshold-industry',
+            id: `industry-threshold-${index}`,
+            type: 'industry-threshold',
+            viewId: 'industry-threshold',
             label: item.industry,
             industry: item.industry,
             matchField: 'industry',
@@ -129,7 +129,7 @@ export function useGlobalSearch() {
       // Limit to 50 results for performance (increased from 20 since we show all tables)
       return uniqueResults.slice(0, 50);
     };
-  }, [scoreBoardData, benjaminGrahamData, peIndustryData, thresholdIndustryData]);
+  }, [scoreBoardData, benjaminGrahamData, peIndustryData, industryThresholdData]);
 
   return { search };
 }

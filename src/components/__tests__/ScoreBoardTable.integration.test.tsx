@@ -12,7 +12,7 @@ import {
   generateLargeScoreBoardDataSet,
   generateEdgeCaseScoreBoardData,
 } from '../../test/helpers';
-import { ScoreBoardData, ThresholdIndustryData, BenjaminGrahamData } from '../../types/stock';
+import { ScoreBoardData, IndustryThresholdData, BenjaminGrahamData } from '../../types/stock';
 import '../../i18n/config';
 
 // Mock the hooks
@@ -39,7 +39,7 @@ describe('ScoreBoardTable Integration Tests', () => {
     createMockBenjaminGrahamData({ ticker: 'TEST2', companyName: 'Test Company 2', price: 150 }),
   ];
 
-  const mockThresholdData: ThresholdIndustryData[] = [
+  const mockThresholdData: IndustryThresholdData[] = [
     createMockThresholdData({ industry: 'Technology', irr: 25 }),
     createMockThresholdData({ industry: 'Finance', irr: 20 }),
   ];

@@ -96,7 +96,7 @@ export default function GlobalSearch({ onNavigate }: GlobalSearchProps) {
       'benjamin-graham': t('navigation.benjaminGraham'),
       'pe-industry': t('navigation.peIndustry'),
       'entry-exit': t('navigation.tachart'),
-      'threshold-industry': t('navigation.thresholdIndustry'),
+      'industry-threshold': t('navigation.industryThreshold'),
     };
     return labels[type] || type;
   };
