@@ -70,18 +70,9 @@ service cloud.firestore {
         allow read, write: if isAdmin();
       }
       
-      // EntryExit data - canView-styrd: only viewers with score/score-board/entry-exit-benjamin-graham may read
+      // EntryExit data (legacy) - deprecated
       match /entryExit {
-        allow read: if request.auth != null && (
-          isAdmin() ||
-          canView('score') ||
-          canView('score-board') ||
-          canView('entry-exit-benjamin-graham')
-        );
-        allow write: if request.auth != null && 
-                        isAdmin() && 
-                        request.resource.data.size() <= 1048576 &&
-                        request.resource.data.values is map;
+        allow read, write: if false;
       }
       
       // All other shared data (excluding threshold document - see sharedData/threshold rule above)
@@ -96,6 +87,17 @@ service cloud.firestore {
       }
     }
     
+    // EntryExit values - root collection, admin-only write
+    match /entiryExit/{companyKey} {
+      allow read: if request.auth != null && (
+        isAdmin() ||
+        canView('score') ||
+        canView('score-board') ||
+        canView('entry-exit-benjamin-graham')
+      );
+      allow write: if request.auth != null && isAdmin();
+    }
+
     // User preferences - users can read/write their own preferences (requires authentication)
     match /userPreferences/{userId} {
       // Users can only access their own preferences

@@ -341,7 +341,7 @@ function savePortfolioToLocalStorage(userId: string, portfolio: PortfolioItem[])
  * 
  * @param ticker - Stock ticker symbol
  * @param companyName - Company name
- * @param entryExitValues - Map of EntryExitValues keyed by `${ticker}-${companyName}`
+ * @param entryExitValues - Map of EntryExitValues keyed by companyName
  * @returns Currency string (default: 'USD')
  * 
  * @example
@@ -366,8 +366,7 @@ export function getCurrencyForStock(
   companyName: string,
   entryExitValues: Map<string, EntryExitValues>
 ): string {
-  const key = `${ticker}-${companyName}`;
-  const entryExitValue = entryExitValues.get(key);
+  const entryExitValue = entryExitValues.get(companyName);
   const currency = entryExitValue?.currency;
   if (currency && currency.trim() !== '') {
     return currency;

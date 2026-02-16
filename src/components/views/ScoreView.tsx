@@ -88,8 +88,7 @@ function ScoreViewInner() {
       };
 
       // Get currency and entry/exit values from entryExitValues
-      const key = `${item.ticker}-${item.companyName}`;
-      const entryExitValue = entryExitValues.get(key);
+      const entryExitValue = entryExitValues.get(item.companyName);
       const currency = entryExitValue?.currency || 'USD';
       const entry1 = entryExitValue?.entry1 || 0;
       const entry2 = entryExitValue?.entry2 || 0;
@@ -200,4 +199,3 @@ export default function ScoreView() {
     </EntryExitProvider>
   );
 }
-

@@ -2,7 +2,7 @@ import { createContext, useContext, ReactNode, useState, useCallback, useEffect,
 import { EntryExitData } from '../types/stock';
 import { useAuth } from './AuthContext';
 import { saveEntryExitValues, loadEntryExitValues } from '../services/userDataService';
-import { onSnapshot, doc } from 'firebase/firestore';
+import { onSnapshot, collection } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { isObject, isNumber, isString, isNullOrUndefined } from '../utils/typeGuards';
 import { logger } from '../utils/logger';
@@ -83,11 +83,11 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
   const { currentUser } = useAuth();
   // serverRows: source of truth from Firestore
   const [serverRows, setServerRows] = useState<Map<string, EntryExitValues>>(() => loadFromStorage());
-  // draft: only fields user is currently editing (e.g. "AAPL-Apple Inc..entry1": 123)
+  // draft: only fields user is currently editing (e.g. "Apple Inc..entry1": 123)
   const [draft, setDraft] = useState<Record<string, number | string | null>>({});
   const [isLoading, setIsLoading] = useState(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const dirtyKeysRef = useRef<Set<string>>(new Set()); // Set of "ticker-companyName.field" that are being edited
+  const dirtyKeysRef = useRef<Set<string>>(new Set()); // Set of "companyName.field" that are being edited
   const isInitialLoadRef = useRef(true); // Track initial load to prevent listener from processing during load
 
   // Load data from Firestore and set up real-time listener
@@ -144,64 +144,52 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     loadData();
 
     // Set up real-time listener for changes from other users
-    const docRef = doc(db, 'sharedData', 'entryExit');
+    const collectionRef = collection(db, 'entiryExit');
     const unsubscribe = onSnapshot(
-      docRef,
-      (docSnapshot) => {
+      collectionRef,
+      (snapshot) => {
         // Skip during initial load
         if (isInitialLoadRef.current) {
           return;
         }
         
         // Ignore our own pending writes
-        if (docSnapshot.metadata.hasPendingWrites) {
+        if (snapshot.metadata.hasPendingWrites) {
           return;
         }
-        
-        if (docSnapshot.exists()) {
-          const data = docSnapshot.data();
-          const remoteValues = data.values || {};
-          
-          // MERGE remote changes - never replace everything
-          setServerRows((prev) => {
-            const next = new Map(prev);
-            let hasChanges = false;
-            
-            // Process each remote value
-            for (const [key, remoteValue] of Object.entries(remoteValues)) {
-              if (!isEntryExitValues(remoteValue)) {
-                logger.warn(`Invalid EntryExitValues format for key ${key}`, { component: 'EntryExitContext', operation: 'loadEntryExitValues', key, remoteValue });
-                continue;
-              }
-              const remoteEntry = remoteValue;
-              const prevRow = next.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
-              
-              // Merge remote into existing
-              const merged: EntryExitValues = { ...prevRow, ...remoteEntry };
-              
-              // Keep local edits while editing (dirty fields should not be overwritten)
-              const fields: Array<keyof EntryExitValues> = ['entry1', 'entry2', 'exit1', 'exit2', 'currency', 'dateOfUpdate'];
-              for (const field of fields) {
-                const dk = `${key}.${field}`;
-                if (dirtyKeysRef.current.has(dk)) {
-                  // This field is being edited, keep the local value
-                  // Type assertion is safe here because prevRow and merged have the same structure
-                  (merged as Record<keyof EntryExitValues, number | string | null>)[field] = prevRow[field];
-                }
-              }
-              
-              next.set(key, merged);
-              hasChanges = true;
+
+        setServerRows((prev) => {
+          const next = new Map(prev);
+          let hasChanges = false;
+
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as Record<string, unknown>;
+            const key = typeof data.companyName === 'string' ? data.companyName : docSnap.id;
+            if (!isEntryExitValues(data)) {
+              logger.warn(`Invalid EntryExitValues format for key ${key}`, { component: 'EntryExitContext', operation: 'loadEntryExitValues', key, remoteValue: data });
+              return;
             }
-            
-            if (hasChanges) {
-              // Also update localStorage
-              saveToStorage(next);
-              return next;
+            const prevRow = next.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
+            const merged: EntryExitValues = { ...prevRow, ...(data as EntryExitValues) };
+
+            const fields: Array<keyof EntryExitValues> = ['entry1', 'entry2', 'exit1', 'exit2', 'currency', 'dateOfUpdate'];
+            for (const field of fields) {
+              const dk = `${key}.${field}`;
+              if (dirtyKeysRef.current.has(dk)) {
+                (merged as Record<keyof EntryExitValues, number | string | null>)[field] = prevRow[field];
+              }
             }
-            return prev;
+
+            next.set(key, merged);
+            hasChanges = true;
           });
-        }
+
+          if (hasChanges) {
+            saveToStorage(next);
+            return next;
+          }
+          return prev;
+        });
       },
       (error) => {
         logger.error('Error listening to EntryExit values', error, { component: 'EntryExitContext', operation: 'listenToEntryExitValues' });
@@ -267,8 +255,8 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
   }, [draft, serverRows, currentUser, isLoading]);
 
   // Display value: draft if exists, otherwise server value
-  const getFieldValue = useCallback((ticker: string, companyName: string, field: keyof EntryExitValues): number | string | null => {
-    const key = `${ticker}-${companyName}`;
+  const getFieldValue = useCallback((_ticker: string, companyName: string, field: keyof EntryExitValues): number | string | null => {
+    const key = companyName;
     const dk = `${key}.${field}`;
     
     // If draft exists, return draft value
@@ -284,8 +272,8 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
   }, [serverRows, draft]);
 
   // Backward compatibility: get full EntryExitValues object
-  const getEntryExitValue = useCallback((ticker: string, companyName: string): EntryExitValues | undefined => {
-    const key = `${ticker}-${companyName}`;
+  const getEntryExitValue = useCallback((_ticker: string, companyName: string): EntryExitValues | undefined => {
+    const key = companyName;
     const serverEntry = serverRows.get(key);
     
     if (!serverEntry) {
@@ -316,7 +304,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
   }, [serverRows, draft]);
 
   // While typing: mark dirty + update draft (and optionally optimistic update serverRows)
-  const setFieldValue = useCallback((ticker: string, companyName: string, field: keyof EntryExitValues, value: number | string | null) => {
+  const setFieldValue = useCallback((_ticker: string, companyName: string, field: keyof EntryExitValues, value: number | string | null) => {
     // Validate the value before setting
     const validation = validateEntryExitValue(field, value);
     if (!validation.isValid) {
@@ -331,7 +319,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
       // The UI component will show the validation error
     }
 
-    const key = `${ticker}-${companyName}`;
+    const key = companyName;
     const dk = `${key}.${field}`;
     
     // Mark as dirty and update draft

@@ -6,17 +6,24 @@ import {
   loadCurrencyValues,
 } from '../userDataService';
 import { User } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, collection, writeBatch, serverTimestamp } from 'firebase/firestore';
 
 // Mock Firebase
 const mockSetDoc = vi.fn();
 const mockGetDoc = vi.fn();
+const mockGetDocs = vi.fn();
+const mockCollection = vi.fn();
+const mockBatchSet = vi.fn();
+const mockBatchCommit = vi.fn();
 const mockServerTimestamp = vi.fn(() => ({ _methodName: 'serverTimestamp' }));
 
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn((db, collection, id) => ({ _path: { segments: [collection, id] } })),
   setDoc: vi.fn((...args) => mockSetDoc(...args)),
   getDoc: vi.fn((...args) => mockGetDoc(...args)),
+  getDocs: vi.fn((...args) => mockGetDocs(...args)),
+  collection: vi.fn((...args) => mockCollection(...args)),
+  writeBatch: vi.fn(() => ({ set: (...args: unknown[]) => mockBatchSet(...args), commit: () => mockBatchCommit() })),
   serverTimestamp: vi.fn(() => mockServerTimestamp()),
 }));
 
@@ -43,6 +50,8 @@ describe('userDataService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    mockGetDocs.mockResolvedValue({ forEach: () => {} });
+    mockBatchCommit.mockResolvedValue(undefined);
   });
 
   describe('saveEntryExitValues', () => {
@@ -66,18 +75,12 @@ describe('userDataService', () => {
     };
 
     it('should save to Firestore when user is authenticated', async () => {
-      mockSetDoc.mockResolvedValue(undefined);
+      mockBatchCommit.mockResolvedValue(undefined);
 
       await saveEntryExitValues(mockUser, testValues);
 
-      expect(mockSetDoc).toHaveBeenCalledWith(
-        expect.any(Object),
-        {
-          values: testValues,
-          updatedAt: expect.any(Object),
-        },
-        { merge: true }
-      );
+      expect(mockBatchSet).toHaveBeenCalled();
+      expect(mockBatchCommit).toHaveBeenCalled();
     });
 
     it('should save to localStorage as backup when using Firestore', async () => {
@@ -93,13 +96,13 @@ describe('userDataService', () => {
     it('should fallback to localStorage when user is not authenticated', async () => {
       await saveEntryExitValues(null, testValues);
 
-      expect(mockSetDoc).not.toHaveBeenCalled();
+      expect(mockBatchCommit).not.toHaveBeenCalled();
       const stored = localStorage.getItem('entryExitValues');
       expect(JSON.parse(stored!)).toEqual(testValues);
     });
 
     it('should fallback to localStorage when Firestore save fails', async () => {
-      mockSetDoc.mockRejectedValue(new Error('Firestore error'));
+      mockBatchCommit.mockRejectedValue(new Error('Firestore error'));
 
       await saveEntryExitValues(mockUser, testValues);
 
@@ -137,15 +140,16 @@ describe('userDataService', () => {
         },
       };
 
-      mockGetDoc.mockResolvedValue({
-        exists: () => true,
-        data: () => ({ values: testValues }),
+      mockGetDocs.mockResolvedValue({
+        forEach: (cb: (docSnap: { id: string; data: () => unknown }) => void) => {
+          Object.entries(testValues).forEach(([id, data]) => cb({ id, data: () => ({ ...data, companyName: id }) }));
+        },
       });
 
       const result = await loadEntryExitValues(mockUser);
 
       expect(result).toEqual(testValues);
-      expect(mockGetDoc).toHaveBeenCalled();
+      expect(mockGetDocs).toHaveBeenCalled();
     });
 
     it('should fallback to localStorage when user is not authenticated', async () => {
@@ -180,7 +184,7 @@ describe('userDataService', () => {
         },
       };
 
-      mockGetDoc.mockRejectedValue(new Error('Firestore error'));
+      mockGetDocs.mockRejectedValue(new Error('Firestore error'));
       localStorage.setItem('entryExitValues', JSON.stringify(testValues));
 
       const result = await loadEntryExitValues(mockUser);
@@ -189,10 +193,7 @@ describe('userDataService', () => {
     });
 
     it('should return null when no data exists', async () => {
-      mockGetDoc.mockResolvedValue({
-        exists: () => false,
-        data: () => null,
-      });
+      mockGetDocs.mockResolvedValue({ forEach: () => {} });
 
       const result = await loadEntryExitValues(mockUser);
 
@@ -218,9 +219,10 @@ describe('userDataService', () => {
         } as any,
       };
 
-      mockGetDoc.mockResolvedValue({
-        exists: () => true,
-        data: () => ({ values: testValues }),
+      mockGetDocs.mockResolvedValue({
+        forEach: (cb: (docSnap: { id: string; data: () => unknown }) => void) => {
+          Object.entries(testValues).forEach(([id, data]) => cb({ id, data: () => ({ ...data, companyName: id }) }));
+        },
       });
 
       const result = await loadEntryExitValues(mockUser);
@@ -245,15 +247,15 @@ describe('userDataService', () => {
         'MSFT': 'EUR',
       };
 
-      mockGetDoc
-        .mockResolvedValueOnce({
-          exists: () => true,
-          data: () => ({ values: entryExitValues }),
-        })
-        .mockResolvedValueOnce({
-          exists: () => true,
-          data: () => ({ values: currencyValues }),
-        });
+      mockGetDocs.mockResolvedValue({
+        forEach: (cb: (docSnap: { id: string; data: () => unknown }) => void) => {
+          Object.entries(entryExitValues).forEach(([id, data]) => cb({ id, data: () => ({ ...data, companyName: id }) }));
+        },
+      });
+      mockGetDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({ values: currencyValues }),
+      });
 
       const result = await loadEntryExitValues(mockUser);
 
