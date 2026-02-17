@@ -2,7 +2,7 @@
  * Cache Keys
  * 
  * Centralized cache key definitions for all data types.
- * Used by both localStorage cache (deprecated) and Firestore cache.
+ * Used by Firestore cache.
  */
 
 // Cache keys for different data types

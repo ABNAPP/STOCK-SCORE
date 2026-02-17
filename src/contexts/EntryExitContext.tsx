@@ -22,8 +22,6 @@ interface EntryExitContextType {
 
 export const EntryExitContext = createContext<EntryExitContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'entryExitValues';
-
 // Type guard for EntryExitValues
 function isEntryExitValues(value: unknown): value is EntryExitValues {
   if (!isObject(value)) {
@@ -51,38 +49,13 @@ function isEntryExitValues(value: unknown): value is EntryExitValues {
   return true;
 }
 
-// Load from localStorage (fallback)
-const loadFromStorage = (): Map<string, EntryExitValues> => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return new Map(Object.entries(parsed));
-    }
-  } catch (error: unknown) {
-    logger.error('Error loading EntryExit values from localStorage', error, { component: 'EntryExitContext', operation: 'loadFromLocalStorage' });
-  }
-  return new Map();
-};
-
-// Save to localStorage (fallback)
-const saveToStorage = (values: Map<string, EntryExitValues>) => {
-  try {
-    const obj = Object.fromEntries(values);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-  } catch (error: unknown) {
-    logger.error('Error saving EntryExit values to localStorage', error, { component: 'EntryExitContext', operation: 'saveToLocalStorage' });
-  }
-};
-
 interface EntryExitProviderProps {
   children: ReactNode;
 }
 
 export function EntryExitProvider({ children }: EntryExitProviderProps) {
   const { currentUser } = useAuth();
-  // serverRows: source of truth from Firestore
-  const [serverRows, setServerRows] = useState<Map<string, EntryExitValues>>(() => loadFromStorage());
+  const [serverRows, setServerRows] = useState<Map<string, EntryExitValues>>(new Map());
   // draft: only fields user is currently editing (e.g. "Apple Inc..entry1": 123)
   const [draft, setDraft] = useState<Record<string, number | string | null>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -93,11 +66,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
   // Load data from Firestore and set up real-time listener
   useEffect(() => {
     if (!currentUser) {
-      // If no user, just load from localStorage
-      const localData = loadFromStorage();
-      if (localData.size > 0) {
-        setServerRows(localData);
-      }
+      setServerRows(new Map());
       setIsLoading(false);
       isInitialLoadRef.current = false;
       return;
@@ -118,20 +87,9 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
             }
             return next;
           });
-        } else {
-          // If no Firestore data, try localStorage
-          const localData = loadFromStorage();
-          if (localData.size > 0) {
-            setServerRows(localData);
-          }
         }
       } catch (error: unknown) {
         logger.error('Error loading EntryExit values', error, { component: 'EntryExitContext', operation: 'loadEntryExitValues' });
-        // Fallback to localStorage
-        const localData = loadFromStorage();
-        if (localData.size > 0) {
-          setServerRows(localData);
-        }
       } finally {
         setIsLoading(false);
         // Mark initial load as complete after a short delay to ensure data is set
@@ -185,7 +143,6 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
           });
 
           if (hasChanges) {
-            saveToStorage(next);
             return next;
           }
           return prev;
@@ -229,9 +186,6 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
       
       currentState.set(key, updated);
     }
-
-    // Save to localStorage immediately (fast fallback)
-    saveToStorage(currentState);
 
     // Debounce Firestore save to avoid too many writes
     saveTimeoutRef.current = setTimeout(async () => {

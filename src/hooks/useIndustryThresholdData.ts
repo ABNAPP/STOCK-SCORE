@@ -11,7 +11,7 @@ import type { ThresholdValues } from '../contexts/ThresholdContext';
  * Hook to load  Industry threshold data from static file
  * 
  * Previously fetched from Google Sheets, now loads from static configuration file.
- * Manual changes to threshold values are persisted in Firestore and localStorage
+ * Manual changes to threshold values are persisted in Firestore
  * via ThresholdContext.
  * 
  * Note: initializeFromData will only be called if ThresholdProvider is available.

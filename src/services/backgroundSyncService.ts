@@ -21,8 +21,8 @@ import type { SMAData } from '../types/stock';
 
 const APPS_SCRIPT_TOKEN = import.meta.env.VITE_APPS_SCRIPT_TOKEN || '';
 
-// Sync coordination flag (stored in sessionStorage to coordinate between main app and SW)
-const SYNC_COORDINATION_KEY = 'bg:sync:coordinating';
+// Sync coordination (in-memory; prevents duplicate syncs when tab is hidden repeatedly)
+let syncInProgressUntil = 0;
 const SYNC_COORDINATION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 // Unique sheets to sync (one fetch per sheet). Each sheet maps to one or more cache keys.
@@ -38,64 +38,16 @@ const SHEETS_TO_SYNC: { sheetName: string; cacheKeys: string[] }[] = [
   { sheetName: 'SMA', cacheKeys: [CACHE_KEYS.SMA] },
 ];
 
-/**
- * Check if sync is already in progress (coordination)
- */
 function isSyncInProgress(): boolean {
-  try {
-    const syncData = sessionStorage.getItem(SYNC_COORDINATION_KEY);
-    if (!syncData) return false;
-    
-    const { timestamp } = JSON.parse(syncData);
-    const age = Date.now() - timestamp;
-    
-    // If sync flag is older than timeout, consider it stale
-    if (age > SYNC_COORDINATION_TIMEOUT) {
-      sessionStorage.removeItem(SYNC_COORDINATION_KEY);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    logger.warn('Failed to check sync status', {
-      component: 'backgroundSyncService',
-      operation: 'isSyncInProgress',
-      error,
-    });
-    return false;
-  }
+  return Date.now() < syncInProgressUntil;
 }
 
-/**
- * Set sync coordination flag
- */
-function setSyncInProgress(sheetName: string): void {
-  try {
-    sessionStorage.setItem(
-      SYNC_COORDINATION_KEY,
-      JSON.stringify({
-        sheetName,
-        timestamp: Date.now(),
-      })
-    );
-  } catch (error) {
-    logger.warn('Failed to set sync status', {
-      component: 'backgroundSyncService',
-      operation: 'setSyncInProgress',
-      error,
-    });
-  }
+function setSyncInProgress(): void {
+  syncInProgressUntil = Date.now() + SYNC_COORDINATION_TIMEOUT;
 }
 
-/**
- * Clear sync coordination flag
- */
 function clearSyncInProgress(): void {
-  try {
-    sessionStorage.removeItem(SYNC_COORDINATION_KEY);
-  } catch (error) {
-    // Ignore errors
-  }
+  syncInProgressUntil = 0;
 }
 
 /**
@@ -214,7 +166,7 @@ async function syncSheet(sheetName: string, cacheKeys: string[]): Promise<void> 
   }
 
   try {
-    setSyncInProgress(sheetName);
+    setSyncInProgress();
     logger.debug('Starting background sync for sheet', {
       component: 'backgroundSyncService',
       sheetName,

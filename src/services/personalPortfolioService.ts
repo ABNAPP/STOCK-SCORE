@@ -3,7 +3,7 @@
  * 
  * Provides functionality to save and load personal portfolio data in Firestore.
  * Each user has their own portfolio stored in userPortfolios/{userId}.
- * Falls back to localStorage if Firestore is unavailable.
+ * Firestore is the only data source.
  */
 
 import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
@@ -14,7 +14,6 @@ import { EntryExitValues } from '../contexts/EntryExitContext';
 import { getExchangeRate } from './currencyService';
 
 const COLLECTION_NAME = 'userPortfolios';
-const STORAGE_KEY = 'personalPortfolio';
 const LEGACY_BROKER = '—';
 
 /**
@@ -46,8 +45,7 @@ export async function getUserPortfolio(userId: string): Promise<UserPortfolio | 
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
-      // Try to load from localStorage as fallback
-      return getPortfolioFromLocalStorage(userId);
+      return null;
     }
 
     const data = docSnap.data();
@@ -59,15 +57,14 @@ export async function getUserPortfolio(userId: string): Promise<UserPortfolio | 
       updatedAt: (data.updatedAt as Timestamp).toDate(),
     };
   } catch (error) {
-    // Handle permissions errors gracefully - fallback to localStorage
     if (error instanceof Error && error.message.includes('permission')) {
-      logger.warn('Permission denied when getting user portfolio, using localStorage', {
+      logger.warn('Permission denied when getting user portfolio', {
         component: 'personalPortfolioService',
         operation: 'getUserPortfolio',
         userId,
         error: error.message,
       });
-      return getPortfolioFromLocalStorage(userId);
+      return null;
     }
     
     logger.error('Error getting user portfolio', error, {
@@ -75,8 +72,7 @@ export async function getUserPortfolio(userId: string): Promise<UserPortfolio | 
       operation: 'getUserPortfolio',
       userId,
     });
-    // Fallback to localStorage
-    return getPortfolioFromLocalStorage(userId);
+    return null;
   }
 }
 
@@ -98,9 +94,6 @@ export async function saveUserPortfolio(
 
     await setDoc(docRef, portfolioData, { merge: true });
 
-    // Also save to localStorage as backup
-    savePortfolioToLocalStorage(userId, portfolio);
-
     logger.debug(`User portfolio saved for ${userId}`, {
       component: 'personalPortfolioService',
       operation: 'saveUserPortfolio',
@@ -108,16 +101,13 @@ export async function saveUserPortfolio(
       itemCount: portfolio.length,
     });
   } catch (error) {
-    // Handle permissions errors gracefully
     if (error instanceof Error && error.message.includes('permission')) {
-      logger.warn('Permission denied when saving user portfolio, using localStorage', {
+      logger.warn('Permission denied when saving user portfolio', {
         component: 'personalPortfolioService',
         operation: 'saveUserPortfolio',
         userId,
         error: error.message,
       });
-      // Save to localStorage as fallback
-      savePortfolioToLocalStorage(userId, portfolio);
       return;
     }
     
@@ -126,8 +116,7 @@ export async function saveUserPortfolio(
       operation: 'saveUserPortfolio',
       userId,
     });
-    // Save to localStorage as fallback
-    savePortfolioToLocalStorage(userId, portfolio);
+    throw error;
   }
 }
 
@@ -279,58 +268,6 @@ export async function updatePortfolioItem(
   );
 
   await saveUserPortfolio(userId, portfolio);
-}
-
-/**
- * Get portfolio from localStorage (fallback)
- */
-function getPortfolioFromLocalStorage(userId: string): UserPortfolio | null {
-  try {
-    const key = `${STORAGE_KEY}_${userId}`;
-    const stored = localStorage.getItem(key);
-    if (!stored) {
-      return null;
-    }
-    
-    const data = JSON.parse(stored);
-    const raw = data.portfolio || [];
-    const portfolio = raw.map((item: PortfolioItem) => normalizePortfolioItem(item));
-    return {
-      userId,
-      portfolio,
-      updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date(),
-    };
-  } catch (error) {
-    logger.warn('Error reading portfolio from localStorage', {
-      component: 'personalPortfolioService',
-      operation: 'getPortfolioFromLocalStorage',
-      userId,
-      error,
-    });
-    return null;
-  }
-}
-
-/**
- * Save portfolio to localStorage (fallback)
- */
-function savePortfolioToLocalStorage(userId: string, portfolio: PortfolioItem[]): void {
-  try {
-    const key = `${STORAGE_KEY}_${userId}`;
-    const data = {
-      userId,
-      portfolio,
-      updatedAt: new Date().toISOString(),
-    };
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (error) {
-    logger.warn('Error saving portfolio to localStorage', {
-      component: 'personalPortfolioService',
-      operation: 'savePortfolioToLocalStorage',
-      userId,
-      error,
-    });
-  }
 }
 
 /**
