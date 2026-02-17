@@ -38,7 +38,7 @@
 - [ ] **Provider-ordning:** Om du ändrar `src/main.tsx` eller test-providers: ordningen ska vara ThemeProvider → ToastProvider → AuthProvider → NotificationProvider → (Rest). Test-wrapper (e.g. `src/test/helpers/renderHelpers.tsx`) ska matcha.
 - [ ] **RefreshContext:** Komponenter som använder `useRefresh` kräver RefreshProvider (och korrekt ordning). Ändringar kring refresh/auto-refresh ska verifieras.
 - [ ] **Caching / delta-sync:** Ändringar i `src/services/cacheService.ts`, `deltaSyncService.ts`, `firestoreCacheService.ts` eller cache-nycklar kan påverka offline/data-konsistens. Verifiera att befintliga cachar inte blir ogiltiga utan migrering om det behövs.
-- [ ] **tableId / viewId-mappning:** Ändringar i `src/config/viewTableMap.ts` eller användning av `getTableId`/viewId påverkar Conditions-modal, OnboardingHelp och metadata. Kontrollera att rätt vy mappar till rätt tabell.
+- [ ] **tableId / viewId-mappning:** Ändringar i `src/config/viewTableMap.ts` eller användning av `getTableId`/viewId påverkar Conditions-modal och metadata. Kontrollera att rätt vy mappar till rätt tabell.
 
 ### Release / rollback
 - [ ] Jag vet hur jag **reverterar** denna PR vid behov: `git revert <merge-commit-hash>` (revert av merge-commit), sedan push. Ingen force-push på main.

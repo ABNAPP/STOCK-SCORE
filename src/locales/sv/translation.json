@@ -299,23 +299,8 @@
     "personal-portfolio": "Din personliga aktieportfölj.",
     "default": "Tabellvy med sökning, filter och sortering."
   },
-  "onboarding": {
-    "title": "Välkommen till Stock Score",
-    "step1": {"title": "Välkommen", "content": "Detta är din guide. Klicka på Nästa för att lära dig mer. Du kan stänga när som helst."},
-    "step2": {"title": "Tabeller", "content": "Tabellerna stöder sökning, filtrering, sortering och kolumnsynlighet. Använd verktygsfälten ovanför varje tabell."},
-    "step3": {"title": "Villkor och färger", "content": "Värden är färgkodade: GRÖN = bra, BLÅ = medel, RÖD = dåligt. Hovra över kolumnnamn för mer info."},
-    "stepScoreBoard": {"title": "Score Board", "content": "Score Board visar alla nyckeltal och branschjämförelser. Använd Score-vyn för poäng (0-100)."},
-    "stepEntryExit": {"title": "Entry/Exit", "content": "Entry/Exit-tabellen visar Benjamin Graham-värderingar och manuella entry/exit-värden."},
-    "stepPEIndustry": {"title": "P/E Industry", "content": "P/E Industry jämför P/E-värden per bransch för att hitta undervärderade aktier."},
-    "stepThreshold": {"title": "Threshold", "content": "Industry Threshold visar tröskelvärden per bransch som styr färgkodningen."},
-    "step4": {"title": "Offline", "content": "Du är offline. Vissa vyer kan vara begränsade. Cachad data visas om tillgänglig."},
-    "step5": {"title": "Klar", "content": "Du kan alltid öppna denna guide igen via Hjälp-menyn. Lycka till!"},
-    "skip": "Hoppa över",
-    "previous": "Föregående",
-    "next": "Nästa",
-    "done": "Klar",
-    "showAgain": "Visa onboarding igen",
-    "help": "Hjälp"
+  "help": {
+    "title": "Hjälp"
   },
   "offline": {
     "readOnly": "Endast läsning (offline)",

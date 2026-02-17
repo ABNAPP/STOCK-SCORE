@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, lazy, Suspense } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 import { useRefresh } from '../contexts/RefreshContext';
@@ -6,13 +6,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useUserRole } from '../hooks/useUserRole';
-import { useOnboarding } from '../hooks/useOnboarding';
 import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
 import { ViewId } from '../types/navigation';
-
-// Lazy load help components
-const OnboardingHelp = lazy(() => import('./OnboardingHelp'));
 
 interface HeaderProps {
   onNavigate?: (viewId: ViewId) => void;
@@ -29,32 +25,15 @@ export default function Header({ onNavigate, activeView, sidebarCollapsed = fals
   const { showToast } = useToast();
   const { unreadCount } = useNotifications();
   const { isAdmin } = useUserRole();
-  const uid = currentUser?.uid ?? null;
-  const { resetOnboarding } = useOnboarding(uid);
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement>(null);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const languageMenuRef = useRef<HTMLDivElement>(null);
   const [refreshMenuOpen, setRefreshMenuOpen] = useState(false);
   const refreshMenuRef = useRef<HTMLDivElement>(null);
-  const [helpMenuOpen, setHelpMenuOpen] = useState(false);
-  const helpMenuRef = useRef<HTMLDivElement>(null);
   const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Help available in all views (score, score-board, etc.)
   const hasHelpModal = !!onOpenHelpModal;
-
-  const handleShowOnboardingAgain = () => {
-    setHelpMenuOpen(false);
-    resetOnboarding();
-    setShowOnboarding(true);
-  };
-
-  const handleOpenHelp = () => {
-    setHelpMenuOpen(false);
-    onOpenHelpModal?.();
-  };
 
   const handleLogout = async () => {
     try {
@@ -89,19 +68,16 @@ export default function Header({ onNavigate, activeView, sidebarCollapsed = fals
       if (refreshMenuRef.current && !refreshMenuRef.current.contains(event.target as Node)) {
         setRefreshMenuOpen(false);
       }
-      if (helpMenuRef.current && !helpMenuRef.current.contains(event.target as Node)) {
-        setHelpMenuOpen(false);
-      }
     };
 
-    if (themeMenuOpen || languageMenuOpen || refreshMenuOpen || helpMenuOpen) {
+    if (themeMenuOpen || languageMenuOpen || refreshMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [themeMenuOpen, languageMenuOpen, refreshMenuOpen, helpMenuOpen]);
+  }, [themeMenuOpen, languageMenuOpen, refreshMenuOpen]);
 
   const getThemeIcon = () => {
     switch (theme) {
@@ -183,14 +159,13 @@ export default function Header({ onNavigate, activeView, sidebarCollapsed = fals
 
       {/* Right side controls */}
       <div className="flex items-center space-x-2 sm:space-x-3">
-        {/* Help Button - dropdown with "Visa onboarding igen" and "Hjälp" */}
-        <div className="relative" ref={helpMenuRef}>
+        {/* Help Button - only when view has help modal */}
+        {hasHelpModal && (
           <button
-            onClick={() => setHelpMenuOpen(!helpMenuOpen)}
+            onClick={onOpenHelpModal}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] min-w-[44px] touch-manipulation"
-            title={t('onboarding.help', 'Help')}
-            aria-label={t('onboarding.help', 'Help')}
-            aria-expanded={helpMenuOpen}
+            title={t('help.title', 'Help')}
+            aria-label={t('help.title', 'Help')}
           >
             <svg
               className="w-5 h-5"
@@ -207,37 +182,7 @@ export default function Header({ onNavigate, activeView, sidebarCollapsed = fals
               />
             </svg>
           </button>
-          {helpMenuOpen && (
-            <div
-              className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-50 animate-scale-in"
-              role="menu"
-              aria-label={t('onboarding.help', 'Help')}
-            >
-              <button
-                onClick={handleShowOnboardingAgain}
-                className="w-full px-4 py-3 text-left flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                role="menuitem"
-              >
-                <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm font-medium text-black dark:text-white">{t('onboarding.showAgain')}</span>
-              </button>
-              {hasHelpModal && (
-                <button
-                  onClick={handleOpenHelp}
-                  className="w-full px-4 py-3 text-left flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  role="menuitem"
-                >
-                  <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-sm font-medium text-black dark:text-white">{t('onboarding.help')}</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+        )}
         {/* Notification Button */}
         {currentUser && (
           <button
@@ -444,9 +389,6 @@ export default function Header({ onNavigate, activeView, sidebarCollapsed = fals
           onClose={() => setNotificationCenterOpen(false)}
         />
       )}
-      <Suspense fallback={null}>
-        <OnboardingHelp isOpen={showOnboarding ? true : undefined} onClose={() => setShowOnboarding(false)} />
-      </Suspense>
     </div>
   );
 }

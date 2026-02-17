@@ -13,7 +13,7 @@ export default function HelpButton({ onOpenHelp }: HelpButtonProps) {
     <button
       onClick={onOpenHelp}
       className="px-3 sm:px-4 py-2.5 sm:py-2 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95 flex items-center gap-2 min-h-[44px] touch-manipulation"
-      title={language === 'sv' ? 'Hjälp och onboarding' : 'Help and onboarding'}
+      title={language === 'sv' ? 'Hjälp' : 'Help'}
       aria-label={language === 'sv' ? 'Öppna hjälp' : 'Open help'}
     >
       <svg
