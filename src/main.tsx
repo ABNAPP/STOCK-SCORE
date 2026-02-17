@@ -183,7 +183,6 @@ if (!rootElement) {
   throw new Error('Root element not found. Please check index.html');
 }
 
-// Run pre-auth migrations (localStorage) before app renders
 runPreAuthMigrations();
 
 // Register Service Worker and enable background sync (production only)

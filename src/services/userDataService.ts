@@ -4,7 +4,7 @@
  * Provides functionality to save and load shared manual data to Firebase Firestore.
  * This includes Entry/Exit values and Currency values.
  * Threshold values are managed by ThresholdContext/industryThresholds collection.
- * Falls back to localStorage if user is not authenticated or Firestore is unavailable.
+ * Firestore is the only data source; authentication is required for persistence.
  */
 
 import {
@@ -28,12 +28,6 @@ const COLLECTIONS = {
   CURRENCY: 'currency',
 } as const;
 
-// LocalStorage keys (fallback)
-const STORAGE_KEYS = {
-  ENTRY_EXIT: 'entryExitValues',
-  CURRENCY: 'tachart-currency-map',
-} as const;
-
 function toCamelCase(value: string): string {
   const cleaned = value.replace(/&/g, 'and').replace(/[^A-Za-z0-9]+/g, ' ').trim();
   const parts = cleaned.split(' ').filter(Boolean);
@@ -51,47 +45,20 @@ function shouldPersistEntry(entry: { entry1: number; entry2: number; exit1: numb
 }
 
 /**
-function toCamelCase(value: string): string {
-  const cleaned = value.replace(/&/g, 'and').replace(/[^A-Za-z0-9]+/g, ' ').trim();
-  const parts = cleaned.split(' ').filter(Boolean);
-  if (parts.length === 0) return '';
-  const [first, ...rest] = parts;
-  return [
-    first.charAt(0).toLowerCase() + first.slice(1),
-    ...rest.map((p) => p.charAt(0).toUpperCase() + p.slice(1)),
-  ].join('');
-}
-
-/**
  * Save Entry/Exit values to Firestore
  * 
  * Saves Entry/Exit values (entry1, entry2, exit1, exit2, currency, dateOfUpdate)
  * to Firestore in entiryExit/{camelCaseCompanyName}.
- * Also saves to localStorage as backup even when using Firestore.
+ * Requires authentication; no-op when user is null.
  * 
  * @param user - Firebase user object, or null if not authenticated
  * @param values - Entry/Exit values to save, keyed by ticker symbol
- * 
- * @example
- * ```typescript
- * await saveEntryExitValues(user, {
- *   'AAPL': { entry1: 150, entry2: 155, exit1: 160, exit2: 165, currency: 'USD', dateOfUpdate: '2024-01-01' }
- * });
- * ```
  */
 export async function saveEntryExitValues(
   user: User | null,
   values: Record<string, { entry1: number; entry2: number; exit1: number; exit2: number; currency: string; dateOfUpdate: string | null }>
 ): Promise<void> {
-  if (!user) {
-    // Fallback to localStorage
-    try {
-      localStorage.setItem(STORAGE_KEYS.ENTRY_EXIT, JSON.stringify(values));
-    } catch (error) {
-      logger.error('Error saving EntryExit values to localStorage', error, { component: 'userDataService', operation: 'saveEntryExitValues' });
-    }
-    return;
-  }
+  if (!user) return;
 
   try {
     const batch = writeBatch(db);
@@ -103,57 +70,25 @@ export async function saveEntryExitValues(
       batch.set(docRef, { ...entry, companyName }, { merge: true });
     }
     await batch.commit();
-    
-    // Also save to localStorage as backup
-    try {
-      localStorage.setItem(STORAGE_KEYS.ENTRY_EXIT, JSON.stringify(values));
-    } catch (error) {
-      logger.warn('Failed to save EntryExit values to localStorage backup', { component: 'userDataService', operation: 'saveEntryExitValues', error });
-    }
   } catch (error) {
     logger.error('Error saving EntryExit values to Firestore', error, { component: 'userDataService', operation: 'saveEntryExitValues' });
-    // Fallback to localStorage
-    try {
-      localStorage.setItem(STORAGE_KEYS.ENTRY_EXIT, JSON.stringify(values));
-    } catch (localError) {
-      logger.error('Error saving EntryExit values to localStorage fallback', localError, { component: 'userDataService', operation: 'saveEntryExitValues' });
-    }
+    throw error;
   }
 }
 
 /**
  * Load Entry/Exit values from Firestore
  * 
- * Loads Entry/Exit values from Firestore. Falls back to localStorage if
- * user is not authenticated or Firestore is unavailable. Also migrates
- * currency data from old separate collection if it exists.
+ * Loads Entry/Exit values from Firestore. Returns null when user is not authenticated
+ * or when no data exists. Also migrates currency data from old separate collection if it exists.
  * 
  * @param user - Firebase user object, or null if not authenticated
  * @returns Entry/Exit values keyed by ticker symbol, or null if not found
- * 
- * @example
- * ```typescript
- * const values = await loadEntryExitValues(user);
- * if (values) {
- *   const aaplEntry = values['AAPL'];
- * }
- * ```
  */
 export async function loadEntryExitValues(
   user: User | null
 ): Promise<Record<string, { entry1: number; entry2: number; exit1: number; exit2: number; currency: string; dateOfUpdate: string | null }> | null> {
-  if (!user) {
-    // Fallback to localStorage
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.ENTRY_EXIT);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (error) {
-      logger.error('Error loading EntryExit values from localStorage', error, { component: 'userDataService', operation: 'loadEntryExitValues' });
-    }
-    return null;
-  }
+  if (!user) return null;
 
   try {
     const values: Record<string, { entry1: number; entry2: number; exit1: number; exit2: number; currency: string; dateOfUpdate: string | null }> = {};
@@ -199,70 +134,9 @@ export async function loadEntryExitValues(
       }
     }
     
-    if (Object.keys(values).length > 0) {
-      // Also save to localStorage as backup
-      try {
-        localStorage.setItem(STORAGE_KEYS.ENTRY_EXIT, JSON.stringify(values));
-      } catch (error) {
-        logger.warn('Failed to save EntryExit values to localStorage backup', { component: 'userDataService', operation: 'saveEntryExitValues', error });
-      }
-      
-      return values;
-    }
-    
-    // If no Firestore data, try localStorage
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.ENTRY_EXIT);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // Ensure all values have currency field
-        for (const key in parsed) {
-          if (!parsed[key].currency) {
-            parsed[key].currency = 'USD';
-          }
-        }
-        return parsed;
-      }
-    } catch (error) {
-      logger.error('Error loading EntryExit values from localStorage', error, { component: 'userDataService', operation: 'loadEntryExitValues' });
-    }
-    
-    // Also try to migrate from old currency localStorage
-    try {
-      const currencyStored = localStorage.getItem(STORAGE_KEYS.CURRENCY);
-      if (currencyStored) {
-        const currencyParsed = JSON.parse(currencyStored);
-        const migrated: Record<string, { entry1: number; entry2: number; exit1: number; exit2: number; currency: string; dateOfUpdate: string | null }> = {};
-        for (const [key, currency] of Object.entries(currencyParsed)) {
-            migrated[key] = { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: isCurrencyString(currency) ? currency : 'USD', dateOfUpdate: null };
-        }
-        if (Object.keys(migrated).length > 0) {
-          return migrated;
-        }
-      }
-    } catch (error) {
-      logger.warn('Failed to migrate currency from localStorage', { component: 'userDataService', operation: 'loadEntryExitValues', error });
-    }
-    
-    return null;
+    return Object.keys(values).length > 0 ? values : null;
   } catch (error) {
     logger.error('Error loading EntryExit values from Firestore', error, { component: 'userDataService', operation: 'loadEntryExitValues' });
-    // Fallback to localStorage
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.ENTRY_EXIT);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // Ensure all values have currency field
-        for (const key in parsed) {
-          if (!parsed[key].currency) {
-            parsed[key].currency = 'USD';
-          }
-        }
-        return parsed;
-      }
-    } catch (localError) {
-      logger.error('Error loading EntryExit values from localStorage fallback', localError, { component: 'userDataService', operation: 'loadEntryExitValues' });
-    }
     return null;
   }
 }
@@ -270,33 +144,16 @@ export async function loadEntryExitValues(
 /**
  * Save Currency values to Firestore
  * 
- * Saves currency mapping values to Firestore. Falls back to localStorage
- * if user is not authenticated. Also saves to localStorage as backup.
+ * Saves currency mapping values to Firestore. Requires authentication; no-op when user is null.
  * 
  * @param user - Firebase user object, or null if not authenticated
  * @param values - Currency values to save, keyed by ticker symbol
- * 
- * @example
- * ```typescript
- * await saveCurrencyValues(user, {
- *   'AAPL': 'USD',
- *   'VOLV-B': 'SEK'
- * });
- * ```
  */
 export async function saveCurrencyValues(
   user: User | null,
   values: Record<string, string>
 ): Promise<void> {
-  if (!user) {
-    // Fallback to localStorage
-    try {
-      localStorage.setItem(STORAGE_KEYS.CURRENCY, JSON.stringify(values));
-    } catch (error) {
-      logger.error('Error saving Currency values to localStorage', error, { component: 'userDataService', operation: 'saveCurrencyValues' });
-    }
-    return;
-  }
+  if (!user) return;
 
   try {
     const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.CURRENCY);
@@ -304,56 +161,25 @@ export async function saveCurrencyValues(
       values,
       updatedAt: serverTimestamp(),
     }, { merge: true });
-    
-    // Also save to localStorage as backup
-    try {
-      localStorage.setItem(STORAGE_KEYS.CURRENCY, JSON.stringify(values));
-    } catch (error) {
-      logger.warn('Failed to save Currency values to localStorage backup', { component: 'userDataService', operation: 'saveCurrencyValues', error });
-    }
   } catch (error) {
     logger.error('Error saving Currency values to Firestore', error, { component: 'userDataService', operation: 'saveCurrencyValues' });
-    // Fallback to localStorage
-    try {
-      localStorage.setItem(STORAGE_KEYS.CURRENCY, JSON.stringify(values));
-    } catch (localError) {
-      logger.error('Error saving Currency values to localStorage fallback', localError, { component: 'userDataService', operation: 'saveCurrencyValues' });
-    }
+    throw error;
   }
 }
 
 /**
  * Load Currency values from Firestore
  * 
- * Loads currency mapping values from Firestore. Falls back to localStorage
- * if user is not authenticated or Firestore is unavailable.
+ * Loads currency mapping values from Firestore. Returns null when user is not authenticated
+ * or when no data exists.
  * 
  * @param user - Firebase user object, or null if not authenticated
  * @returns Currency values keyed by ticker symbol, or null if not found
- * 
- * @example
- * ```typescript
- * const currencies = await loadCurrencyValues(user);
- * if (currencies) {
- *   const aaplCurrency = currencies['AAPL']; // 'USD'
- * }
- * ```
  */
 export async function loadCurrencyValues(
   user: User | null
 ): Promise<Record<string, string> | null> {
-  if (!user) {
-    // Fallback to localStorage
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.CURRENCY);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (error) {
-      logger.error('Error loading Currency values from localStorage', error, { component: 'userDataService', operation: 'loadCurrencyValues' });
-    }
-    return null;
-  }
+  if (!user) return null;
 
   try {
     const docRef = doc(db, COLLECTIONS.SHARED_DATA, COLLECTIONS.CURRENCY);
@@ -361,40 +187,12 @@ export async function loadCurrencyValues(
     
     if (docSnap.exists()) {
       const data = docSnap.data();
-      const values = data.values || {};
-      
-      // Also save to localStorage as backup
-      try {
-        localStorage.setItem(STORAGE_KEYS.CURRENCY, JSON.stringify(values));
-      } catch (error) {
-        logger.warn('Failed to save Currency values to localStorage backup', { component: 'userDataService', operation: 'saveCurrencyValues', error });
-      }
-      
-      return values;
-    }
-    
-    // If no Firestore data, try localStorage
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.CURRENCY);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (error) {
-      logger.error('Error loading Currency values from localStorage', error, { component: 'userDataService', operation: 'loadCurrencyValues' });
+      return data.values || {};
     }
     
     return null;
   } catch (error) {
     logger.error('Error loading Currency values from Firestore', error, { component: 'userDataService', operation: 'loadCurrencyValues' });
-    // Fallback to localStorage
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.CURRENCY);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (localError) {
-      logger.error('Error loading Currency values from localStorage fallback', localError, { component: 'userDataService', operation: 'loadCurrencyValues' });
-    }
     return null;
   }
 }

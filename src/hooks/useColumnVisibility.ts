@@ -14,32 +14,7 @@ interface UseColumnVisibilityProps {
 }
 
 export function useColumnVisibility({ tableId, columns }: UseColumnVisibilityProps) {
-  const storageKey = `columnVisibility_${tableId}`;
-
-  // Initialize visibility state from localStorage or defaults
   const getInitialVisibility = useCallback(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Merge saved state with current columns (in case columns changed)
-        const visibility: Record<string, boolean> = {};
-        columns.forEach(col => {
-          visibility[col.key] = parsed[col.key] !== undefined 
-            ? parsed[col.key] 
-            : (col.defaultVisible !== false);
-        });
-        if (tableId === 'personal-portfolio') {
-          visibility['currency'] = false;
-          visibility['currentPrice'] = false;
-        }
-        return visibility;
-      }
-    } catch (error) {
-      logger.error('Error loading column visibility', error, { component: 'useColumnVisibility', operation: 'loadVisibility' });
-    }
-    
-    // Default: all columns visible except those explicitly set to defaultVisible: false
     const visibility: Record<string, boolean> = {};
     columns.forEach(col => {
       visibility[col.key] = col.defaultVisible !== false;
@@ -49,18 +24,9 @@ export function useColumnVisibility({ tableId, columns }: UseColumnVisibilityPro
       visibility['currentPrice'] = false;
     }
     return visibility;
-  }, [storageKey, tableId, columns]);
+  }, [tableId, columns]);
 
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(getInitialVisibility);
-
-  // Save to localStorage whenever visibility changes
-  useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(columnVisibility));
-    } catch (error) {
-      logger.error('Error saving column visibility', error, { component: 'useColumnVisibility', operation: 'saveVisibility' });
-    }
-  }, [storageKey, columnVisibility]);
 
   const toggleColumn = useCallback((columnKey: string) => {
     setColumnVisibility(prev => {

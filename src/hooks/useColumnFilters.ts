@@ -33,15 +33,12 @@ interface UseColumnFiltersReturn<T> {
   filteredData: T[];
 }
 
-const STORAGE_KEY_PREFIX = 'columnFilters:';
-
 /**
  * Custom hook for managing column-specific filters
  * 
  * Provides functionality to:
  * - Set and clear filters per column
  * - Filter data based on column filters
- * - Persist filters to localStorage
  * - Support value-based and condition-based filtering
  * 
  * @template T - Type of data items
@@ -54,36 +51,12 @@ export function useColumnFilters<T extends Record<string, unknown>>({
   onFiltersChange,
   initialFilters,
 }: UseColumnFiltersOptions<T>): UseColumnFiltersReturn<T> {
-  const storageKey = `${STORAGE_KEY_PREFIX}${tableId}`;
-  
-  // Load filters from localStorage on mount, or use initialFilters if provided and non-empty
   const [filters, setFilters] = useState<ColumnFilters>(() => {
     if (initialFilters && Object.keys(initialFilters).length > 0) {
       return initialFilters;
     }
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (error) {
-      console.error('Error loading column filters from localStorage:', error);
-    }
     return {};
   });
-
-  // Save filters to localStorage whenever they change
-  useEffect(() => {
-    try {
-      if (Object.keys(filters).length > 0) {
-        localStorage.setItem(storageKey, JSON.stringify(filters));
-      } else {
-        localStorage.removeItem(storageKey);
-      }
-    } catch (error) {
-      console.error('Error saving column filters to localStorage:', error);
-    }
-  }, [filters, storageKey]);
 
   // Notify parent of filter changes
   useEffect(() => {

@@ -28,43 +28,13 @@ interface ThresholdContextType {
 
 export const ThresholdContext = createContext<ThresholdContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'sharedThresholdValues';
-
-const loadFromStorage = (): Map<string, ThresholdValues> => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as Record<string, ThresholdValues>;
-      return new Map(Object.entries(parsed));
-    }
-  } catch (error: unknown) {
-    logger.error('Error loading threshold values from localStorage', error, {
-      component: 'ThresholdContext',
-      operation: 'threshold.loadFromLocalStorage',
-    });
-  }
-  return new Map();
-};
-
-const saveToStorage = (values: Map<string, ThresholdValues>) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(values)));
-  } catch (error: unknown) {
-    logger.error('Error saving threshold values to localStorage', error, {
-      component: 'ThresholdContext',
-      operation: 'threshold.saveToLocalStorage',
-    });
-  }
-};
-
 interface ThresholdProviderProps {
   children: ReactNode;
 }
 
 export function ThresholdProvider({ children }: ThresholdProviderProps) {
   const { currentUser, userRole } = useAuth();
-  // serverRows: source of truth from Firestore
-  const [serverRows, setServerRows] = useState<Map<string, ThresholdValues>>(() => loadFromStorage());
+  const [serverRows, setServerRows] = useState<Map<string, ThresholdValues>>(new Map());
   // draft: only fields user is currently editing (e.g. "Technology.irr": 15)
   const [draft, setDraft] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -75,11 +45,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
   // Load data from Firestore and set up real-time listener
   useEffect(() => {
     if (!currentUser) {
-      // If no user, just load from localStorage
-      const localData = loadFromStorage();
-      if (localData.size > 0) {
-        setServerRows(localData);
-      }
+      setServerRows(new Map());
       setIsLoading(false);
       isInitialLoadRef.current = false;
       return;
@@ -96,19 +62,12 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
         });
         if (Object.keys(values).length > 0) {
           setServerRows(new Map(Object.entries(values)));
-        } else {
-          const localData = loadFromStorage();
-          if (localData.size > 0) setServerRows(localData);
         }
       } catch (error: unknown) {
         logger.error('Error loading shared threshold', error, {
           component: 'ThresholdContext',
           operation: 'threshold.loadFailed',
         });
-        const localData = loadFromStorage();
-        if (localData.size > 0) {
-          setServerRows(localData);
-        }
       } finally {
         setIsLoading(false);
         // Mark initial load as complete after a short delay to ensure data is set
@@ -131,7 +90,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
         }
         
         // Ignore our own pending writes
-        if (docSnapshot.metadata.hasPendingWrites) {
+        if (snapshot.metadata.hasPendingWrites) {
           return;
         }
         
@@ -178,7 +137,6 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
           });
 
           if (hasChanges) {
-            saveToStorage(next);
             return next;
           }
           return prev;
@@ -220,8 +178,6 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
       };
       currentState.set(industry, { ...entry, [field]: draftValue });
     }
-
-    saveToStorage(currentState);
 
     saveTimeoutRef.current = setTimeout(async () => {
       try {

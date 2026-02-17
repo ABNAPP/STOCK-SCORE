@@ -33,29 +33,8 @@ const DEFAULT_ESTIMATED_TIMES: Record<string, number> = {
   'pe-industry': 1500,
 };
 
-// Load historical data from localStorage
-function getHistoricalTime(source: string): number | null {
-  try {
-    const key = `loadTime:${source}`;
-    const stored = localStorage.getItem(key);
-    if (stored) {
-      return parseFloat(stored);
-    }
-  } catch (error) {
-    logger.error(`Error loading historical time for ${source}`, error, { component: 'LoadingProgressContext', operation: 'loadHistoricalTime', source });
-  }
-  return null;
-}
-
-// Save historical data to localStorage
-function saveHistoricalTime(source: string, time: number): void {
-  try {
-    const key = `loadTime:${source}`;
-    localStorage.setItem(key, String(time));
-  } catch (error) {
-    logger.error(`Error saving historical time for ${source}`, error, { component: 'LoadingProgressContext', operation: 'saveHistoricalTime', source });
-  }
-}
+// In-memory cache of historical load times (session-only, no persistence)
+const historicalLoadTimes = new Map<string, number>();
 
 interface LoadingProgressProviderProps {
   children: ReactNode;
@@ -71,7 +50,7 @@ export function LoadingProgressProvider({ children }: LoadingProgressProviderPro
       
       // Initialize if doesn't exist
       if (!existing) {
-        const historicalTime = getHistoricalTime(source);
+        const historicalTime = historicalLoadTimes.get(source) ?? null;
         const estimatedTime = historicalTime || DEFAULT_ESTIMATED_TIMES[source] || 3000;
         
         newMap.set(source, {
@@ -96,10 +75,10 @@ export function LoadingProgressProvider({ children }: LoadingProgressProviderPro
           updated.estimatedTimeRemaining = Math.max(0, estimatedTotal - elapsed);
         }
         
-        // Save historical time when complete
+        // Cache historical time when complete (in-memory for session)
         if (updated.status === 'complete' && updated.startTime) {
           const totalTime = Date.now() - updated.startTime;
-          saveHistoricalTime(source, totalTime);
+          historicalLoadTimes.set(source, totalTime);
         }
         
         newMap.set(source, updated);

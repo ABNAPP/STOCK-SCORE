@@ -1,36 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 
-const UX_NAMESPACE = 'stockScore:ux';
-const APP_VERSION = 'v1'; // Bump to re-show onboarding on major version change
-
-export function getStorageKey(uid: string | null): string {
-  const userPart = uid || 'anon';
-  return `${UX_NAMESPACE}:onboardingCompleted_${APP_VERSION}_${userPart}`;
-}
-
-const LEGACY_KEY = 'stockScoreOnboardingCompleted';
-
-function migrateLegacyKey(uid: string | null): void {
-  try {
-    if (localStorage.getItem(LEGACY_KEY) === 'true') {
-      const newKey = getStorageKey(uid);
-      localStorage.setItem(newKey, 'true');
-      localStorage.removeItem(LEGACY_KEY);
-    }
-  } catch {
-    // ignore
-  }
-}
-
-function getIsCompleted(uid: string | null): boolean {
-  if (typeof window === 'undefined') return false;
-  try {
-    migrateLegacyKey(uid);
-    const key = getStorageKey(uid);
-    return localStorage.getItem(key) === 'true';
-  } catch {
-    return false;
-  }
+export function getStorageKey(_uid: string | null): string {
+  return 'onboardingCompleted';
 }
 
 export interface UseOnboardingResult {
@@ -43,40 +14,21 @@ export interface UseOnboardingResult {
 }
 
 /**
- * Hook for onboarding state. UX-only localStorage, namespaced.
- * Does not mix with data cache.
+ * Hook for onboarding state. In-memory only (session state).
  */
-export function useOnboarding(uid: string | null): UseOnboardingResult {
-  const [isCompleted, setIsCompleted] = useState(() => getIsCompleted(uid));
+export function useOnboarding(_uid: string | null): UseOnboardingResult {
+  const [isCompleted, setIsCompleted] = useState(false);
   const [isOpen, setOpen] = useState(false);
 
-  useEffect(() => {
-    setIsCompleted(getIsCompleted(uid));
-  }, [uid]);
-
   const markCompleted = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const key = getStorageKey(uid);
-      localStorage.setItem(key, 'true');
-      setIsCompleted(true);
-      setOpen(false);
-    } catch {
-      // ignore
-    }
-  }, [uid]);
+    setIsCompleted(true);
+    setOpen(false);
+  }, []);
 
   const resetOnboarding = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const key = getStorageKey(uid);
-      localStorage.removeItem(key);
-      setIsCompleted(false);
-      setOpen(true);
-    } catch {
-      // ignore
-    }
-  }, [uid]);
+    setIsCompleted(false);
+    setOpen(true);
+  }, []);
 
   const showOnboarding = useCallback(() => {
     setOpen(true);

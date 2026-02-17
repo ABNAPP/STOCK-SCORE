@@ -1,3 +1,0 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-
-exports[`BaseTableToolbar snapshot > toolbar with active filter and column filters 1`] = `"Visar 25 av 100 raderKolumner(2/2)CSVExcelPrintShare"`;

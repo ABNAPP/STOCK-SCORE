@@ -67,7 +67,6 @@ export default function Header({ onNavigate, activeView, sidebarCollapsed = fals
 
   const changeLanguage = (language: string) => {
     i18n.changeLanguage(language);
-    localStorage.setItem('stockScoreLanguage', language);
   };
 
   const handleRefreshNow = async () => {

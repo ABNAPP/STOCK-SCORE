@@ -1,19 +1,18 @@
 /**
  * Runs app migrations at startup.
- * - runPreAuthMigrations: localStorage only, no auth needed (call in main.tsx)
+ * - runPreAuthMigrations: no-op (previously localStorage; Firestore is now the only data source)
  * - runPostAuthMigrations: Firestore migrations, requires authenticated user (call in App when currentUser exists)
  * All migrations are idempotent (safe to run multiple times).
  */
 
 import { logger } from '../../utils/logger';
-import { migrateFromLocalStorage } from './migrateFromLocalStorage';
 import { migrateCoreBoardToScoreBoard, runTruncatedCacheMigrations } from '../firestoreCacheService';
 import { getApiKeysFromFirestore } from '../appConfigService';
 import { setApiKeysCacheFromFirestore } from '../../config/apiKeys';
 
-/** Runs migrations that do not require auth (localStorage). Call in main.tsx before render. */
+/** No-op: previously ran localStorage migrations. Firestore is the only data source. */
 export function runPreAuthMigrations(): void {
-  migrateFromLocalStorage();
+  // No-op
 }
 
 /**

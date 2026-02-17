@@ -544,37 +544,17 @@ export async function getCacheAge(key: string): Promise<number | null> {
 /**
  * Generic helper: migrate a wrongly named cache document to the correct document ID.
  * Used for one-time migrations (e.g. eIndustry -> peIndustry) from substring(8) bug.
- * Not exported.
+ * Idempotent: safe to run every app load.
  */
 async function migrateCacheDocument(
   oldDocId: string,
-  cacheKey: string,
-  migrationFlag: string
+  cacheKey: string
 ): Promise<boolean> {
-  try {
-    if (localStorage.getItem(migrationFlag) === 'true') {
-      return true;
-    }
-  } catch (error) {
-    logger.warn('Could not check migration flag', {
-      component: 'firestoreCacheService',
-      operation: 'migrateCacheDocument',
-      oldDocId,
-      migrationFlag,
-      error,
-    });
-  }
-
   try {
     const oldRef = doc(db, CACHE_COLLECTION, oldDocId);
     const oldSnap = await getDoc(oldRef);
 
     if (!oldSnap.exists()) {
-      try {
-        localStorage.setItem(migrationFlag, 'true');
-      } catch {
-        /* ignore */
-      }
       return true;
     }
 
@@ -613,13 +593,7 @@ async function migrateCacheDocument(
         return false;
       }
     } else {
-      // cutover: no appCache writes for view-docs (mark migration done)
       if (VIEWDATA_MIGRATION_MODE === 'cutover' && VIEW_CACHE_KEYS.has(cacheKey)) {
-        try {
-          localStorage.setItem(migrationFlag, 'true');
-        } catch {
-          /* ignore */
-        }
         return true;
       }
       try {
@@ -676,11 +650,6 @@ async function migrateCacheDocument(
       }
     }
 
-    try {
-      localStorage.setItem(migrationFlag, 'true');
-    } catch {
-      /* ignore */
-    }
     return true;
   } catch (error) {
     logger.error('Failed to migrate cache document', error, {
@@ -688,7 +657,6 @@ async function migrateCacheDocument(
       operation: 'migrateCacheDocument',
       oldDocId,
       cacheKey,
-      migrationFlag,
     });
     return false;
   }
@@ -709,22 +677,6 @@ async function migrateCacheDocument(
  * @returns Promise resolving to true if migration succeeded or was already done, false on error
  */
 export async function migrateCoreBoardToScoreBoard(): Promise<boolean> {
-  const MIGRATION_FLAG = 'firestore:migration:coreBoard-to-scoreBoard';
-  
-  // Check if migration already completed
-  try {
-    if (localStorage.getItem(MIGRATION_FLAG) === 'true') {
-      return true; // Already migrated
-    }
-  } catch (error) {
-    // If localStorage is not available, continue anyway
-    logger.warn('Could not check migration flag', {
-      component: 'firestoreCacheService',
-      operation: 'migrateCoreBoardToScoreBoard',
-      error,
-    });
-  }
-
   try {
     const coreBoardRef = doc(db, CACHE_COLLECTION, 'coreBoard');
     const scoreBoardRef = doc(db, CACHE_COLLECTION, 'scoreBoard');
@@ -733,12 +685,6 @@ export async function migrateCoreBoardToScoreBoard(): Promise<boolean> {
     const coreBoardSnap = await getDoc(coreBoardRef);
     
     if (!coreBoardSnap.exists()) {
-      // No coreBoard to migrate, mark as done
-      try {
-        localStorage.setItem(MIGRATION_FLAG, 'true');
-      } catch {
-        // Ignore localStorage errors
-      }
       return true; // Nothing to migrate
     }
 
@@ -777,14 +723,7 @@ export async function migrateCoreBoardToScoreBoard(): Promise<boolean> {
         return false;
       }
     } else {
-      // scoreBoard doesn't exist, copy coreBoard to scoreBoard
-      // cutover: no appCache writes for view-docs
       if (VIEWDATA_MIGRATION_MODE === 'cutover') {
-        try {
-          localStorage.setItem(MIGRATION_FLAG, 'true');
-        } catch {
-          /* ignore */
-        }
         return true;
       }
       try {
@@ -844,13 +783,6 @@ export async function migrateCoreBoardToScoreBoard(): Promise<boolean> {
       }
     }
     
-    // Mark migration as complete
-    try {
-      localStorage.setItem(MIGRATION_FLAG, 'true');
-    } catch {
-      // Ignore localStorage errors
-    }
-    
     return true;
   } catch (error) {
     logger.error('Failed to migrate coreBoard to scoreBoard', error, {
@@ -865,29 +797,21 @@ export async function migrateCoreBoardToScoreBoard(): Promise<boolean> {
  * Migrate eIndustry -> peIndustry (truncated cache doc ID from substring(8) bug).
  */
 export async function migrateEIndustryToPeIndustry(): Promise<boolean> {
-  return migrateCacheDocument(
-    'eIndustry',
-    CACHE_KEYS.PE_INDUSTRY,
-    'firestore:migration:eIndustry-to-peIndustry'
-  );
+  return migrateCacheDocument('eIndustry', CACHE_KEYS.PE_INDUSTRY);
 }
 
 /**
  * Migrate enjaminGraham -> benjaminGraham (truncated cache doc ID from substring(8) bug).
  */
 export async function migrateEnjaminGrahamToBenjaminGraham(): Promise<boolean> {
-  return migrateCacheDocument(
-    'enjaminGraham',
-    CACHE_KEYS.BENJAMIN_GRAHAM,
-    'firestore:migration:enjaminGraham-to-benjaminGraham'
-  );
+  return migrateCacheDocument('enjaminGraham', CACHE_KEYS.BENJAMIN_GRAHAM);
 }
 
 /**
  * Migrate ma -> sma (truncated cache doc ID from substring(8) bug).
  */
 export async function migrateMaToSma(): Promise<boolean> {
-  return migrateCacheDocument('ma', CACHE_KEYS.SMA, 'firestore:migration:ma-to-sma');
+  return migrateCacheDocument('ma', CACHE_KEYS.SMA);
 }
 
 /**

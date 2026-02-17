@@ -21,15 +21,12 @@ export interface UseColumnReorderOptions {
   onReorder?: (newOrder: string[]) => void;
 }
 
-const STORAGE_PREFIX = 'table_column_order_';
-
 /**
  * Hook for managing column reordering in tables using drag & drop
  * 
  * Features:
  * - Drag & drop column headers to reorder
  * - Keyboard accessibility for reordering
- * - Persist column order to localStorage per table
  * - Visual feedback during drag
  * 
  * @param options Configuration options
@@ -40,50 +37,19 @@ export function useColumnReorder({
   columns,
   onReorder,
 }: UseColumnReorderOptions) {
-  const storageKey = `${STORAGE_PREFIX}${tableId}`;
-  
-  // Load saved order from localStorage
-  const loadSavedOrder = useCallback((): string[] => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved) as string[];
-        // Validate that all saved keys exist in current columns
-        const columnKeys = columns.map((col) => col.key);
-        return parsed.filter((key) => columnKeys.includes(key));
-      }
-    } catch (error) {
-      console.warn('Failed to load column order from localStorage:', error);
-    }
-    return columns.map((col) => col.key);
-  }, [storageKey, columns]);
-
-  const [columnOrder, setColumnOrder] = useState<string[]>(loadSavedOrder);
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => columns.map((col) => col.key));
 
   // Update order when columns change
   useEffect(() => {
     const currentKeys = columns.map((col) => col.key);
-    const savedOrder = loadSavedOrder();
-    
-    // Merge saved order with new columns (add new columns at the end)
-    const newOrder = [
-      ...savedOrder.filter((key) => currentKeys.includes(key)),
-      ...currentKeys.filter((key) => !savedOrder.includes(key)),
-    ];
-    
-    setColumnOrder(newOrder);
-  }, [columns, loadSavedOrder]);
-
-  // Save order to localStorage whenever it changes
-  useEffect(() => {
-    try {
-      if (columnOrder.length > 0) {
-        localStorage.setItem(storageKey, JSON.stringify(columnOrder));
-      }
-    } catch (error) {
-      console.warn('Failed to save column order to localStorage:', error);
-    }
-  }, [columnOrder, storageKey]);
+    setColumnOrder((prev) => {
+      const newOrder = [
+        ...prev.filter((key) => currentKeys.includes(key)),
+        ...currentKeys.filter((key) => !prev.includes(key)),
+      ];
+      return newOrder;
+    });
+  }, [columns]);
 
   // Configure sensors for drag & drop
   const sensors = useSensors(
@@ -135,15 +101,10 @@ export function useColumnReorder({
   const resetOrder = useCallback(() => {
     const defaultOrder = columns.map((col) => col.key);
     setColumnOrder(defaultOrder);
-    try {
-      localStorage.removeItem(storageKey);
-    } catch (error) {
-      console.warn('Failed to remove column order from localStorage:', error);
-    }
     if (onReorder) {
       onReorder(defaultOrder);
     }
-  }, [columns, storageKey, onReorder]);
+  }, [columns, onReorder]);
 
   return {
     columnOrder,
