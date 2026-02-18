@@ -29,10 +29,10 @@ interface EntryExitTableProps {
 const CURRENCIES = ['USD', 'EUR', 'SEK', 'DKK', 'NOK', 'GBP', 'AUD', 'CAD', 'NZD'];
 
 const ENTRY_EXIT_COLUMNS: ColumnDefinition<BenjaminGrahamData>[] = [
-  { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
+  { key: 'antal', label: 'Row', required: true, sticky: true, sortable: false },
   { key: 'companyName', label: 'Company Name', required: true, sticky: true, sortable: true },
-  { key: 'ticker', label: 'Ticker', required: true, sticky: true, sortable: true },
-  { key: 'currency', label: 'Currency', required: true, sticky: true, sortable: true, align: 'center' },
+  { key: 'ticker', label: 'Ticker', required: true, sticky: false, sortable: true },
+  { key: 'currency', label: 'Currency', required: true, sticky: false, sortable: true, align: 'center' },
   { key: 'price', label: 'Price', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'benjaminGraham', label: 'Benjamin Graham', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'entry1', label: 'ENTRY1', defaultVisible: true, sortable: true, align: 'center' },
@@ -120,7 +120,6 @@ function generateRowKey(item: BenjaminGrahamData): string {
 
 function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTableProps) {
   const { t } = useTranslation();
-  const [expandedRows, setExpandedRows] = useState<{ [key: string]: boolean }>({});
   const { getEntryExitValue, getFieldValue, setFieldValue, commitField, initializeFromData } = useEntryExitValues();
   const { isAdmin } = useUserRole();
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -132,6 +131,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
     exit2: '',
   });
   const [modalErrors, setModalErrors] = useState<Record<string, string>>({});
+  const headerPaddingClass = 'px-2 py-2';
 
   // Initialize entry/exit values from data
   useEffect(() => {
@@ -300,7 +300,6 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
       handleSort, 
       getSortIcon, 
       getStickyPosition, 
-      isColumnVisible,
       openFilterMenuColumn,
       setOpenFilterMenuColumn,
       hasActiveColumnFilter,
@@ -312,7 +311,6 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
     } = props;
     const metadata = getColumnMetadata('benjamin-graham', column.key);
     const isSticky = column.sticky;
-    const isSorted = sortConfig.key === column.key;
     const sortIcon = getSortIcon(column.key);
     const stickyClass = isSticky ? `sm:sticky sm:top-0 ${getStickyPosition(column.key)} z-50` : '';
     const isFilterMenuOpen = openFilterMenuColumn === column.key;
@@ -370,7 +368,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
           ref={(el) => {
             headerRefs.current[column.key] = el;
           }}
-          className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ${stickyClass} bg-gray-50 dark:bg-gray-900`}
+          className={`${headerPaddingClass} text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ${stickyClass} bg-gray-50 dark:bg-gray-900`}
           scope="col"
           role="columnheader"
         >
@@ -419,7 +417,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
           headerRefs.current[column.key] = el;
         }}
         onClick={handleSortClick}
-        className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-200 ${stickyClass} bg-gray-50 dark:bg-gray-900`}
+        className={`${headerPaddingClass} text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-200 ${stickyClass} bg-gray-50 dark:bg-gray-900`}
         scope="col"
         role="columnheader"
       >
@@ -840,7 +838,9 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         searchPlaceholder="Sök efter företag eller ticker..."
         defaultSortKey="companyName"
         defaultSortDirection="asc"
-        stickyColumns={['antal', 'companyName', 'ticker', 'currency']}
+        stickyColumns={['antal', 'companyName']}
+        headerCellPaddingClass="px-2 py-2"
+        cellPaddingClass="px-2 py-2"
         ariaLabel="Entry Exit"
         minTableWidth="800px"
         getRowKey={(item) => generateRowKey(item)}

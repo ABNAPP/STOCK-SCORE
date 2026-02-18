@@ -111,6 +111,8 @@ export interface BaseTableProps<T> {
   
   // Sticky columns
   stickyColumns?: string[];
+  headerCellPaddingClass?: string;
+  cellPaddingClass?: string;
   
   // Additional props
   ariaLabel?: string;
@@ -177,6 +179,8 @@ export default function BaseTable<T extends Record<string, unknown>>({
   defaultSortKey,
   defaultSortDirection = 'asc',
   stickyColumns = [],
+  headerCellPaddingClass,
+  cellPaddingClass,
   ariaLabel,
   emptyMessage,
   minTableWidth = '600px',
@@ -580,7 +584,10 @@ export default function BaseTable<T extends Record<string, unknown>>({
     const isSticky = stickyColumns.includes(column.key);
     const isSorted = sortConfig.key === column.key;
     const sortIcon = getSortIcon(column.key);
-    const stickyClass = isSticky ? `sm:sticky sm:top-0 ${getStickyPosition(column.key)} z-50` : '';
+    const stickyClass = isSticky
+      ? `sm:sticky sm:top-0 ${getStickyPosition(column.key)} z-50`
+      : 'relative z-0';
+    const headerPaddingClass = headerCellPaddingClass || 'px-6 py-3';
     
     const columnWidth = enableColumnResize ? getColumnWidth(column.key) : undefined;
     const isResizing = enableColumnResize && resizingColumn === column.key;
@@ -686,7 +693,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
           ref={(el) => {
             headerRefs.current[column.key] = el;
           }}
-          className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ${stickyClass} bg-gray-50 dark:bg-gray-900 ${isResizing ? 'bg-blue-100 dark:bg-blue-900/50' : ''}`}
+          className={`${headerPaddingClass} text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ${stickyClass} bg-gray-50 dark:bg-gray-900 ${isResizing ? 'bg-blue-100 dark:bg-blue-900/50' : ''}`}
           style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
           scope="col"
           role="columnheader"
@@ -701,7 +708,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
         ref={(el) => {
           headerRefs.current[column.key] = el;
         }}
-        className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-base ${stickyClass} bg-gray-50 dark:bg-gray-900 ${isResizing ? 'bg-blue-100 dark:bg-blue-900/50' : ''}`}
+        className={`${headerPaddingClass} text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-base ${stickyClass} bg-gray-50 dark:bg-gray-900 ${isResizing ? 'bg-blue-100 dark:bg-blue-900/50' : ''}`}
         style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
         scope="col"
         role="columnheader"
@@ -980,6 +987,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                             
                             const isSticky = stickyColumns.includes(column.key);
                             const stickyClass = isSticky ? `sm:sticky ${getStickyPosition(column.key)} z-20` : '';
+                            const dataPaddingClass = cellPaddingClass || 'px-6 py-4';
                             const alignClass = column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : '';
                             const bgClass = globalIndex % 2 === 0 
                               ? 'bg-white dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20' 
@@ -989,7 +997,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                             return (
                               <td
                                 key={column.key}
-                                className={`px-6 py-4 whitespace-nowrap text-sm text-black dark:text-white transition-colors duration-base ${stickyClass} ${alignClass} ${isSticky ? bgClass : ''}`}
+                                className={`${dataPaddingClass} whitespace-nowrap text-sm text-black dark:text-white transition-colors duration-base ${stickyClass} ${alignClass} ${isSticky ? bgClass : ''}`}
                                 style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
                                 role="gridcell"
                                 aria-colindex={colIndex + 1}
@@ -1081,6 +1089,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                               
                               const isSticky = stickyColumns.includes(column.key);
                               const stickyClass = isSticky ? `sm:sticky ${getStickyPosition(column.key)} z-20` : '';
+                              const dataPaddingClass = cellPaddingClass || 'px-6 py-4';
                               const alignClass = column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : '';
                               const bgClass = globalIndex % 2 === 0 
                                 ? 'bg-white dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20' 
@@ -1090,7 +1099,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                               return (
                                 <td
                                   key={column.key}
-                                  className={`px-6 py-4 whitespace-nowrap text-sm text-black dark:text-white transition-colors duration-base ${stickyClass} ${alignClass} ${isSticky ? bgClass : ''}`}
+                                  className={`${dataPaddingClass} whitespace-nowrap text-sm text-black dark:text-white transition-colors duration-base ${stickyClass} ${alignClass} ${isSticky ? bgClass : ''}`}
                                   style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
                                   role="gridcell"
                                   aria-colindex={colIndex + 1}
@@ -1165,4 +1174,3 @@ export default function BaseTable<T extends Record<string, unknown>>({
     </>
   );
 }
-
