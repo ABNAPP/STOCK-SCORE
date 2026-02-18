@@ -362,8 +362,10 @@ export default function PEIndustryTable({ data, loading, error, initialTableStat
       defaultSortKey="companyCount"
       defaultSortDirection="desc"
       stickyColumns={['antal', 'industry']}
+      headerCellPaddingClass="px-2 py-2"
+      cellPaddingClass="px-2 py-2"
       ariaLabel="P/E Industry"
-      minTableWidth="800px"
+      minTableWidth="100%"
       getRowKey={(item) => item.industry}
       initialFilterState={initialTableState?.filterState}
       initialColumnFilters={initialTableState?.columnFilters}

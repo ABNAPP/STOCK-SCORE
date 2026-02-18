@@ -232,8 +232,10 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
       defaultSortKey="score"
       defaultSortDirection="desc"
       stickyColumns={['antal', 'companyName', 'ticker', 'currency']}
+      headerCellPaddingClass="px-2 py-2"
+      cellPaddingClass="px-2 py-2"
       ariaLabel="Score"
-      minTableWidth="600px"
+      minTableWidth="100%"
       getRowKey={(item) => generateRowKey(item)}
       enableExport={true}
       enablePrint={true}
@@ -246,4 +248,3 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
     />
   );
 }
-

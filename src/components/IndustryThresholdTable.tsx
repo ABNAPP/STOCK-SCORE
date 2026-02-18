@@ -501,10 +501,12 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
         enableMobileExpand={true}
         searchFields={['industry']}
         searchPlaceholder="Sök efter bransch..."
-        defaultSortKey="industry"
-        defaultSortDirection="asc"
-        stickyColumns={['antal', 'industry']}
-        ariaLabel="Industry Threshold"
+      defaultSortKey="industry"
+      defaultSortDirection="asc"
+      stickyColumns={['antal', 'industry']}
+      headerCellPaddingClass="px-2 py-2"
+      cellPaddingClass="px-2 py-2"
+      ariaLabel="Industry Threshold"
         minTableWidth="100%"
         getRowKey={(item) => item.industryKey}
         initialFilterState={initialTableState?.filterState}
