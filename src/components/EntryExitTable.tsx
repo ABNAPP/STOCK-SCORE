@@ -29,10 +29,10 @@ interface EntryExitTableProps {
 const CURRENCIES = ['USD', 'EUR', 'SEK', 'DKK', 'NOK', 'GBP', 'AUD', 'CAD', 'NZD'];
 
 const ENTRY_EXIT_COLUMNS: ColumnDefinition<BenjaminGrahamData>[] = [
-  { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
+  { key: 'antal', label: 'Row', required: true, sticky: true, sortable: false },
   { key: 'companyName', label: 'Company Name', required: true, sticky: true, sortable: true },
-  { key: 'ticker', label: 'Ticker', required: true, sticky: true, sortable: true },
-  { key: 'currency', label: 'Currency', required: true, sticky: true, sortable: true, align: 'center' },
+  { key: 'ticker', label: 'Ticker', required: true, sticky: false, sortable: true },
+  { key: 'currency', label: 'Currency', required: true, sticky: false, sortable: true, align: 'center' },
   { key: 'price', label: 'Price', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'benjaminGraham', label: 'Benjamin Graham', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'entry1', label: 'ENTRY1', defaultVisible: true, sortable: true, align: 'center' },
@@ -43,6 +43,7 @@ const ENTRY_EXIT_COLUMNS: ColumnDefinition<BenjaminGrahamData>[] = [
   { key: 'irr1', label: 'RR1', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'rr2', label: 'RR2', defaultVisible: true, sortable: false, align: 'center' },
   { key: 'dateOfUpdate', label: 'Date of Update', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'actions', label: 'Actions', defaultVisible: true, sortable: false, align: 'center' },
 ];
 
 const ENTRY_EXIT_FILTERS: FilterConfig[] = [
@@ -119,10 +120,18 @@ function generateRowKey(item: BenjaminGrahamData): string {
 
 function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTableProps) {
   const { t } = useTranslation();
-  const [expandedRows, setExpandedRows] = useState<{ [key: string]: boolean }>({});
   const { getEntryExitValue, getFieldValue, setFieldValue, commitField, initializeFromData } = useEntryExitValues();
   const { isAdmin } = useUserRole();
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [editingRow, setEditingRow] = useState<BenjaminGrahamData | null>(null);
+  const [modalValues, setModalValues] = useState({
+    entry1: '',
+    entry2: '',
+    exit1: '',
+    exit2: '',
+  });
+  const [modalErrors, setModalErrors] = useState<Record<string, string>>({});
+  const headerPaddingClass = 'px-2 py-2';
 
   // Initialize entry/exit values from data
   useEffect(() => {
@@ -187,23 +196,71 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
     }
   }, [isDateOld]);
 
-  const handleEntryExitChange = useCallback((ticker: string, companyName: string, field: 'entry1' | 'entry2' | 'exit1' | 'exit2', value: number) => {
-    // Validate before setting
-    const validation = validateEntryExitValue(field, value);
-    const key = `${ticker}-${companyName}-${field}`;
-    
-    if (!validation.isValid) {
-      setValidationErrors((prev) => ({ ...prev, [key]: validation.error || 'Invalid value' }));
-    } else {
-      setValidationErrors((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
+  const openEditModal = useCallback((item: BenjaminGrahamData) => {
+    const entry1Value = getFieldValue(item.ticker, item.companyName, 'entry1');
+    const entry2Value = getFieldValue(item.ticker, item.companyName, 'entry2');
+    const exit1Value = getFieldValue(item.ticker, item.companyName, 'exit1');
+    const exit2Value = getFieldValue(item.ticker, item.companyName, 'exit2');
+
+    setModalValues({
+      entry1: entry1Value ? String(entry1Value) : '',
+      entry2: entry2Value ? String(entry2Value) : '',
+      exit1: exit1Value ? String(exit1Value) : '',
+      exit2: exit2Value ? String(exit2Value) : '',
+    });
+    setModalErrors({});
+    setEditingRow(item);
+  }, [getFieldValue]);
+
+  const closeEditModal = useCallback(() => {
+    setEditingRow(null);
+    setModalErrors({});
+  }, []);
+
+  const handleModalChange = useCallback((field: 'entry1' | 'entry2' | 'exit1' | 'exit2', value: string) => {
+    setModalValues((prev) => ({ ...prev, [field]: value }));
+    setModalErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }, []);
+
+  const handleModalSave = useCallback(() => {
+    if (!editingRow) return;
+    const parsed = {
+      entry1: parseFloat(modalValues.entry1),
+      entry2: parseFloat(modalValues.entry2),
+      exit1: parseFloat(modalValues.exit1),
+      exit2: parseFloat(modalValues.exit2),
+    };
+    const values = {
+      entry1: Number.isFinite(parsed.entry1) ? parsed.entry1 : 0,
+      entry2: Number.isFinite(parsed.entry2) ? parsed.entry2 : 0,
+      exit1: Number.isFinite(parsed.exit1) ? parsed.exit1 : 0,
+      exit2: Number.isFinite(parsed.exit2) ? parsed.exit2 : 0,
+    };
+
+    const nextErrors: Record<string, string> = {};
+    (Object.keys(values) as Array<keyof typeof values>).forEach((field) => {
+      const validation = validateEntryExitValue(field, values[field]);
+      if (!validation.isValid) {
+        nextErrors[field] = validation.error || 'Invalid value';
+      }
+    });
+
+    if (Object.keys(nextErrors).length > 0) {
+      setModalErrors(nextErrors);
+      return;
     }
-    
-    setFieldValue(ticker, companyName, field, value);
-  }, [setFieldValue]);
+
+    setFieldValue(editingRow.ticker, editingRow.companyName, 'entry1', values.entry1);
+    setFieldValue(editingRow.ticker, editingRow.companyName, 'entry2', values.entry2);
+    setFieldValue(editingRow.ticker, editingRow.companyName, 'exit1', values.exit1);
+    setFieldValue(editingRow.ticker, editingRow.companyName, 'exit2', values.exit2);
+    closeEditModal();
+  }, [closeEditModal, editingRow, modalValues, setFieldValue]);
 
   // Calculate RR1: (Exit1 - Entry1) / Entry1 * 100
   const calculateRR1 = useCallback((entry1: number, exit1: number): number | null => {
@@ -243,7 +300,6 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
       handleSort, 
       getSortIcon, 
       getStickyPosition, 
-      isColumnVisible,
       openFilterMenuColumn,
       setOpenFilterMenuColumn,
       hasActiveColumnFilter,
@@ -255,7 +311,6 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
     } = props;
     const metadata = getColumnMetadata('benjamin-graham', column.key);
     const isSticky = column.sticky;
-    const isSorted = sortConfig.key === column.key;
     const sortIcon = getSortIcon(column.key);
     const stickyClass = isSticky ? `sm:sticky sm:top-0 ${getStickyPosition(column.key)} z-50` : '';
     const isFilterMenuOpen = openFilterMenuColumn === column.key;
@@ -313,7 +368,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
           ref={(el) => {
             headerRefs.current[column.key] = el;
           }}
-          className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ${stickyClass} bg-gray-50 dark:bg-gray-900`}
+          className={`${headerPaddingClass} text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ${stickyClass} bg-gray-50 dark:bg-gray-900`}
           scope="col"
           role="columnheader"
         >
@@ -362,7 +417,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
           headerRefs.current[column.key] = el;
         }}
         onClick={handleSortClick}
-        className={`px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-200 ${stickyClass} bg-gray-50 dark:bg-gray-900`}
+        className={`${headerPaddingClass} text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-200 ${stickyClass} bg-gray-50 dark:bg-gray-900`}
         scope="col"
         role="columnheader"
       >
@@ -484,160 +539,28 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
           </div>
         );
       case 'entry1':
-        if (!isAdmin) {
-          return <span className="text-black dark:text-white">{values.entry1 || '-'}</span>;
-        }
-        const entry1Key = `${item.ticker}-${item.companyName}-entry1`;
-        const entry1Error = validationErrors[entry1Key];
-        return (
-          <div className="flex flex-col items-center">
-            <input
-              type="number"
-              value={values.entry1 || ''}
-              onChange={(e) => {
-                const value = parseFloat(e.target.value) || 0;
-                handleEntryExitChange(item.ticker, item.companyName, 'entry1', value);
-              }}
-              onBlur={() => {
-                const validation = validateEntryExitValue('entry1', values.entry1);
-                if (validation.isValid) {
-                  commitField(item.ticker, item.companyName, 'entry1');
-                }
-              }}
-              min={0}
-              max={1000000}
-              step={0.01}
-              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
-                entry1Error
-                  ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-              }`}
-              onClick={(e) => e.stopPropagation()}
-              aria-invalid={!!entry1Error}
-            />
-            {entry1Error && (
-              <span className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert">
-                {entry1Error}
-              </span>
-            )}
-          </div>
-        );
+        return <span className="text-black dark:text-white">{values.entry1 || '-'}</span>;
       case 'entry2':
-        if (!isAdmin) {
-          return <span className="text-black dark:text-white">{values.entry2 || '-'}</span>;
-        }
-        const entry2Key = `${item.ticker}-${item.companyName}-entry2`;
-        const entry2Error = validationErrors[entry2Key];
-        return (
-          <div className="flex flex-col items-center">
-            <input
-              type="number"
-              value={values.entry2 || ''}
-              onChange={(e) => {
-                const value = parseFloat(e.target.value) || 0;
-                handleEntryExitChange(item.ticker, item.companyName, 'entry2', value);
-              }}
-              onBlur={() => {
-                const validation = validateEntryExitValue('entry2', values.entry2);
-                if (validation.isValid) {
-                  commitField(item.ticker, item.companyName, 'entry2');
-                }
-              }}
-              min={0}
-              max={1000000}
-              step={0.01}
-              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
-                entry2Error
-                  ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-              }`}
-              onClick={(e) => e.stopPropagation()}
-              aria-invalid={!!entry2Error}
-            />
-            {entry2Error && (
-              <span className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert">
-                {entry2Error}
-              </span>
-            )}
-          </div>
-        );
+        return <span className="text-black dark:text-white">{values.entry2 || '-'}</span>;
       case 'exit1':
-        if (!isAdmin) {
-          return <span className="text-black dark:text-white">{values.exit1 || '-'}</span>;
-        }
-        const exit1Key = `${item.ticker}-${item.companyName}-exit1`;
-        const exit1Error = validationErrors[exit1Key];
-        return (
-          <div className="flex flex-col items-center">
-            <input
-              type="number"
-              value={values.exit1 || ''}
-              onChange={(e) => {
-                const value = parseFloat(e.target.value) || 0;
-                handleEntryExitChange(item.ticker, item.companyName, 'exit1', value);
-              }}
-              onBlur={() => {
-                const validation = validateEntryExitValue('exit1', values.exit1);
-                if (validation.isValid) {
-                  commitField(item.ticker, item.companyName, 'exit1');
-                }
-              }}
-              min={0}
-              max={1000000}
-              step={0.01}
-              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
-                exit1Error
-                  ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-              }`}
-              onClick={(e) => e.stopPropagation()}
-              aria-invalid={!!exit1Error}
-            />
-            {exit1Error && (
-              <span className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert">
-                {exit1Error}
-              </span>
-            )}
-          </div>
-        );
+        return <span className="text-black dark:text-white">{values.exit1 || '-'}</span>;
       case 'exit2':
+        return <span className="text-black dark:text-white">{values.exit2 || '-'}</span>;
+      case 'actions':
         if (!isAdmin) {
-          return <span className="text-black dark:text-white">{values.exit2 || '-'}</span>;
+          return <span className="text-gray-400">-</span>;
         }
-        const exit2Key = `${item.ticker}-${item.companyName}-exit2`;
-        const exit2Error = validationErrors[exit2Key];
         return (
-          <div className="flex flex-col items-center">
-            <input
-              type="number"
-              value={values.exit2 || ''}
-              onChange={(e) => {
-                const value = parseFloat(e.target.value) || 0;
-                handleEntryExitChange(item.ticker, item.companyName, 'exit2', value);
-              }}
-              onBlur={() => {
-                const validation = validateEntryExitValue('exit2', values.exit2);
-                if (validation.isValid) {
-                  commitField(item.ticker, item.companyName, 'exit2');
-                }
-              }}
-              min={0}
-              max={1000000}
-              step={0.01}
-              className={`px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:border-transparent w-24 text-center ${
-                exit2Error
-                  ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-              }`}
-              onClick={(e) => e.stopPropagation()}
-              aria-invalid={!!exit2Error}
-            />
-            {exit2Error && (
-              <span className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert">
-                {exit2Error}
-              </span>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openEditModal(item);
+            }}
+            className="px-3 py-1 text-sm font-medium text-blue-700 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+          >
+            Edit
+          </button>
         );
       case 'dateOfUpdate':
         return (
@@ -705,7 +628,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
       default:
         return null;
     }
-  }, [getFieldValue, getEntryExitValue, calculateRR1, calculateRR2, getRR1Color, getRR2Color, hasIvFcf, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld, isAdmin, validationErrors]);
+  }, [getFieldValue, getEntryExitValue, calculateRR1, calculateRR2, getRR1Color, getRR2Color, hasIvFcf, handleCurrencyChange, commitField, isDateOld, isDateNearOld, isAdmin, validationErrors, openEditModal]);
 
   // Render mobile card
   const renderMobileCard = useCallback((item: BenjaminGrahamData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
@@ -795,76 +718,34 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
           <div className="border-t border-gray-300 dark:border-gray-600 p-4 space-y-3 animate-fade-in">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY1</span>
-              {isAdmin ? (
-                <input
-                  type="number"
-                  value={entry1 || ''}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    handleEntryExitChange(item.ticker, item.companyName, 'entry1', value);
-                  }}
-                  onBlur={() => commitField(item.ticker, item.companyName, 'entry1')}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <span className="text-sm text-black dark:text-white">{entry1 || '-'}</span>
-              )}
+              <span className="text-sm text-black dark:text-white">{entry1 || '-'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY2</span>
-              {isAdmin ? (
-                <input
-                  type="number"
-                  value={entry2 || ''}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    handleEntryExitChange(item.ticker, item.companyName, 'entry2', value);
-                  }}
-                  onBlur={() => commitField(item.ticker, item.companyName, 'entry2')}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <span className="text-sm text-black dark:text-white">{entry2 || '-'}</span>
-              )}
+              <span className="text-sm text-black dark:text-white">{entry2 || '-'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT1</span>
-              {isAdmin ? (
-                <input
-                  type="number"
-                  value={exit1 || ''}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    handleEntryExitChange(item.ticker, item.companyName, 'exit1', value);
-                  }}
-                  onBlur={() => commitField(item.ticker, item.companyName, 'exit1')}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <span className="text-sm text-black dark:text-white">{exit1 || '-'}</span>
-              )}
+              <span className="text-sm text-black dark:text-white">{exit1 || '-'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT2</span>
-              {isAdmin ? (
-                <input
-                  type="number"
-                  value={exit2 || ''}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    handleEntryExitChange(item.ticker, item.companyName, 'exit2', value);
-                  }}
-                  onBlur={() => commitField(item.ticker, item.companyName, 'exit2')}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <span className="text-sm text-black dark:text-white">{exit2 || '-'}</span>
-              )}
+              <span className="text-sm text-black dark:text-white">{exit2 || '-'}</span>
             </div>
+            {isAdmin && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEditModal(item);
+                  }}
+                  className="w-full px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                >
+                  Edit Entry/Exit
+                </button>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date of Update</span>
               <span className={`text-sm text-center ${
@@ -927,7 +808,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         )}
       </div>
     );
-  }, [getEntryExitValue, calculateRR1, calculateRR2, getRR1Color, getRR2Color, hasIvFcf, handleCurrencyChange, handleEntryExitChange, commitField, isDateOld, isDateNearOld, isAdmin]);
+  }, [getEntryExitValue, calculateRR1, calculateRR2, getRR1Color, getRR2Color, hasIvFcf, handleCurrencyChange, commitField, isDateOld, isDateNearOld, isAdmin, openEditModal]);
 
   // Filter columns based on ivFcf availability
   const filteredColumns = useMemo(() => {
@@ -938,33 +819,113 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
   }, [hasIvFcf]);
 
   return (
-    <BaseTable<BenjaminGrahamData>
-      data={data}
-      loading={loading}
-      error={error}
-      columns={filteredColumns}
-      filters={ENTRY_EXIT_FILTERS}
-      tableId="benjamin-graham"
-      renderCell={renderCell}
-      renderHeader={renderHeader}
-      renderMobileCard={renderMobileCard}
-      enableVirtualScroll={true}
-      virtualScrollRowHeight={60}
-      virtualScrollOverscan={10}
-      enableMobileExpand={true}
-      searchFields={['companyName', 'ticker']}
-      searchPlaceholder="Sök efter företag eller ticker..."
-      defaultSortKey="companyName"
-      defaultSortDirection="asc"
-      stickyColumns={['antal', 'companyName', 'ticker', 'currency']}
-      ariaLabel="Entry Exit"
-      minTableWidth="800px"
-      getRowKey={(item) => generateRowKey(item)}
-      initialFilterState={initialTableState?.filterState}
-      initialColumnFilters={initialTableState?.columnFilters}
-      initialSearchValue={initialTableState?.searchValue}
-      initialSortConfig={initialTableState?.sortConfig}
-    />
+    <>
+      <BaseTable<BenjaminGrahamData>
+        data={data}
+        loading={loading}
+        error={error}
+        columns={filteredColumns}
+        filters={ENTRY_EXIT_FILTERS}
+        tableId="benjamin-graham"
+        renderCell={renderCell}
+        renderHeader={renderHeader}
+        renderMobileCard={renderMobileCard}
+        enableVirtualScroll={true}
+        virtualScrollRowHeight={60}
+        virtualScrollOverscan={10}
+        enableMobileExpand={true}
+        searchFields={['companyName', 'ticker']}
+        searchPlaceholder="Sök efter företag eller ticker..."
+        defaultSortKey="companyName"
+        defaultSortDirection="asc"
+        stickyColumns={['antal', 'companyName']}
+        headerCellPaddingClass="px-2 py-2"
+        cellPaddingClass="px-2 py-2"
+        ariaLabel="Entry Exit"
+        minTableWidth="800px"
+        getRowKey={(item) => generateRowKey(item)}
+        initialFilterState={initialTableState?.filterState}
+        initialColumnFilters={initialTableState?.columnFilters}
+        initialSearchValue={initialTableState?.searchValue}
+        initialSortConfig={initialTableState?.sortConfig}
+      />
+
+      {editingRow && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="entry-exit-modal-title"
+        >
+          <div className="w-full max-w-lg rounded-lg bg-white dark:bg-gray-800 shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+              <div>
+                <h2 id="entry-exit-modal-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Edit Entry/Exit
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {editingRow.companyName} ({editingRow.ticker})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditModal}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-4">
+              {(['entry1', 'entry2', 'exit1', 'exit2'] as const).map((field) => (
+                <div key={field} className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                    {field.toUpperCase()}
+                  </label>
+                  <input
+                    type="number"
+                    value={modalValues[field]}
+                    onChange={(e) => handleModalChange(field, e.target.value)}
+                    min={0}
+                    max={1000000}
+                    step={0.01}
+                    className={`w-full rounded-md border px-3 py-2 text-sm bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:border-transparent ${
+                      modalErrors[field]
+                        ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                    }`}
+                    aria-invalid={!!modalErrors[field]}
+                  />
+                  {modalErrors[field] && (
+                    <p className="text-xs text-red-600 dark:text-red-400" role="alert">
+                      {modalErrors[field]}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+              <button
+                type="button"
+                onClick={closeEditModal}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleModalSave}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
