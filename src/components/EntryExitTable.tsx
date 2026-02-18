@@ -842,7 +842,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         headerCellPaddingClass="px-2 py-2"
         cellPaddingClass="px-2 py-2"
         ariaLabel="Entry Exit"
-        minTableWidth="800px"
+        minTableWidth="100%"
         getRowKey={(item) => generateRowKey(item)}
         initialFilterState={initialTableState?.filterState}
         initialColumnFilters={initialTableState?.columnFilters}

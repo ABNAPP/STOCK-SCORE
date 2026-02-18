@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { IndustryThresholdData } from '../types/stock';
 import BaseTable, { ColumnDefinition, HeaderRenderProps } from './BaseTable';
 import ColumnTooltip from './ColumnTooltip';
@@ -29,13 +29,26 @@ const THRESHOLD_INDUSTRY_COLUMNS: ColumnDefinition<IndustryThresholdData>[] = [
   { key: 'cashSdebtMax', label: 'Cash/SDebt MAX', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'currentRatioMin', label: 'Current Ratio MIN', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'currentRatioMax', label: 'Current Ratio MAX', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'actions', label: 'Actions', defaultVisible: true, sortable: false, align: 'center' },
 ];
 
 export default function IndustryThresholdTable({ data, loading, error, initialTableState }: IndustryThresholdTableProps) {
   const { t } = useTranslation();
   const { userRole } = useAuth();
-  const { thresholdValues, getThresholdValue, getFieldValue, setFieldValue, commitField } = useThresholdValues();
+  const { getFieldValue, setFieldValue } = useThresholdValues();
   const isReadOnly = userRole !== 'admin';
+  const [editingRow, setEditingRow] = useState<IndustryThresholdData | null>(null);
+  const [modalValues, setModalValues] = useState({
+    irr: '',
+    leverageF2Min: '',
+    leverageF2Max: '',
+    ro40Min: '',
+    ro40Max: '',
+    cashSdebtMin: '',
+    cashSdebtMax: '',
+    currentRatioMin: '',
+    currentRatioMax: '',
+  });
 
   // Get unique industries for filter dropdown
   const uniqueIndustries = useMemo(() => {
@@ -87,32 +100,60 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
     },
   ], [uniqueIndustries]);
 
-  const handleThresholdChange = useCallback((industryKey: string, field: keyof ThresholdValues, value: number) => {
-    setFieldValue(industryKey, field, value);
-  }, [setFieldValue]);
+  const openEditModal = useCallback((item: IndustryThresholdData) => {
+    setModalValues({
+      irr: String(getFieldValue(item.industryKey, 'irr') || ''),
+      leverageF2Min: String(getFieldValue(item.industryKey, 'leverageF2Min') || ''),
+      leverageF2Max: String(getFieldValue(item.industryKey, 'leverageF2Max') || ''),
+      ro40Min: String(getFieldValue(item.industryKey, 'ro40Min') || ''),
+      ro40Max: String(getFieldValue(item.industryKey, 'ro40Max') || ''),
+      cashSdebtMin: String(getFieldValue(item.industryKey, 'cashSdebtMin') || ''),
+      cashSdebtMax: String(getFieldValue(item.industryKey, 'cashSdebtMax') || ''),
+      currentRatioMin: String(getFieldValue(item.industryKey, 'currentRatioMin') || ''),
+      currentRatioMax: String(getFieldValue(item.industryKey, 'currentRatioMax') || ''),
+    });
+    setEditingRow(item);
+  }, [getFieldValue]);
 
-  const inputClass = 'px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 text-center';
+  const closeEditModal = useCallback(() => {
+    setEditingRow(null);
+  }, []);
 
-  const renderThresholdField = useCallback(
-    (industryKey: string, field: keyof ThresholdValues, value: number | string, step: string) =>
-      isReadOnly ? (
-        <span className="text-sm text-black dark:text-white">{value}</span>
-      ) : (
-        <input
-          type="number"
-          step={step}
-          value={value || ''}
-          onChange={(e) => {
-            const v = parseFloat(e.target.value) || 0;
-            handleThresholdChange(industryKey, field, v);
-          }}
-          onBlur={() => commitField(industryKey, field)}
-          className={inputClass}
-          onClick={(e) => e.stopPropagation()}
-        />
-      ),
-    [isReadOnly, handleThresholdChange, commitField]
-  );
+  const handleModalChange = useCallback((field: keyof ThresholdValues, value: string) => {
+    setModalValues((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleModalSave = useCallback(() => {
+    if (!editingRow) return;
+    const parsed = {
+      irr: parseFloat(modalValues.irr),
+      leverageF2Min: parseFloat(modalValues.leverageF2Min),
+      leverageF2Max: parseFloat(modalValues.leverageF2Max),
+      ro40Min: parseFloat(modalValues.ro40Min),
+      ro40Max: parseFloat(modalValues.ro40Max),
+      cashSdebtMin: parseFloat(modalValues.cashSdebtMin),
+      cashSdebtMax: parseFloat(modalValues.cashSdebtMax),
+      currentRatioMin: parseFloat(modalValues.currentRatioMin),
+      currentRatioMax: parseFloat(modalValues.currentRatioMax),
+    };
+
+    const values: ThresholdValues = {
+      irr: Number.isFinite(parsed.irr) ? parsed.irr : 0,
+      leverageF2Min: Number.isFinite(parsed.leverageF2Min) ? parsed.leverageF2Min : 0,
+      leverageF2Max: Number.isFinite(parsed.leverageF2Max) ? parsed.leverageF2Max : 0,
+      ro40Min: Number.isFinite(parsed.ro40Min) ? parsed.ro40Min : 0,
+      ro40Max: Number.isFinite(parsed.ro40Max) ? parsed.ro40Max : 0,
+      cashSdebtMin: Number.isFinite(parsed.cashSdebtMin) ? parsed.cashSdebtMin : 0,
+      cashSdebtMax: Number.isFinite(parsed.cashSdebtMax) ? parsed.cashSdebtMax : 0,
+      currentRatioMin: Number.isFinite(parsed.currentRatioMin) ? parsed.currentRatioMin : 0,
+      currentRatioMax: Number.isFinite(parsed.currentRatioMax) ? parsed.currentRatioMax : 0,
+    };
+
+    (Object.keys(values) as Array<keyof ThresholdValues>).forEach((field) => {
+      setFieldValue(editingRow.industryKey, field, values[field]);
+    });
+    closeEditModal();
+  }, [closeEditModal, editingRow, modalValues, setFieldValue]);
 
   // Custom header renderer with ColumnTooltip
   const renderHeader = useCallback((props: HeaderRenderProps<IndustryThresholdData>) => {
@@ -305,27 +346,43 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
       case 'industry':
         return <span className="font-medium">{item.industry}</span>;
       case 'irr':
-        return renderThresholdField(item.industryKey, 'irr', values.irr, '0.1');
+        return <span className="text-sm text-black dark:text-white">{values.irr}</span>;
       case 'leverageF2Min':
-        return renderThresholdField(item.industryKey, 'leverageF2Min', values.leverageF2Min, '0.1');
+        return <span className="text-sm text-black dark:text-white">{values.leverageF2Min}</span>;
       case 'leverageF2Max':
-        return renderThresholdField(item.industryKey, 'leverageF2Max', values.leverageF2Max, '0.1');
+        return <span className="text-sm text-black dark:text-white">{values.leverageF2Max}</span>;
       case 'ro40Min':
-        return renderThresholdField(item.industryKey, 'ro40Min', values.ro40Min, '0.01');
+        return <span className="text-sm text-black dark:text-white">{values.ro40Min}</span>;
       case 'ro40Max':
-        return renderThresholdField(item.industryKey, 'ro40Max', values.ro40Max, '0.01');
+        return <span className="text-sm text-black dark:text-white">{values.ro40Max}</span>;
       case 'cashSdebtMin':
-        return renderThresholdField(item.industryKey, 'cashSdebtMin', values.cashSdebtMin, '0.1');
+        return <span className="text-sm text-black dark:text-white">{values.cashSdebtMin}</span>;
       case 'cashSdebtMax':
-        return renderThresholdField(item.industryKey, 'cashSdebtMax', values.cashSdebtMax, '0.1');
+        return <span className="text-sm text-black dark:text-white">{values.cashSdebtMax}</span>;
       case 'currentRatioMin':
-        return renderThresholdField(item.industryKey, 'currentRatioMin', values.currentRatioMin, '0.1');
+        return <span className="text-sm text-black dark:text-white">{values.currentRatioMin}</span>;
       case 'currentRatioMax':
-        return renderThresholdField(item.industryKey, 'currentRatioMax', values.currentRatioMax, '0.1');
+        return <span className="text-sm text-black dark:text-white">{values.currentRatioMax}</span>;
+      case 'actions':
+        if (isReadOnly) {
+          return <span className="text-gray-400">-</span>;
+        }
+        return (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openEditModal(item);
+            }}
+            className="px-3 py-1 text-sm font-medium text-blue-700 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+          >
+            Edit
+          </button>
+        );
       default:
         return null;
     }
-  }, [getFieldValue, renderThresholdField]);
+  }, [getFieldValue, isReadOnly, openEditModal]);
 
   // Render mobile card
   const renderMobileCard = useCallback((item: IndustryThresholdData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
@@ -403,42 +460,132 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
             }).map(([key, config]) => (
               <div key={key} className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{config.label}</span>
-                {renderThresholdField(item.industryKey, key as keyof ThresholdValues, values[key as keyof ThresholdValues], config.step)}
+                <span className="text-sm text-black dark:text-white">{values[key as keyof ThresholdValues]}</span>
               </div>
             ))}
+            {!isReadOnly && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEditModal(item);
+                  }}
+                  className="w-full px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                >
+                  Edit Thresholds
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
     );
-  }, [getFieldValue, renderThresholdField]);
+  }, [getFieldValue, isReadOnly, openEditModal]);
 
   return (
-    <BaseTable<IndustryThresholdData>
-      data={data}
-      loading={loading}
-      error={error}
-      columns={THRESHOLD_INDUSTRY_COLUMNS}
-      filters={thresholdFilters}
-      tableId="industry-threshold"
-      renderCell={renderCell}
-      renderHeader={renderHeader}
-      renderMobileCard={renderMobileCard}
-      enableVirtualScroll={true}
-      virtualScrollRowHeight={60}
-      virtualScrollOverscan={10}
-      enableMobileExpand={true}
-      searchFields={['industry']}
-      searchPlaceholder="Sök efter bransch..."
+    <>
+      <BaseTable<IndustryThresholdData>
+        data={data}
+        loading={loading}
+        error={error}
+        columns={THRESHOLD_INDUSTRY_COLUMNS}
+        filters={thresholdFilters}
+        tableId="industry-threshold"
+        renderCell={renderCell}
+        renderHeader={renderHeader}
+        renderMobileCard={renderMobileCard}
+        enableVirtualScroll={true}
+        virtualScrollRowHeight={60}
+        virtualScrollOverscan={10}
+        enableMobileExpand={true}
+        searchFields={['industry']}
+        searchPlaceholder="Sök efter bransch..."
       defaultSortKey="industry"
       defaultSortDirection="asc"
       stickyColumns={['antal', 'industry']}
+      headerCellPaddingClass="px-2 py-2"
+      cellPaddingClass="px-2 py-2"
       ariaLabel="Industry Threshold"
-      minTableWidth="800px"
-      getRowKey={(item) => item.industryKey}
-      initialFilterState={initialTableState?.filterState}
-      initialColumnFilters={initialTableState?.columnFilters}
-      initialSearchValue={initialTableState?.searchValue}
-      initialSortConfig={initialTableState?.sortConfig}
-    />
+        minTableWidth="100%"
+        getRowKey={(item) => item.industryKey}
+        initialFilterState={initialTableState?.filterState}
+        initialColumnFilters={initialTableState?.columnFilters}
+        initialSearchValue={initialTableState?.searchValue}
+        initialSortConfig={initialTableState?.sortConfig}
+      />
+
+      {editingRow && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="industry-threshold-modal-title"
+        >
+          <div className="w-full max-w-2xl rounded-lg bg-white dark:bg-gray-800 shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+              <div>
+                <h2 id="industry-threshold-modal-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Edit Industry Thresholds
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300">{editingRow.industry}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditModal}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="px-6 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {([
+                { field: 'irr', label: 'IRR', step: '0.1' },
+                { field: 'leverageF2Min', label: 'LEVERAGE F2 MIN', step: '0.1' },
+                { field: 'leverageF2Max', label: 'LEVERAGE F2 MAX', step: '0.1' },
+                { field: 'ro40Min', label: 'RO40 MIN', step: '0.01' },
+                { field: 'ro40Max', label: 'RO40 MAX', step: '0.01' },
+                { field: 'cashSdebtMin', label: 'Cash/SDebt MIN', step: '0.1' },
+                { field: 'cashSdebtMax', label: 'Cash/SDebt MAX', step: '0.1' },
+                { field: 'currentRatioMin', label: 'Current Ratio MIN', step: '0.1' },
+                { field: 'currentRatioMax', label: 'Current Ratio MAX', step: '0.1' },
+              ] as const).map((config) => (
+                <div key={config.field} className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                    {config.label}
+                  </label>
+                  <input
+                    type="number"
+                    step={config.step}
+                    value={modalValues[config.field]}
+                    onChange={(e) => handleModalChange(config.field, e.target.value)}
+                    className="w-full rounded-md border px-3 py-2 text-sm bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:border-transparent border-gray-300 dark:border-gray-600 focus:ring-blue-500"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+              <button
+                type="button"
+                onClick={closeEditModal}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleModalSave}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
