@@ -79,7 +79,7 @@ function App() {
 
   // Sync activeView from URL and handle redirects for unauthorized access
   useEffect(() => {
-    if (!currentUser) return;
+    if (authLoading || !currentUser) return;
     const rawPath = location.pathname.replace(/^\//, '');
     const path = rawPath || 'score';
     const defaultView = getDefaultLandingView();
@@ -100,17 +100,18 @@ function App() {
       navigate(`/${defaultView}`, { replace: true });
       setActiveView(defaultView);
     }
-  }, [currentUser, location.pathname, canView, getDefaultLandingView, navigate, showToast, t]);
+  }, [authLoading, currentUser, location.pathname, canView, getDefaultLandingView, navigate, showToast, t]);
 
   // Redirect if activeView becomes unauthorized (e.g. role change)
   useEffect(() => {
+    if (authLoading || !currentUser) return;
     if (!canView(activeView)) {
       const defaultView = getDefaultLandingView();
       setActiveView(defaultView);
       navigate(`/${defaultView}`, { replace: true });
       showToast(t('common.unauthorizedView') || 'Du har inte tillgång till denna vy', 'warning');
     }
-  }, [activeView, canView, getDefaultLandingView, navigate, showToast, t]);
+  }, [authLoading, currentUser, activeView, canView, getDefaultLandingView, navigate, showToast, t]);
 
   // Background sync and cache warming disabled - using Firestore cache instead
 
