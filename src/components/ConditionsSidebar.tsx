@@ -22,6 +22,18 @@ const getNavigationSections = (t: (key: string) => string): NavigationSection[] 
     collapsible: false,
   },
   {
+    id: 'ism-posture-positioning',
+    label: t('navigation.ismPosturePositioning'),
+    items: [{ id: 'ism-posture-positioning', label: t('navigation.ismPosturePositioning') }],
+    collapsible: false,
+  },
+  {
+    id: 'sma',
+    label: t('navigation.sma'),
+    items: [{ id: 'sma', label: t('navigation.sma') }],
+    collapsible: false,
+  },
+  {
     id: 'entry-exit-benjamin-graham',
     label: t('navigation.benjaminGraham'),
     items: [{ id: 'entry-exit-benjamin-graham', label: t('navigation.benjaminGraham') }],

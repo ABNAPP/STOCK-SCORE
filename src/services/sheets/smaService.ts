@@ -24,53 +24,39 @@ export function transformSMAData(results: { data: DataRow[]; meta: { fields: str
     .map((row: DataRow) => {
       const companyName = getValue(['Company Name', 'Company', 'company'], row);
       const ticker = getValue(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
-      const sma100Str = getValue(['SMA(100)', 'SMA(100)', 'sma(100)', 'sma100', 'SMA100'], row);
+      const sma9Str = getValue(['SMA(9)', 'sma(9)', 'sma9', 'SMA9'], row);
+      const sma21Str = getValue(['SMA(21)', 'sma(21)', 'sma21', 'SMA21'], row);
+      const sma55Str = getValue(['SMA(55)', 'sma(55)', 'sma55', 'SMA55'], row);
       const sma200Str = getValue(['SMA(200)', 'SMA(200)', 'sma(200)', 'sma200', 'SMA200'], row);
-      const smaCrossStr = getValue(['SMA Cross', 'SMA Cross', 'sma cross', 'smaCross', 'SMACross', 'SMA CROSS'], row);
-      
-      // Only process if company name is valid (not #N/A)
-      if (!isValidValue(companyName)) {
+
+      // Only skip row if both company name and ticker are invalid (keep row if either is valid, so no row is dropped e.g. ZIM)
+      if (!isValidValue(companyName) && !isValidValue(ticker)) {
         return null;
       }
-      
-      // Filter out rows where Ticker is N/A (DashBoard rule: if Ticker is N/A, don't fetch data)
-      if (!isValidValue(ticker)) {
-        return null;
-      }
-      
-      // Parse SMA(100) value as number (handle #N/A)
-      const sma100 = parseNumericValueNullable(sma100Str);
-      
-      // Parse SMA(200) value as number (handle #N/A)
+
+      const sma9 = parseNumericValueNullable(sma9Str);
+      const sma21 = parseNumericValueNullable(sma21Str);
+      const sma55 = parseNumericValueNullable(sma55Str);
       const sma200 = parseNumericValueNullable(sma200Str);
-      
-      // Extract SMA Cross value as text (handle #N/A and empty values)
-      let smaCross: string | null = null;
-      if (smaCrossStr && smaCrossStr.trim()) {
-        const trimmed = smaCrossStr.trim();
-        // Convert #N/A to null, otherwise use the value
-        if (trimmed.toUpperCase() !== '#N/A' && trimmed.toUpperCase() !== 'N/A' && trimmed !== '') {
-          smaCross = trimmed;
-        }
-      }
-      
+
       return {
-        companyName: companyName,
-        ticker: ticker,
-        sma100: sma100,
-        sma200: sma200,
-        smaCross: smaCross,
+        companyName,
+        ticker,
+        sma9,
+        sma21,
+        sma55,
+        sma200,
       };
     })
     .filter((data): data is SMAData => data !== null);
-  
+
   return smaData;
 }
 
 /**
  * Fetches SMA (Simple Moving Average) data from Google Sheets
  * 
- * Retrieves technical analysis data including SMA(100), SMA(200), and SMA Cross signals.
+ * Retrieves technical analysis data including SMA(9), SMA(21), SMA(55) and SMA(200).
  * Tries Apps Script API first (fast), falls back to CSV proxy if needed (slower).
  * 
  * @param forceRefresh - If true, bypasses cache and forces network request (default: false)
@@ -86,7 +72,7 @@ export async function fetchSMAData(
     sheetName: 'SMA',
     dataTypeName: 'SMA',
     transformer: transformSMAData,
-    requiredColumns: ['Company Name', 'Ticker', 'SMA(100)', 'SMA(200)', 'SMA Cross'],
+    requiredColumns: ['Company Name', 'Ticker', 'SMA(9)', 'SMA(21)', 'SMA(55)', 'SMA(200)'],
     cacheKey: CACHE_KEYS.SMA,
     forceRefresh,
     ttl: DEFAULT_TTL,

@@ -10,8 +10,6 @@ import {
   getPEPercentageColor,
   getTBSPPriceColor,
   getSMAColor,
-  getSMACrossColorStandard,
-  getSMACrossColorDetailed,
 } from '../colorLogic';
 import { createMockThresholdData } from '../../../test/helpers';
 
@@ -136,16 +134,5 @@ describe('colorThresholds colorLogic', () => {
     it('returns RED when price < sma', () => expect(getSMAColor(80, 90)).toBe('RED'));
     it('returns ORANGE when price === sma', () => expect(getSMAColor(100, 100)).toBe('ORANGE'));
     it('returns BLANK for null', () => expect(getSMAColor(null, 90)).toBe('BLANK'));
-  });
-
-  describe('getSMACrossColorStandard', () => {
-    it('returns GREEN for GOLDEN', () => expect(getSMACrossColorStandard('GOLDEN')).toBe('GREEN'));
-    it('returns RED for DEATH', () => expect(getSMACrossColorStandard('DEATH')).toBe('RED'));
-    it('returns BLANK for null', () => expect(getSMACrossColorStandard(null)).toBe('BLANK'));
-  });
-
-  describe('getSMACrossColorDetailed', () => {
-    it('returns RED for GOLDEN (inverted)', () => expect(getSMACrossColorDetailed('GOLDEN')).toBe('RED'));
-    it('returns GREEN for DEATH (inverted)', () => expect(getSMACrossColorDetailed('DEATH')).toBe('GREEN'));
   });
 });

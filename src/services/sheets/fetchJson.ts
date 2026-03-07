@@ -12,6 +12,7 @@ import { APPS_SCRIPT_URL } from './fetchConfig';
 import { convert2DArrayToObjects, createMockParseResult } from './fetchDataConversion';
 import { isSecureMode } from '../../config/securityMode';
 import { SecurityError } from '../../utils/securityErrors';
+import { snapshotToTransformerFormat } from '../deltaSyncService';
 
 export async function fetchJSONData<T>(
   sheetName: string,
@@ -157,8 +158,35 @@ export async function fetchJSONData<T>(
       throw new Error(`Failed to parse JSON response: ${formatted.message}`);
     }
 
-    if (!Array.isArray(jsonData) || jsonData.length === 0) {
-      throw new Error('Invalid JSON response: expected non-empty array');
+    let dataRows: DataRow[];
+    if (Array.isArray(jsonData) && jsonData.length > 0) {
+      dataRows = convert2DArrayToObjects(jsonData);
+    } else if (
+      sheetName === 'SMA' &&
+      jsonData &&
+      typeof jsonData === 'object' &&
+      !Array.isArray(jsonData) &&
+      'ok' in jsonData &&
+      (jsonData as { ok: boolean }).ok &&
+      'headers' in jsonData &&
+      'rows' in jsonData &&
+      Array.isArray((jsonData as { rows: unknown[] }).rows)
+    ) {
+      const snapshot = jsonData as {
+        headers: string[];
+        rows: Array<{
+          key: string;
+          values: unknown[];
+          sma9Color?: string | null;
+          sma21Color?: string | null;
+          sma55Color?: string | null;
+          sma200Color?: string | null;
+        }>;
+      };
+      const converted = snapshotToTransformerFormat(snapshot);
+      dataRows = converted.data;
+    } else {
+      throw new Error('Invalid JSON response: expected non-empty array or valid SMA snapshot');
     }
 
     progressCallback?.({
@@ -166,8 +194,6 @@ export async function fetchJSONData<T>(
       percentage: 40,
       message: `Parsing ${dataTypeName} JSON...`,
     });
-
-    const dataRows = convert2DArrayToObjects(jsonData);
     if (dataRows.length === 0) {
       throw new Error('No data rows found after conversion');
     }

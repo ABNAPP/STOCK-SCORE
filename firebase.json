@@ -4,5 +4,9 @@
     "location": "europe-north2",
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "functions": {
+    "source": "functions",
+    "predeploy": ["npm --prefix functions run build"]
   }
 }

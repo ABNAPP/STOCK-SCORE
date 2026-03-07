@@ -13,6 +13,8 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   UserIcon,
+  ArrowTrendingUpIcon,
+  PresentationChartLineIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -37,6 +39,18 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
     id: 'score-board',
     label: t('navigation.scoreBoard'),
     items: [{ id: 'score-board', label: t('navigation.scoreBoard') }],
+    collapsible: false,
+  },
+  {
+    id: 'ism-posture-positioning',
+    label: t('navigation.ismPosturePositioning'),
+    items: [{ id: 'ism-posture-positioning', label: t('navigation.ismPosturePositioning') }],
+    collapsible: false,
+  },
+  {
+    id: 'sma',
+    label: t('navigation.sma'),
+    items: [{ id: 'sma', label: t('navigation.sma') }],
     collapsible: false,
   },
   {
@@ -66,6 +80,10 @@ const getViewIcon = (viewId: ViewId) => {
       return TrophyIcon;
     case 'score-board':
       return ChartBarIcon;
+    case 'ism-posture-positioning':
+      return PresentationChartLineIcon;
+    case 'sma':
+      return ArrowTrendingUpIcon;
     case 'entry-exit-benjamin-graham':
       return CursorArrowRaysIcon;
     case 'fundamental-pe-industry':

@@ -391,17 +391,17 @@ export default function BaseTable<T extends Record<string, unknown>>({
     setFilterValues(newFilters);
   }, []);
 
-  // Generate row key - must be defined before it's used in handlers.
-  // Stable identifier (no index) so expanded state survives sort/filter changes.
+  // Generate row key - must be unique per row so every row renders (e.g. SMA table row 185).
+  // Include index so that duplicate ticker+companyName or identical content still get distinct keys.
   const getItemRowKey = useCallback((item: T, index: number) => {
     if (getRowKey) {
       return getRowKey(item, index);
     }
-    // Default: try to use ticker and companyName (stable, no index)
     const ticker = 'ticker' in item && typeof item.ticker === 'string' ? item.ticker : '';
     const companyName = 'companyName' in item && typeof item.companyName === 'string' ? item.companyName : '';
-    if (ticker || companyName) return `${ticker}-${companyName}`;
-    return `row-${stableHash(stableStringify(item))}`;
+    const contentHash = stableHash(stableStringify(item));
+    if (ticker || companyName) return `${ticker}-${companyName}-${contentHash}-${index}`;
+    return `row-${contentHash}-${index}`;
   }, [getRowKey]);
 
   // Toggle row expansion for mobile view

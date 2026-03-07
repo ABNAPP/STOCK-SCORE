@@ -36,7 +36,7 @@ All metadata definieras centralt i `src/config/tableMetadata.ts`. Denna fil inne
 - **pe-industry** - P/E-industri-medianer
 - **industry-threshold** - Tröskelvärden per industri
 - **entry-exit-entry1** - Manuella entry/exit-värden
-- **sma-100** - SMA-tekniska indikatorer
+- **sma-100** - SMA-tekniska indikatorer (SMA(200))
 
 Varje tabell har en `tableId` som används för att hämta rätt metadata.
 

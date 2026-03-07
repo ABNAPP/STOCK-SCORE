@@ -121,17 +121,13 @@ export function useScoreBoardData() {
       }
     });
 
-    // Process SMAData results
-    let smaDataMap = new Map<string, { sma100: number | null; sma200: number | null; smaCross: string | null }>();
+    // Process SMAData results (sma200Color is computed in view from price vs sma200)
+    let smaDataMap = new Map<string, { sma200: number | null }>();
     if (smaResult.status === 'fulfilled') {
       const smaData = smaResult.value;
       smaData.forEach((sma) => {
         const tickerKey = sma.ticker.toLowerCase().trim();
-        smaDataMap.set(tickerKey, {
-          sma100: sma.sma100,
-          sma200: sma.sma200,
-          smaCross: sma.smaCross,
-        });
+        smaDataMap.set(tickerKey, { sma200: sma.sma200 });
       });
     } else {
       logger.warn(
@@ -152,7 +148,7 @@ export function useScoreBoardData() {
     industryPe2Map.forEach((value, key) => {
       industryPe2MapObj[key] = value;
     });
-    const smaDataMapObj: Record<string, { sma100: number | null; sma200: number | null; smaCross: string | null }> = {};
+    const smaDataMapObj: Record<string, { sma200: number | null }> = {};
     smaDataMap.forEach((value, key) => {
       smaDataMapObj[key] = value;
     });

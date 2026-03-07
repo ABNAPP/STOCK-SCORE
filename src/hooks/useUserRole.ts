@@ -54,6 +54,8 @@ export function useUserRole() {
   const NAV_VIEW_ORDER: ViewId[] = [
     'score',
     'score-board',
+    'ism-posture-positioning',
+    'sma',
     'entry-exit-benjamin-graham',
     'fundamental-pe-industry',
     'industry-threshold',

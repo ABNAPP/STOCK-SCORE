@@ -150,21 +150,3 @@ export function getSMAColor(
   if (price < smaValue) return 'RED';
   return 'ORANGE';
 }
-
-/** Standard: GOLDEN=GREEN, DEATH=RED (used by calculateScore, ScoreBoardTable) */
-export function getSMACrossColorStandard(smaCross: string | null): ColorType {
-  if (!smaCross) return 'BLANK';
-  const upper = smaCross.toUpperCase();
-  if (upper === 'GOLDEN') return 'GREEN';
-  if (upper === 'DEATH') return 'RED';
-  return 'BLANK';
-}
-
-/** Detailed/inverted: GOLDEN=RED, DEATH=GREEN (used by calculateScoreDetailed) */
-export function getSMACrossColorDetailed(smaCross: string | null): ColorType {
-  if (!smaCross) return 'BLANK';
-  const upper = smaCross.toUpperCase();
-  if (upper.includes('GOLDEN')) return 'RED';
-  if (upper.includes('DEATH')) return 'GREEN';
-  return 'BLANK';
-}

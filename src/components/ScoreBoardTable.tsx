@@ -19,8 +19,6 @@ import {
   getCurrentRatioColor,
   getPEPercentageColor,
   getTBSPPriceColor,
-  getSMAColor,
-  getSMACrossColorDetailed,
   isTheoEntryGreen,
   colorTypeToCssClass,
 } from '../utils/colorThresholds';
@@ -49,9 +47,6 @@ const SCORE_BOARD_COLUMNS: ColumnDefinition[] = [
   { key: 'leverageF2', label: 'Leverage F2', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'pe1Industry', label: 'P/E1 Industry', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'pe2Industry', label: 'P/E2 Industry', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'sma100', label: 'SMA(100)', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'sma200', label: 'SMA(200)', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'smaCross', label: 'SMA Cross', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'theoEntry', label: 'TheoEntry', defaultVisible: true, sortable: false, align: 'center' },
 ];
 
@@ -398,24 +393,6 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
             {item.pe2Industry !== null ? `${item.pe2Industry.toFixed(1)}%` : 'N/A'}
           </span>
         );
-      case 'sma100':
-        return (
-          <span className={colorTypeToCssClass(getSMAColor(item.price, item.sma100), { orangeVariant: 'yellow' }) || 'text-black dark:text-white'}>
-            {item.sma100 !== null ? item.sma100.toFixed(2) : 'N/A'}
-          </span>
-        );
-      case 'sma200':
-        return (
-          <span className={colorTypeToCssClass(getSMAColor(item.price, item.sma200), { orangeVariant: 'yellow' }) || 'text-black dark:text-white'}>
-            {item.sma200 !== null ? item.sma200.toFixed(2) : 'N/A'}
-          </span>
-        );
-      case 'smaCross':
-        return (
-          <span className={colorTypeToCssClass(getSMACrossColorDetailed(item.smaCross)) || 'text-black dark:text-white'}>
-            {item.smaCross || 'N/A'}
-          </span>
-        );
       case 'theoEntry':
         return (
           <span className={
@@ -472,7 +449,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         </div>
         {isExpanded && (
           <div className="border-t border-gray-200 dark:border-gray-700 p-4 space-y-3 animate-fade-in">
-            {['irr', 'mungerQualityScore', 'valueCreation', 'tbSPrice', 'ro40F1', 'ro40F2', 'currentRatio', 'cashSdebt', 'leverageF2', 'pe1Industry', 'pe2Industry', 'sma100', 'sma200', 'smaCross', 'theoEntry'].map((key) => {
+            {['irr', 'mungerQualityScore', 'valueCreation', 'tbSPrice', 'ro40F1', 'ro40F2', 'currentRatio', 'cashSdebt', 'leverageF2', 'pe1Industry', 'pe2Industry', 'theoEntry'].map((key) => {
               const column = SCORE_BOARD_COLUMNS.find(c => c.key === key);
               if (!column) return null;
               return (
@@ -512,7 +489,6 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
       stickyColumns={['antal', 'companyName', 'ticker']}
       ariaLabel={t('navigation.scoreBoard')}
       minTableWidth="800px"
-      getRowKey={(item) => `${item.ticker}-${item.companyName}`}
       enableExport={true}
       enablePrint={true}
       enableShareableLink={true}

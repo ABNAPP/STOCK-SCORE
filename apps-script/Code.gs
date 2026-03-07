@@ -141,6 +141,31 @@ function addAuthMeta(output, authMode) {
 }
 
 /**
+ * Map cell background hex to "GREEN" | "RED" | null. No YELLOW/ORANGE.
+ * Green: #34a853, #00ff00, etc. Red: #ea4335, #ff0000, etc. Other/blank/white -> null.
+ */
+function backgroundToColor(hex) {
+  if (!hex || typeof hex !== 'string') return null;
+  var h = hex.trim().toLowerCase().replace(/^#/, '');
+  if (!h) return null;
+  // Normalize to 6-char hex for comparison
+  if (h.length === 3) {
+    h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  }
+  if (h.length !== 6) return null;
+  var greenHexes = ['34a853', '00ff00', '00ff01', '0f9d58', '1e8e3e', '81c784', 'a5d6a7', 'c8e6c9'];
+  var redHexes = ['ea4335', 'ff0000', 'f44336', 'e53935', 'd32f2f', 'e57373', 'ef9a9a', 'ffcdd2'];
+  var i;
+  for (i = 0; i < greenHexes.length; i++) {
+    if (h === greenHexes[i]) return 'GREEN';
+  }
+  for (i = 0; i < redHexes.length; i++) {
+    if (h === redHexes[i]) return 'RED';
+  }
+  return null;
+}
+
+/**
  * Handle snapshot request - returns full data
  */
 function handleSnapshot(sheetName) {
@@ -153,7 +178,8 @@ function handleSnapshot(sheetName) {
     }
     
     // Get all data
-    const values = sheet.getDataRange().getValues();
+    const dataRange = sheet.getDataRange();
+    const values = dataRange.getValues();
     if (values.length === 0) {
       return createErrorResponse('Sheet "' + sheetName + '" is empty', 404);
     }
@@ -171,11 +197,8 @@ function handleSnapshot(sheetName) {
     for (var i = 1; i < values.length; i++) {
       var rowValues = values[i];
       var key = rowValues[keyColumnIndex] ? String(rowValues[keyColumnIndex]).trim() : '';
-      if (key) { // Only include rows with a key
-        rows.push({
-          key: key,
-          values: rowValues
-        });
+      if (key) {
+        rows.push({ key: key, values: rowValues });
       }
     }
     

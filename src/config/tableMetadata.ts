@@ -295,11 +295,9 @@ export const tableMetadata: TableMetadata[] = [
           '  - P/E1 INDUSTRY (vikt: 5)',
           '  - P/E2 INDUSTRY (vikt: 5)',
           '  - (TB/S)/Price (vikt: 2)',
-          'Technical metrics (50p totalt):',
+          'Technical metrics (47.5p totalt):',
           '  - THEOENTRY (vikt: 40)',
-          '  - SMA(100) (vikt: 2.5)',
           '  - SMA(200) (vikt: 2.5)',
-          '  - SMA CROSS (vikt: 5)',
           'Färgmarkering:',
           '  - GRÖN om score >= 70',
           '  - BLÅ om score >= 45',
@@ -484,49 +482,6 @@ export const tableMetadata: TableMetadata[] = [
           'Matchar industry från Dashboard med industry i P/E INDUSTRY tabellen (case-insensitive)',
           'Röd färg om procenttalet > 0, grön färg om procenttalet <= 0'
         ]
-      },
-      {
-        columnKey: 'sma100',
-        dataSource: 'SMA tabell (Technical section), kolumn "SMA(100)"',
-        conditions: [
-          'Hämtas från SMA tabellen i Technical section',
-          'Matchas med Score Board data baserat på Ticker (case-insensitive)',
-          'Visa N/A om värdet är null eller om ticker inte hittas i SMA tabellen',
-          'Visa faktiska 0-värden som "0.00"',
-          'Formateras med två decimaler',
-          'Färgmarkering baserat på jämförelse med Price från ENTRY/EXIT tabellen:',
-          '  - GRÖN om Price > SMA(100)',
-          '  - RÖD om Price < SMA(100)',
-          '  - GUL om Price == SMA(100)',
-          '  - Ingen färg om Price eller SMA(100) saknas'
-        ]
-      },
-      {
-        columnKey: 'sma200',
-        dataSource: 'SMA tabell (Technical section), kolumn "SMA(200)"',
-        conditions: [
-          'Hämtas från SMA tabellen i Technical section',
-          'Matchas med Score Board data baserat på Ticker (case-insensitive)',
-          'Visa N/A om värdet är null eller om ticker inte hittas i SMA tabellen',
-          'Visa faktiska 0-värden som "0.00"',
-          'Formateras med två decimaler',
-          'Färgmarkering baserat på jämförelse med Price från ENTRY/EXIT tabellen:',
-          '  - GRÖN om Price > SMA(200)',
-          '  - RÖD om Price < SMA(200)',
-          '  - GUL om Price == SMA(200)',
-          '  - Ingen färg om Price eller SMA(200) saknas'
-        ]
-      },
-      {
-        columnKey: 'smaCross',
-        dataSource: 'SMA tabell (Technical section), kolumn "SMA Cross"',
-        conditions: [
-          'Hämtas från SMA tabellen i Technical section',
-          'Matchas med Score Board data baserat på Ticker (case-insensitive)',
-          'Visa N/A om ticker inte hittas i SMA tabellen',
-          'Röd färg om texten innehåller "GOLDEN"',
-          'Grön färg om texten innehåller "DEATH"'
-        ]
       }
     ]
   },
@@ -646,8 +601,24 @@ export const tableMetadata: TableMetadata[] = [
         ]
       },
       {
-        columnKey: 'sma100',
-        dataSource: 'SMA sheet (gid=1413104083), kolumn "SMA(100)"',
+        columnKey: 'sma9',
+        dataSource: 'SMA sheet (gid=1413104083), kolumn "SMA(9)"',
+        conditions: [
+          'Visa faktiska 0-värden som "0.00"',
+          'Filtrera bort rader där Company Name eller Ticker är N/A'
+        ]
+      },
+      {
+        columnKey: 'sma21',
+        dataSource: 'SMA sheet (gid=1413104083), kolumn "SMA(21)"',
+        conditions: [
+          'Visa faktiska 0-värden som "0.00"',
+          'Filtrera bort rader där Company Name eller Ticker är N/A'
+        ]
+      },
+      {
+        columnKey: 'sma55',
+        dataSource: 'SMA sheet (gid=1413104083), kolumn "SMA(55)"',
         conditions: [
           'Visa faktiska 0-värden som "0.00"',
           'Filtrera bort rader där Company Name eller Ticker är N/A'
@@ -659,15 +630,6 @@ export const tableMetadata: TableMetadata[] = [
         conditions: [
           'Visa faktiska 0-värden som "0.00"',
           'Filtrera bort rader där Company Name eller Ticker är N/A'
-        ]
-      },
-      {
-        columnKey: 'smaCross',
-        dataSource: 'SMA sheet (gid=1413104083), kolumn "SMA Cross"',
-        conditions: [
-          'Kolumnen innehåller text, inte nummer',
-          'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Visa tom sträng om värdet är N/A eller tomt'
         ]
       }
     ]

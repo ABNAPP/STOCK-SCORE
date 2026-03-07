@@ -73,8 +73,15 @@ export interface SnapshotResponse {
   version: number;
   /** Column headers from the sheet */
   headers: string[];
-  /** Data rows with key and values */
-  rows: Array<{ key: string; values: unknown[] }>;
+  /** Data rows with key and values (DashBoard/SMA may include sma9Color, sma21Color, sma55Color, sma200Color from cell backgrounds) */
+  rows: Array<{
+    key: string;
+    values: unknown[];
+    sma9Color?: string | null;
+    sma21Color?: string | null;
+    sma55Color?: string | null;
+    sma200Color?: string | null;
+  }>;
   /** ISO timestamp when snapshot was generated */
   generatedAt: string;
   /** Error message if request failed */

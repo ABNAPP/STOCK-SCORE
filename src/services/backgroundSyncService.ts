@@ -102,13 +102,9 @@ async function persistSnapshotToCache(
           if (pe.pe1 != null) industryPe1Map.set(pe.industry.toLowerCase(), pe.pe1);
           if (pe.pe2 != null) industryPe2Map.set(pe.industry.toLowerCase(), pe.pe2);
         });
-        const smaDataMap = new Map<string, { sma100: number | null; sma200: number | null; smaCross: string | null }>();
+        const smaDataMap = new Map<string, { sma200: number | null }>();
         smaData.forEach((s) => {
-          smaDataMap.set(s.ticker.toLowerCase().trim(), {
-            sma100: s.sma100,
-            sma200: s.sma200,
-            smaCross: s.smaCross,
-          });
+          smaDataMap.set(s.ticker.toLowerCase().trim(), { sma200: s.sma200 });
         });
         const transformer = createScoreBoardTransformer(industryPe1Map, industryPe2Map, smaDataMap);
         const data = transformer(transformerFormat);

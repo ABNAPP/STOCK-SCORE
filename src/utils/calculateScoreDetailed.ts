@@ -14,8 +14,6 @@ import {
   getCurrentRatioColor,
   getPEPercentageColor,
   getTBSPPriceColor,
-  getSMAColor,
-  getSMACrossColorDetailed,
   isTheoEntryGreen,
 } from './colorThresholds';
 import type { ColorType } from './colorThresholds';
@@ -54,14 +52,12 @@ const METRICS: Metric[] = [
   { name: 'P/E1 INDUSTRY', weight: 5 },
   { name: 'P/E2 INDUSTRY', weight: 5 },
   { name: '(TB/S)/Price', weight: 2 },
-  // Technical (50p)
+  // Technical (42.5p)
   { name: 'THEOENTRY', weight: 40 },
-  { name: 'SMA(100)', weight: 2.5 },
   { name: 'SMA(200)', weight: 2.5 },
-  { name: 'SMA CROSS', weight: 5 },
 ];
 
-const TOTAL_WEIGHT = 100; // 50 + 50
+const TOTAL_WEIGHT = 97.5; // 50 fundamental + 42.5 technical
 
 // Get price from BenjaminGrahamData
 function getPriceFromBenjaminGraham(
@@ -250,14 +246,8 @@ export function calculateDetailedScoreBreakdown(
       case 'THEOENTRY':
         color = isTheoEntryGreen(entryExitValue, price) ? 'GREEN' : 'BLANK';
         break;
-      case 'SMA(100)':
-        color = getSMAColor(price, scoreBoardData.sma100);
-        break;
       case 'SMA(200)':
-        color = getSMAColor(price, scoreBoardData.sma200);
-        break;
-      case 'SMA CROSS':
-        color = getSMACrossColorDetailed(scoreBoardData.smaCross);
+        color = scoreBoardData.sma200Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma200Color === 'RED' ? 'RED' : 'BLANK';
         break;
     }
 
@@ -303,9 +293,8 @@ export function calculateDetailedScoreBreakdown(
  * different metric weights optimized for the detailed view. The main
  * differences are:
  * 
- * - Different weight distribution (50p fundamental + 50p technical)
+ * - Different weight distribution (50p fundamental + 45p technical)
  * - Uses BLUE color classification instead of ORANGE
- * - SMA Cross has inverted logic (GOLDEN=RED, DEATH=GREEN) for detailed view
  * 
  * **When to use:**
  * - For detailed score view that matches the breakdown display
@@ -395,14 +384,8 @@ export function calculateDetailedScore(
       case 'THEOENTRY':
         color = isTheoEntryGreen(entryExitValue, price) ? 'GREEN' : 'BLANK';
         break;
-      case 'SMA(100)':
-        color = getSMAColor(price, scoreBoardData.sma100);
-        break;
       case 'SMA(200)':
-        color = getSMAColor(price, scoreBoardData.sma200);
-        break;
-      case 'SMA CROSS':
-        color = getSMACrossColorDetailed(scoreBoardData.smaCross);
+        color = scoreBoardData.sma200Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma200Color === 'RED' ? 'RED' : 'BLANK';
         break;
     }
 

@@ -14,7 +14,14 @@ interface SnapshotResponse {
   ok: boolean;
   version: number;
   headers: string[];
-  rows: Array<{ key: string; values: unknown[] }>;
+  rows: Array<{
+    key: string;
+    values: unknown[];
+    sma9Color?: string | null;
+    sma21Color?: string | null;
+    sma55Color?: string | null;
+    sma200Color?: string | null;
+  }>;
   generatedAt: string;
   error?: string;
 }
@@ -188,19 +195,14 @@ function transformSMA(data: DataRow[]): Array<Record<string, unknown>> {
     .map((row) => {
       const companyName = getValue(['Company Name', 'Company', 'company'], row);
       const ticker = getValue(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
-      if (!isValidValue(companyName) || !isValidValue(ticker)) return null;
-      const smaCrossStr = getValue(['SMA Cross', 'SMA Cross', 'sma cross', 'smaCross', 'SMACross', 'SMA CROSS'], row);
-      let smaCross: string | null = null;
-      if (smaCrossStr?.trim()) {
-        const t = smaCrossStr.trim().toUpperCase();
-        if (t !== '#N/A' && t !== 'N/A' && t !== '') smaCross = smaCrossStr.trim();
-      }
+      if (!isValidValue(companyName) && !isValidValue(ticker)) return null;
       return {
         companyName,
         ticker,
-        sma100: parseNum(getValue(['SMA(100)', 'SMA(100)', 'sma(100)', 'sma100', 'SMA100'], row)),
+        sma9: parseNum(getValue(['SMA(9)', 'sma(9)', 'sma9', 'SMA9'], row)),
+        sma21: parseNum(getValue(['SMA(21)', 'sma(21)', 'sma21', 'SMA21'], row)),
+        sma55: parseNum(getValue(['SMA(55)', 'sma(55)', 'sma55', 'SMA55'], row)),
         sma200: parseNum(getValue(['SMA(200)', 'SMA(200)', 'sma(200)', 'sma200', 'SMA200'], row)),
-        smaCross,
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
@@ -210,7 +212,7 @@ function transformScoreBoard(
   data: DataRow[],
   industryPe1Map: Map<string, number>,
   industryPe2Map: Map<string, number>,
-  smaDataMap: Map<string, { sma100: number | null; sma200: number | null; smaCross: string | null }>
+  smaDataMap: Map<string, { sma200: number | null }>
 ): Array<Record<string, unknown>> {
   return data
     .map((row) => {
@@ -257,9 +259,7 @@ function transformScoreBoard(
         isCashSdebtDivZero: !!isDiv0,
         pe1Industry,
         pe2Industry,
-        sma100: smaMatch?.sma100 ?? null,
         sma200: smaMatch?.sma200 ?? null,
-        smaCross: smaMatch?.smaCross ?? null,
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
@@ -358,13 +358,9 @@ export async function runAdminRefresh(
           if (p.pe1 != null) industryPe1Map.set(p.industry.toLowerCase(), p.pe1);
           if (p.pe2 != null) industryPe2Map.set(p.industry.toLowerCase(), p.pe2);
         }
-        const smaDataMap = new Map<string, { sma100: number | null; sma200: number | null; smaCross: string | null }>();
-        for (const s of smaData as Array<{ ticker: string; sma100?: number | null; sma200?: number | null; smaCross?: string | null }>) {
-          smaDataMap.set(s.ticker.toLowerCase().trim(), {
-            sma100: s.sma100 ?? null,
-            sma200: s.sma200 ?? null,
-            smaCross: s.smaCross ?? null,
-          });
+        const smaDataMap = new Map<string, { sma200: number | null }>();
+        for (const s of smaData as Array<{ ticker: string; sma200?: number | null }>) {
+          smaDataMap.set(s.ticker.toLowerCase().trim(), { sma200: s.sma200 ?? null });
         }
         const scoreBoard = transformScoreBoard(dashData, industryPe1Map, industryPe2Map, smaDataMap);
         const payload = { scoreBoard };

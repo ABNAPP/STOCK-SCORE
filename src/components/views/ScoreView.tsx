@@ -76,7 +76,7 @@ function ScoreViewInner() {
     }
 
     // Match Score Board data with Price data, then calculate scores
-    // SMA data (sma100, sma200, smaCross) is already included in ScoreBoardData
+    // SMA data (sma200) is already included in ScoreBoardData
     return scoreBoardData.map(item => {
       const tickerKey = item.ticker.toLowerCase().trim();
       const price = priceMap.get(tickerKey) ?? null;

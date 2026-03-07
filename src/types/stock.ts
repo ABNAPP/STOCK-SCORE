@@ -32,9 +32,9 @@ export interface ScoreBoardData extends Record<string, unknown> {
   currentRatio: number | null; // Added: Current Ratio from Dashboard sheet
   cashSdebt: number | null; // Added: Cash/SDebt from Dashboard sheet
   isCashSdebtDivZero: boolean; // Added: Flag to track division-by-zero for Cash/SDebt (should be green)
-  sma100: number | null; // Added: SMA(100) from SMA table (Technical section)
   sma200: number | null; // Added: SMA(200) from SMA table (Technical section)
-  smaCross: string | null; // Added: SMA Cross from SMA table (Technical section)
+  /** Cell background color from DashBoard: only GREEN, RED, or null (no yellow/orange) */
+  sma200Color?: 'GREEN' | 'RED' | null;
   price?: number | null; // Added: Price from ENTRY/EXIT table for SMA color comparison
 }
 
@@ -55,9 +55,15 @@ export interface IndustryThresholdData extends Record<string, unknown> {
 export interface SMAData extends Record<string, unknown> {
   companyName: string;
   ticker: string;
-  sma100: number | null; // null means invalid/missing value, 0 means actual zero
+  sma9: number | null;
+  sma21: number | null;
+  sma55: number | null;
   sma200: number | null; // null means invalid/missing value, 0 means actual zero
-  smaCross: string | null; // null means missing value
+  /** Cell background from SMA sheet: GREEN, RED, or null */
+  sma9Color?: 'GREEN' | 'RED' | null;
+  sma21Color?: 'GREEN' | 'RED' | null;
+  sma55Color?: 'GREEN' | 'RED' | null;
+  sma200Color?: 'GREEN' | 'RED' | null;
 }
 
 export interface EntryExitData extends Record<string, unknown> {

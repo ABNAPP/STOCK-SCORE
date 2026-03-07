@@ -11,6 +11,8 @@ interface HelpModalProps {
 const HELP_VIEW_IDS: ViewId[] = [
   'score',
   'score-board',
+  'ism-posture-positioning',
+  'sma',
   'entry-exit-benjamin-graham',
   'fundamental-pe-industry',
   'industry-threshold',

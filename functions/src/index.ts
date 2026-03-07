@@ -1,4 +1,4 @@
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 
 admin.initializeApp();
@@ -56,10 +56,10 @@ export const adminRefreshCache = functions.https.onCall(async (data, context) =>
   await verifyAdmin(context);
 
   const adminUid = context.auth!.uid;
-  const { viewIds, force, dryRun } = data || {};
+  const { viewIds, dryRun } = data || {};
 
   const appsScriptUrl =
-    (process.env.APPS_SCRIPT_URL as string) ||
+    (process.env.VITE_APPS_SCRIPT_URL as string) ||
     (functions.config().apps_script?.url as string) ||
     '';
   const appsScriptToken =
@@ -141,7 +141,7 @@ export const appsScriptProxy = functions.https.onRequest(async (req, res) => {
   }
 
   const appsScriptUrl =
-    (process.env.APPS_SCRIPT_URL as string) ||
+    (process.env.VITE_APPS_SCRIPT_URL as string) ||
     (functions.config().apps_script?.url as string) ||
     '';
   const validToken =

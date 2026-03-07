@@ -30,7 +30,7 @@ const SCORE_BOARD_CSV_URL = `https://docs.google.com/spreadsheets/d/${SCORE_BOAR
 export function createScoreBoardTransformer(
   industryPe1Map: Map<string, number>,
   industryPe2Map: Map<string, number>,
-  smaDataMap: Map<string, { sma100: number | null; sma200: number | null; smaCross: string | null }>
+  smaDataMap: Map<string, { sma200: number | null }>
 ) {
   return (results: { data: DataRow[]; meta: { fields: string[] | null } }): ScoreBoardData[] => {
     const scoreBoardData = results.data
@@ -108,7 +108,7 @@ export function createScoreBoardTransformer(
           }
         }
 
-        // Match SMA(100), SMA(200), and SMA Cross from SMA sheet by ticker
+        // Match SMA(200) from SMA sheet by ticker (color is computed in view from price vs sma200)
         const tickerKey = ticker.toLowerCase().trim();
         const smaMatch = smaDataMap.get(tickerKey);
 
@@ -129,9 +129,7 @@ export function createScoreBoardTransformer(
           currentRatio: currentRatio,
           cashSdebt: finalCashSdebt,
           isCashSdebtDivZero: isCashSdebtDivZero || false,
-          sma100: smaMatch ? smaMatch.sma100 : null, // Directly from SMA sheet
-          sma200: smaMatch ? smaMatch.sma200 : null, // Directly from SMA sheet
-          smaCross: smaMatch ? smaMatch.smaCross : null, // Directly from SMA sheet
+          sma200: smaMatch ? smaMatch.sma200 : null,
         };
       })
       .filter((data): data is ScoreBoardData => data !== null);
@@ -188,17 +186,13 @@ export async function fetchScoreBoardData(
     }
   });
 
-  // Process SMAData results
-  let smaDataMap = new Map<string, { sma100: number | null; sma200: number | null; smaCross: string | null }>();
+  // Process SMAData results (sma200Color is computed in view from price vs sma200)
+  let smaDataMap = new Map<string, { sma200: number | null }>();
   if (smaResult.status === 'fulfilled') {
     const smaData = smaResult.value;
     smaData.forEach((sma) => {
       const tickerKey = sma.ticker.toLowerCase().trim();
-      smaDataMap.set(tickerKey, {
-        sma100: sma.sma100,
-        sma200: sma.sma200,
-        smaCross: sma.smaCross,
-      });
+      smaDataMap.set(tickerKey, { sma200: sma.sma200 });
     });
   } else {
     logger.warn(
@@ -221,7 +215,7 @@ export async function fetchScoreBoardData(
     industryPe2MapObj[key] = value;
   });
   
-  const smaDataMapObj: Record<string, { sma100: number | null; sma200: number | null; smaCross: string | null }> = {};
+  const smaDataMapObj: Record<string, { sma200: number | null }> = {};
   smaDataMap.forEach((value, key) => {
     smaDataMapObj[key] = value;
   });

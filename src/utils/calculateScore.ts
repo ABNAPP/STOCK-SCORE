@@ -14,8 +14,6 @@ import {
   getCurrentRatioColor,
   getPEPercentageColor,
   getTBSPPriceColor,
-  getSMAColor,
-  getSMACrossColorStandard,
   isTheoEntryGreen,
 } from './colorThresholds';
 import type { ColorType } from './colorThresholds';
@@ -54,7 +52,7 @@ interface Metric {
 /**
  * Metrics configuration with weights and calculation methods
  * 
- * Total weight: 105 points (55 fundamental + 50 technical), scaled to 100.
+ * Total weight: 100 points (55 fundamental + 45 technical).
  * 
  * Weight distribution rationale:
  * - Fundamental metrics (55p): Core financial health indicators
@@ -63,10 +61,11 @@ interface Metric {
  *   - IRR (8p): High weight - return on investment indicator
  *   - Lower weights for supporting metrics (P/E ratios, ratios, etc.)
  * 
- * - Technical metrics (50p): Market timing and technical indicators
+ * - Technical metrics (45p): Market timing and technical indicators
  *   - TheoEntry (40p): Highest weight - entry/exit timing is critical for returns
  *   - SMA indicators (2.5p each): Lower weight - supporting trend indicators
- *   - SMA Cross (5p): Moderate weight - trend reversal signal
+ * 
+ * Total weight: 100p (55 fundamental + 45 technical).
  * 
  * Calculation methods:
  * - 3Band: Uses color factors (GREEN=1.0, ORANGE=0.7, RED=0.0) for nuanced scoring
@@ -85,14 +84,12 @@ const METRICS: Metric[] = [
   { name: 'P/E1 INDUSTRY', weight: 2, method: '3Band' },
   { name: 'P/E2 INDUSTRY', weight: 1, method: '3Band' },
   { name: '(TB/S)/Price', weight: 1, method: '3Band' },
-  // Technical (50p)
+  // Technical (42.5p)
   { name: 'TheoEntry', weight: 40, method: 'GreenOnly' },
-  { name: 'SMA(100)', weight: 2.5, method: 'GreenOnly' },
   { name: 'SMA(200)', weight: 2.5, method: 'GreenOnly' },
-  { name: 'SMA Cross', weight: 5, method: 'GreenOnly' },
 ];
 
-const TOTAL_ACTIVE_POINTS = 100; // 55 + 50 = 105, but scaled to 100
+const TOTAL_ACTIVE_POINTS = 97.5; // 55 fundamental + 42.5 technical
 
 // Get price from BenjaminGrahamData
 function getPriceFromBenjaminGraham(
@@ -218,14 +215,8 @@ export function calculateScore(
       case 'TheoEntry':
         color = isTheoEntryGreen(entryExitValue, price) ? 'GREEN' : 'BLANK';
         break;
-      case 'SMA(100)':
-        color = getSMAColor(price, scoreBoardData.sma100);
-        break;
       case 'SMA(200)':
-        color = getSMAColor(price, scoreBoardData.sma200);
-        break;
-      case 'SMA Cross':
-        color = getSMACrossColorStandard(scoreBoardData.smaCross);
+        color = scoreBoardData.sma200Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma200Color === 'RED' ? 'RED' : 'BLANK';
         break;
     }
 

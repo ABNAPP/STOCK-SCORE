@@ -6,6 +6,8 @@ import type { ViewId } from '../types/navigation';
  */
 export function getTableId(viewId: ViewId): string | null {
   if (viewId === 'score-board') return 'score-board';
+  if (viewId === 'ism-posture-positioning') return null;
+  if (viewId === 'sma') return 'sma-100';
   if (viewId === 'score') return 'score';
   if (viewId === 'entry-exit-benjamin-graham') return 'benjamin-graham';
   if (viewId === 'fundamental-pe-industry') return 'pe-industry';

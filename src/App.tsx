@@ -33,6 +33,8 @@ const EntryExitView = lazyWithRetry<typeof import('./components/views/EntryExitV
 const FundamentalView = lazyWithRetry<typeof import('./components/views/FundamentalView').default>(() => import('./components/views/FundamentalView'), 'FundamentalView');
 const IndustryThresholdView = lazyWithRetry<typeof import('./components/views/IndustryThresholdView').default>(() => import('./components/views/IndustryThresholdView'), 'IndustryThresholdView');
 const PersonalPortfolioView = lazyWithRetry<typeof import('./components/views/PersonalPortfolioView').default>(() => import('./components/views/PersonalPortfolioView'), 'PersonalPortfolioView');
+const ISMPostureView = lazyWithRetry<typeof import('./components/views/ISMPostureView').default>(() => import('./components/views/ISMPostureView'), 'ISMPostureView');
+const SMAView = lazyWithRetry<typeof import('./components/views/SMAView').default>(() => import('./components/views/SMAView'), 'SMAView');
 
 // Lazy load modal components
 const ConditionsModal = lazyWithRetry<typeof import('./components/ConditionsModal').default>(() => import('./components/ConditionsModal'), 'ConditionsModal');
@@ -42,6 +44,8 @@ const HelpModal = lazyWithRetry<typeof import('./components/HelpModal').default>
 const MAIN_VIEW_IDS: ViewId[] = [
   'score',
   'score-board',
+  'ism-posture-positioning',
+  'sma',
   'entry-exit-benjamin-graham',
   'fundamental-pe-industry',
   'industry-threshold',
@@ -169,6 +173,8 @@ function App() {
   const getPageName = (viewId: ViewId): string => {
     const names: Partial<Record<ViewId, string>> = {
       'score-board': t('navigation.scoreBoard'),
+      'ism-posture-positioning': t('navigation.ismPosturePositioning'),
+      'sma': t('navigation.sma'),
       'score': t('navigation.score'),
       'entry-exit-benjamin-graham': t('navigation.benjaminGraham'),
       'fundamental-pe-industry': t('navigation.peIndustry'),
@@ -191,6 +197,22 @@ function App() {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <ScoreBoardView />
+        </Suspense>
+      );
+    }
+
+    if (activeView === 'ism-posture-positioning') {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <ISMPostureView />
+        </Suspense>
+      );
+    }
+
+    if (activeView === 'sma') {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <SMAView />
         </Suspense>
       );
     }
