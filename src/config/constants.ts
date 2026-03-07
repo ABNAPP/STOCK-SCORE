@@ -9,6 +9,7 @@
 // Price tolerance multipliers
 export const PRICE_TOLERANCE_GREEN = 1.05; // 5% above entry/benjamin graham
 export const PRICE_TOLERANCE_BLUE = 1.15; // 15% above benjamin graham
+export const PRICE_TOLERANCE_RED_EXIT_LOW = 0.95; // Red when price >= exit * this (within 5% below exit, at exit, or above exit)
 
 // Return rate thresholds (percentages)
 export const RR1_GREEN_THRESHOLD_PERCENT = 60;

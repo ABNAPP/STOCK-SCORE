@@ -24,13 +24,15 @@ const SCORE_BOARD_CSV_URL = `https://docs.google.com/spreadsheets/d/${SCORE_BOAR
  * 
  * @param industryPe1Map - Map of industry to P/E1 median values
  * @param industryPe2Map - Map of industry to P/E2 median values
- * @param smaDataMap - Map of ticker to SMA data
+ * @param smaDataMap - Map of ticker to SMA data (from SMA table: sma9, sma21, sma55, sma200)
  * @returns Transformer function
  */
+export type SMADataMapEntry = { sma9: number | null; sma21: number | null; sma55: number | null; sma200: number | null };
+
 export function createScoreBoardTransformer(
   industryPe1Map: Map<string, number>,
   industryPe2Map: Map<string, number>,
-  smaDataMap: Map<string, { sma200: number | null }>
+  smaDataMap: Map<string, SMADataMapEntry>
 ) {
   return (results: { data: DataRow[]; meta: { fields: string[] | null } }): ScoreBoardData[] => {
     const scoreBoardData = results.data
@@ -108,7 +110,7 @@ export function createScoreBoardTransformer(
           }
         }
 
-        // Match SMA(200) from SMA sheet by ticker (color is computed in view from price vs sma200)
+        // Match SMA data from SMA table by ticker (colors computed in view from price vs SMA values)
         const tickerKey = ticker.toLowerCase().trim();
         const smaMatch = smaDataMap.get(tickerKey);
 
@@ -129,6 +131,9 @@ export function createScoreBoardTransformer(
           currentRatio: currentRatio,
           cashSdebt: finalCashSdebt,
           isCashSdebtDivZero: isCashSdebtDivZero || false,
+          sma9: smaMatch ? smaMatch.sma9 : null,
+          sma21: smaMatch ? smaMatch.sma21 : null,
+          sma55: smaMatch ? smaMatch.sma55 : null,
           sma200: smaMatch ? smaMatch.sma200 : null,
         };
       })
@@ -186,13 +191,13 @@ export async function fetchScoreBoardData(
     }
   });
 
-  // Process SMAData results (sma200Color is computed in view from price vs sma200)
-  let smaDataMap = new Map<string, { sma200: number | null }>();
+  // Process SMAData results from SMA table (SMA colors computed in view from price vs SMA values)
+  let smaDataMap = new Map<string, SMADataMapEntry>();
   if (smaResult.status === 'fulfilled') {
     const smaData = smaResult.value;
     smaData.forEach((sma) => {
       const tickerKey = sma.ticker.toLowerCase().trim();
-      smaDataMap.set(tickerKey, { sma200: sma.sma200 });
+      smaDataMap.set(tickerKey, { sma9: sma.sma9, sma21: sma.sma21, sma55: sma.sma55, sma200: sma.sma200 });
     });
   } else {
     logger.warn(
@@ -215,7 +220,7 @@ export async function fetchScoreBoardData(
     industryPe2MapObj[key] = value;
   });
   
-  const smaDataMapObj: Record<string, { sma200: number | null }> = {};
+  const smaDataMapObj: Record<string, SMADataMapEntry> = {};
   smaDataMap.forEach((value, key) => {
     smaDataMapObj[key] = value;
   });

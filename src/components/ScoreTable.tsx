@@ -7,6 +7,12 @@ import { calculateDetailedScoreBreakdown } from '../utils/calculateScoreDetailed
 import { FilterConfig, ShareableTableState } from '../types/filters';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import ScoreBreakdownRow from './ScoreBreakdownRow';
+import {
+  isEntry1GreenForCell,
+  isEntry2GreenForCell,
+  isExit1RedForCell,
+  isExit2RedForCell,
+} from '../utils/colorThresholds/entryExitCellColors';
 
 /** Memoized expanded row to avoid recalculating breakdown on every render */
 const MemoizedScoreBreakdownExpandedRow = memo(function MemoizedScoreBreakdownExpandedRow({
@@ -129,14 +135,26 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
         return <span className="text-black dark:text-white">{item.currency || 'USD'}</span>;
       case 'price':
         return <span className="text-black dark:text-white">{item.price !== null ? item.price.toLocaleString() : 'N/A'}</span>;
-      case 'entry1':
-        return <span className="text-black dark:text-white">{item.entry1 || '-'}</span>;
-      case 'entry2':
-        return <span className="text-black dark:text-white">{item.entry2 || '-'}</span>;
-      case 'exit1':
-        return <span className="text-black dark:text-white">{item.exit1 || '-'}</span>;
-      case 'exit2':
-        return <span className="text-black dark:text-white">{item.exit2 || '-'}</span>;
+      case 'entry1': {
+        const green = isEntry1GreenForCell(item.price, item.entry1 || 0);
+        const cls = green ? 'text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20' : 'text-black dark:text-white';
+        return <span className={cls}>{item.entry1 || '-'}</span>;
+      }
+      case 'entry2': {
+        const green = isEntry2GreenForCell(item.price, item.entry2 || 0);
+        const cls = green ? 'text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20' : 'text-black dark:text-white';
+        return <span className={cls}>{item.entry2 || '-'}</span>;
+      }
+      case 'exit1': {
+        const red = isExit1RedForCell(item.price, item.exit1 || 0);
+        const cls = red ? 'text-red-700 dark:text-red-200 bg-red-50 dark:bg-red-900/20' : 'text-black dark:text-white';
+        return <span className={cls}>{item.exit1 || '-'}</span>;
+      }
+      case 'exit2': {
+        const red = isExit2RedForCell(item.price, item.exit2 || 0);
+        const cls = red ? 'text-red-700 dark:text-red-200 bg-red-50 dark:bg-red-900/20' : 'text-black dark:text-white';
+        return <span className={cls}>{item.exit2 || '-'}</span>;
+      }
       case 'score':
         return (
           <span className={getScoreColorClass(item.score)}>
@@ -180,19 +198,19 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY1</span>
-            <span className="text-sm text-black dark:text-white">{item.entry1 || '-'}</span>
+            <span className={`text-sm ${isEntry1GreenForCell(item.price, item.entry1 || 0) ? 'text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20' : 'text-black dark:text-white'}`}>{item.entry1 || '-'}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY2</span>
-            <span className="text-sm text-black dark:text-white">{item.entry2 || '-'}</span>
+            <span className={`text-sm ${isEntry2GreenForCell(item.price, item.entry2 || 0) ? 'text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20' : 'text-black dark:text-white'}`}>{item.entry2 || '-'}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT1</span>
-            <span className="text-sm text-black dark:text-white">{item.exit1 || '-'}</span>
+            <span className={`text-sm ${isExit1RedForCell(item.price, item.exit1 || 0) ? 'text-red-700 dark:text-red-200 bg-red-50 dark:bg-red-900/20' : 'text-black dark:text-white'}`}>{item.exit1 || '-'}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT2</span>
-            <span className="text-sm text-black dark:text-white">{item.exit2 || '-'}</span>
+            <span className={`text-sm ${isExit2RedForCell(item.price, item.exit2 || 0) ? 'text-red-700 dark:text-red-200 bg-red-50 dark:bg-red-900/20' : 'text-black dark:text-white'}`}>{item.exit2 || '-'}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Score</span>

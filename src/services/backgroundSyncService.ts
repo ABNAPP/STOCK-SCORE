@@ -15,7 +15,7 @@ import { getCachedData, setDeltaCacheEntry, VIEWDATA_MIGRATION_MODE } from './fi
 import { transformBenjaminGrahamData } from './sheets/benjaminGrahamService';
 import { transformPEIndustryData } from './sheets/peIndustryService';
 import { transformSMAData } from './sheets/smaService';
-import { createScoreBoardTransformer } from './sheets/scoreBoardService';
+import { createScoreBoardTransformer, type SMADataMapEntry } from './sheets/scoreBoardService';
 import type { PEIndustryData } from '../types/stock';
 import type { SMAData } from '../types/stock';
 
@@ -102,9 +102,9 @@ async function persistSnapshotToCache(
           if (pe.pe1 != null) industryPe1Map.set(pe.industry.toLowerCase(), pe.pe1);
           if (pe.pe2 != null) industryPe2Map.set(pe.industry.toLowerCase(), pe.pe2);
         });
-        const smaDataMap = new Map<string, { sma200: number | null }>();
+        const smaDataMap = new Map<string, SMADataMapEntry>();
         smaData.forEach((s) => {
-          smaDataMap.set(s.ticker.toLowerCase().trim(), { sma200: s.sma200 });
+          smaDataMap.set(s.ticker.toLowerCase().trim(), { sma9: s.sma9, sma21: s.sma21, sma55: s.sma55, sma200: s.sma200 });
         });
         const transformer = createScoreBoardTransformer(industryPe1Map, industryPe2Map, smaDataMap);
         const data = transformer(transformerFormat);

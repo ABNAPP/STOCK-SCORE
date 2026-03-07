@@ -33,31 +33,35 @@ function toDetailedColor(color: ColorType): DetailedColor {
   return color === 'ORANGE' ? 'BLUE' : (color as DetailedColor);
 }
 
-// Metrics configuration with weights
+// Metrics configuration with weights; GreenOnly metrics get full weight only when GREEN
 interface Metric {
   name: string;
   weight: number;
+  method: '3Band' | 'GreenOnly';
 }
 
 const METRICS: Metric[] = [
-  // Fundamental (50p)
-  { name: 'VALUE CREATION', weight: 7 },
-  { name: 'Munger Quality Score', weight: 7 },
-  { name: 'IRR', weight: 6 },
-  { name: 'Ro40 F1', weight: 3 },
-  { name: 'Ro40 F2', weight: 3 },
-  { name: 'LEVERAGE F2', weight: 4 },
-  { name: 'Cash/SDebt', weight: 5 },
-  { name: 'Current Ratio', weight: 3 },
-  { name: 'P/E1 INDUSTRY', weight: 5 },
-  { name: 'P/E2 INDUSTRY', weight: 5 },
-  { name: '(TB/S)/Price', weight: 2 },
-  // Technical (42.5p)
-  { name: 'THEOENTRY', weight: 40 },
-  { name: 'SMA(200)', weight: 2.5 },
+  // Fundamental (55p)
+  { name: 'VALUE CREATION', weight: 7.5, method: '3Band' },
+  { name: 'Munger Quality Score', weight: 7, method: '3Band' },
+  { name: 'IRR', weight: 4.5, method: '3Band' },
+  { name: 'Ro40 F1', weight: 4.5, method: '3Band' },
+  { name: 'Ro40 F2', weight: 4.5, method: '3Band' },
+  { name: 'LEVERAGE F2', weight: 4.5, method: '3Band' },
+  { name: 'Cash/SDebt', weight: 4.5, method: '3Band' },
+  { name: 'Current Ratio', weight: 4.5, method: '3Band' },
+  { name: 'P/E1 INDUSTRY', weight: 4.5, method: '3Band' },
+  { name: 'P/E2 INDUSTRY', weight: 4.5, method: '3Band' },
+  { name: '(TB/S)/Price', weight: 4.5, method: '3Band' },
+  // Technical (45p)
+  { name: 'THEOENTRY', weight: 40, method: 'GreenOnly' },
+  { name: 'SMA(9)', weight: 0.5, method: 'GreenOnly' },
+  { name: 'SMA(21)', weight: 2.5, method: 'GreenOnly' },
+  { name: 'SMA(55)', weight: 1, method: 'GreenOnly' },
+  { name: 'SMA(200)', weight: 1, method: 'GreenOnly' },
 ];
 
-const TOTAL_WEIGHT = 97.5; // 50 fundamental + 42.5 technical
+const TOTAL_WEIGHT = 100; // 55 fundamental + 45 technical
 
 // Get price from BenjaminGrahamData
 function getPriceFromBenjaminGraham(
@@ -246,6 +250,15 @@ export function calculateDetailedScoreBreakdown(
       case 'THEOENTRY':
         color = isTheoEntryGreen(entryExitValue, price) ? 'GREEN' : 'BLANK';
         break;
+      case 'SMA(9)':
+        color = scoreBoardData.sma9Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma9Color === 'RED' ? 'RED' : 'BLANK';
+        break;
+      case 'SMA(21)':
+        color = scoreBoardData.sma21Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma21Color === 'RED' ? 'RED' : 'BLANK';
+        break;
+      case 'SMA(55)':
+        color = scoreBoardData.sma55Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma55Color === 'RED' ? 'RED' : 'BLANK';
+        break;
       case 'SMA(200)':
         color = scoreBoardData.sma200Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma200Color === 'RED' ? 'RED' : 'BLANK';
         break;
@@ -253,7 +266,9 @@ export function calculateDetailedScoreBreakdown(
 
     // Map ORANGE -> BLUE for detailed view (factor lookup and display)
     const detailedColor = toDetailedColor(color);
-    const factor = COLOR_FACTORS[detailedColor];
+    const factor = metric.method === 'GreenOnly'
+      ? (detailedColor === 'GREEN' ? 1 : 0)
+      : COLOR_FACTORS[detailedColor];
     const points = metric.weight * factor;
     
     // Determine category
@@ -384,13 +399,24 @@ export function calculateDetailedScore(
       case 'THEOENTRY':
         color = isTheoEntryGreen(entryExitValue, price) ? 'GREEN' : 'BLANK';
         break;
+      case 'SMA(9)':
+        color = scoreBoardData.sma9Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma9Color === 'RED' ? 'RED' : 'BLANK';
+        break;
+      case 'SMA(21)':
+        color = scoreBoardData.sma21Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma21Color === 'RED' ? 'RED' : 'BLANK';
+        break;
+      case 'SMA(55)':
+        color = scoreBoardData.sma55Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma55Color === 'RED' ? 'RED' : 'BLANK';
+        break;
       case 'SMA(200)':
         color = scoreBoardData.sma200Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma200Color === 'RED' ? 'RED' : 'BLANK';
         break;
     }
 
     const detailedColor = toDetailedColor(color);
-    const factor = COLOR_FACTORS[detailedColor];
+    const factor = metric.method === 'GreenOnly'
+      ? (detailedColor === 'GREEN' ? 1 : 0)
+      : COLOR_FACTORS[detailedColor];
     totalPoints += metric.weight * factor;
   }
 

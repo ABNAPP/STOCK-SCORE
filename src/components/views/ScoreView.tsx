@@ -5,6 +5,7 @@ import { useScoreBoardData } from '../../hooks/useScoreBoardData';
 import { useIndustryThresholdData } from '../../hooks/useIndustryThresholdData';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
 import { EntryExitData, ScoreBoardData } from '../../types/stock';
+import { getSMAColor } from '../../utils/colorThresholds/colorLogic';
 import ProgressIndicator from '../ProgressIndicator';
 import { TableSkeleton } from '../SkeletonLoader';
 import { EntryExitProvider, useEntryExitValues } from '../../contexts/EntryExitContext';
@@ -61,12 +62,10 @@ function ScoreViewInner() {
     }
   }, [scoreBoardData, initializeFromData]);
 
-  // Match Price data with Score Board data based on ticker, then calculate scores
-  // SMA data is already included in ScoreBoardData from fetchScoreBoardData
+  // Match Price data with Score Board data; compute SMA colors (from SMA table) for score calculation
   const scoreData: ScoreData[] = useMemo(() => {
     if (!scoreBoardData || scoreBoardData.length === 0) return [];
 
-    // Create a map of Price data by ticker (case-insensitive)
     const priceMap = new Map<string, number | null>();
     if (benjaminGrahamData && benjaminGrahamData.length > 0) {
       benjaminGrahamData.forEach(bg => {
@@ -75,16 +74,21 @@ function ScoreViewInner() {
       });
     }
 
-    // Match Score Board data with Price data, then calculate scores
-    // SMA data (sma200) is already included in ScoreBoardData
     return scoreBoardData.map(item => {
       const tickerKey = item.ticker.toLowerCase().trim();
       const price = priceMap.get(tickerKey) ?? null;
-      
-      // Create enhanced ScoreBoardData with price
-      const enhancedData = {
+      const sma9Color = (() => { const c = getSMAColor(price, item.sma9); return c === 'GREEN' || c === 'RED' ? c : null; })();
+      const sma21Color = (() => { const c = getSMAColor(price, item.sma21); return c === 'GREEN' || c === 'RED' ? c : null; })();
+      const sma55Color = (() => { const c = getSMAColor(price, item.sma55); return c === 'GREEN' || c === 'RED' ? c : null; })();
+      const sma200Color = (() => { const c = getSMAColor(price, item.sma200); return c === 'GREEN' || c === 'RED' ? c : null; })();
+
+      const enhancedData: ScoreBoardData = {
         ...item,
-        price: price,
+        price,
+        sma9Color,
+        sma21Color,
+        sma55Color,
+        sma200Color,
       };
 
       // Get currency and entry/exit values from entryExitValues

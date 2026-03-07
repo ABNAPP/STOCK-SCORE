@@ -14,8 +14,8 @@ import {
   PRICE_TOLERANCE_GREEN,
   PRICE_TOLERANCE_BLUE,
   RR1_GREEN_THRESHOLD_PERCENT,
-  RR2_GREEN_THRESHOLD_PERCENT,
 } from '../config/constants';
+import { getRR1Value, getRR2Value } from '../utils/colorThresholds/theoEntryLogic';
 import { isNumber, isString } from '../utils/typeGuards';
 import { validateEntryExitValue } from '../utils/inputValidator';
 
@@ -262,31 +262,18 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
     closeEditModal();
   }, [closeEditModal, editingRow, modalValues, setFieldValue]);
 
-  // Calculate RR1: (Exit1 - Entry1) / Entry1 * 100
-  const calculateRR1 = useCallback((entry1: number, exit1: number): number | null => {
-    if (!entry1 || !exit1 || entry1 === 0) return null;
-    const rr1 = ((exit1 - entry1) / entry1) * 100;
-    return isNaN(rr1) || !isFinite(rr1) ? null : rr1;
-  }, []);
-
-  // Get color for RR1 cell based on conditions
+  // Get color for RR1 cell: green when RR1 >= 60% and Price <= Entry1 * 1.05 (same as TheoEntry)
   const getRR1Color = useCallback((rr1: number | null, price: number | null, entry1: number): string | null => {
-    if (rr1 !== null && rr1 > RR1_GREEN_THRESHOLD_PERCENT && price !== null && price > 0 && entry1 > 0 && price <= entry1 * PRICE_TOLERANCE_GREEN) {
+    if (rr1 !== null && rr1 >= RR1_GREEN_THRESHOLD_PERCENT && price !== null && price > 0 && entry1 > 0 && price <= entry1 * PRICE_TOLERANCE_GREEN) {
       return 'text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20';
     }
     return null;
   }, []);
 
-  // Calculate RR2: (Exit2 - Entry2) / Entry2 * 100
-  const calculateRR2 = useCallback((entry2: number, exit2: number): number | null => {
-    if (!entry2 || !exit2 || entry2 === 0) return null;
-    const rr2 = ((exit2 - entry2) / entry2) * 100;
-    return isNaN(rr2) || !isFinite(rr2) ? null : rr2;
-  }, []);
-
   // Get color for RR2 cell based on conditions
+  // RR2 column: green when RR2 >= 60% (same as TheoEntry), whether RR2 uses Exit2 or Exit1
   const getRR2Color = useCallback((rr2: number | null, price: number | null, entry2: number): string | null => {
-    if (rr2 !== null && rr2 >= RR2_GREEN_THRESHOLD_PERCENT && price !== null && price > 0 && entry2 > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN) {
+    if (rr2 !== null && rr2 >= RR1_GREEN_THRESHOLD_PERCENT && price !== null && price > 0 && entry2 > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN) {
       return 'text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20';
     }
     return null;
@@ -603,8 +590,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         {
           const entryExitValues = getEntryExitValue(item.ticker, item.companyName);
           const entry1 = entryExitValues?.entry1 || 0;
-          const exit1 = entryExitValues?.exit1 || 0;
-          const rr1 = calculateRR1(entry1, exit1);
+          const rr1 = getRR1Value(entryExitValues ?? undefined);
           const colorClass = getRR1Color(rr1, item.price, entry1);
           return (
             <span className={colorClass || 'text-black dark:text-white'}>
@@ -616,8 +602,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         {
           const entryExitValues = getEntryExitValue(item.ticker, item.companyName);
           const entry2 = entryExitValues?.entry2 || 0;
-          const exit2 = entryExitValues?.exit2 || 0;
-          const rr2 = calculateRR2(entry2, exit2);
+          const rr2 = getRR2Value(entryExitValues ?? undefined);
           const colorClass = getRR2Color(rr2, item.price, entry2);
           return (
             <span className={colorClass || 'text-black dark:text-white'}>
@@ -628,7 +613,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
       default:
         return null;
     }
-  }, [getFieldValue, getEntryExitValue, calculateRR1, calculateRR2, getRR1Color, getRR2Color, hasIvFcf, handleCurrencyChange, commitField, isDateOld, isDateNearOld, isAdmin, validationErrors, openEditModal]);
+  }, [getFieldValue, getEntryExitValue, getRR1Color, getRR2Color, hasIvFcf, handleCurrencyChange, commitField, isDateOld, isDateNearOld, isAdmin, validationErrors, openEditModal]);
 
   // Render mobile card
   const renderMobileCard = useCallback((item: BenjaminGrahamData, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {
@@ -644,8 +629,8 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
     const exit2 = entryExitValues?.exit2 || 0;
     const currency = entryExitValues?.currency || 'USD';
     const dateOfUpdate = entryExitValues?.dateOfUpdate || null;
-    const rr1 = calculateRR1(entry1, exit1);
-    const rr2 = calculateRR2(entry2, exit2);
+    const rr1 = getRR1Value(entryExitValues ?? undefined);
+    const rr2 = getRR2Value(entryExitValues ?? undefined);
     const rr1Color = getRR1Color(rr1, item.price, entry1);
     const rr2Color = getRR2Color(rr2, item.price, entry2);
 
@@ -808,7 +793,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         )}
       </div>
     );
-  }, [getEntryExitValue, calculateRR1, calculateRR2, getRR1Color, getRR2Color, hasIvFcf, handleCurrencyChange, commitField, isDateOld, isDateNearOld, isAdmin, openEditModal]);
+  }, [getEntryExitValue, getRR1Color, getRR2Color, hasIvFcf, handleCurrencyChange, commitField, isDateOld, isDateNearOld, isAdmin, openEditModal]);
 
   // Filter columns based on ivFcf availability
   const filteredColumns = useMemo(() => {

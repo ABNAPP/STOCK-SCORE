@@ -32,10 +32,16 @@ export interface ScoreBoardData extends Record<string, unknown> {
   currentRatio: number | null; // Added: Current Ratio from Dashboard sheet
   cashSdebt: number | null; // Added: Cash/SDebt from Dashboard sheet
   isCashSdebtDivZero: boolean; // Added: Flag to track division-by-zero for Cash/SDebt (should be green)
-  sma200: number | null; // Added: SMA(200) from SMA table (Technical section)
-  /** Cell background color from DashBoard: only GREEN, RED, or null (no yellow/orange) */
+  sma9: number | null; // From SMA table
+  sma21: number | null; // From SMA table
+  sma55: number | null; // From SMA table
+  sma200: number | null; // From SMA table (Technical section)
+  /** SMA colors computed in view from price vs SMA value */
+  sma9Color?: 'GREEN' | 'RED' | null;
+  sma21Color?: 'GREEN' | 'RED' | null;
+  sma55Color?: 'GREEN' | 'RED' | null;
   sma200Color?: 'GREEN' | 'RED' | null;
-  price?: number | null; // Added: Price from ENTRY/EXIT table for SMA color comparison
+  price?: number | null; // From ENTRY/EXIT (Benjamin Graham) for SMA color comparison
 }
 
 export interface IndustryThresholdData extends Record<string, unknown> {

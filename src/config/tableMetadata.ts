@@ -110,10 +110,10 @@ export const tableMetadata: TableMetadata[] = [
       {
         columnKey: 'irr1',
         dataSource: 'Beräknat från Entry/Exit-värden',
-        formula: 'RR1 = (Exit1 - Entry1) / Entry1 * 100',
+        formula: 'RR1 = (Exit - Entry1) / Entry1 * 100, där Exit = Exit1 om ifyllt annars Exit2',
         conditions: [
-          'Beräknas från Entry1 och Exit1 värden',
-          'Visa N/A om Entry1 eller Exit1 saknas eller är 0',
+          'Beräknas från Entry1 och Exit1, eller Entry1 och Exit2 om Exit1 är tomt',
+          'Visa N/A om Entry1 och både Exit1/Exit2 saknas eller är 0',
           'Formateras som procent med %-tecken och noll decimaler',
           'Grön färg om RR1 >= 60% OCH Price <= Entry1 * 1.05',
           'Filtrera bort rader där Company Name eller Ticker är N/A'
@@ -122,12 +122,12 @@ export const tableMetadata: TableMetadata[] = [
       {
         columnKey: 'rr2',
         dataSource: 'Beräknat från Entry/Exit-värden',
-        formula: 'RR2 = (Exit2 - Entry2) / Entry2 * 100',
+        formula: 'RR2 = (Exit - Entry2) / Entry2 * 100, där Exit = Exit2 om ifyllt annars Exit1',
         conditions: [
-          'Beräknas från Entry2 och Exit2 värden',
-          'Visa N/A om Entry2 eller Exit2 saknas eller är 0',
+          'Beräknas från Entry2 och Exit2, eller Entry2 och Exit1 om Exit2 är tomt',
+          'Visa N/A om Entry2 och både Exit1/Exit2 saknas eller är 0',
           'Formateras som procent med %-tecken och noll decimaler',
-          'Grön färg om RR2 >= 90% OCH Price <= Entry2 * 1.05',
+          'Grön färg om RR2 >= 60% OCH Price <= Entry2 * 1.05',
           'Filtrera bort rader där Company Name eller Ticker är N/A'
         ]
       }
@@ -243,7 +243,8 @@ export const tableMetadata: TableMetadata[] = [
           'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
           'Visar numeriskt värde om det finns, annars "-"',
           'Entry1 kan endast redigeras i Entry/Exit-tabellen',
-          'Används för beräkning av RR1: (Exit1 - Entry1) / Entry1 * 100'
+          'Används för beräkning av RR1: (Exit1 - Entry1) / Entry1 * 100',
+          'Grön färg om Price ≤ Entry1 × 1,05 (inkl. alla pris under entry)'
         ]
       },
       {
@@ -253,7 +254,8 @@ export const tableMetadata: TableMetadata[] = [
           'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
           'Visar numeriskt värde om det finns, annars "-"',
           'Entry2 kan endast redigeras i Entry/Exit-tabellen',
-          'Används för beräkning av RR2: (Exit2 - Entry2) / Entry2 * 100'
+          'Används för beräkning av RR2: (Exit2 - Entry2) / Entry2 * 100',
+          'Grön färg om Price ≤ Entry2 × 1,05 (inkl. alla pris under entry)'
         ]
       },
       {
@@ -263,7 +265,8 @@ export const tableMetadata: TableMetadata[] = [
           'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
           'Visar numeriskt värde om det finns, annars "-"',
           'Exit1 kan endast redigeras i Entry/Exit-tabellen',
-          'Används för beräkning av RR1: (Exit1 - Entry1) / Entry1 * 100'
+          'Används för beräkning av RR1: (Exit1 - Entry1) / Entry1 * 100',
+          'Röd färg om Price ≥ Exit1 × 0,95 (inkl. alla pris över exit)'
         ]
       },
       {
@@ -273,31 +276,22 @@ export const tableMetadata: TableMetadata[] = [
           'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
           'Visar numeriskt värde om det finns, annars "-"',
           'Exit2 kan endast redigeras i Entry/Exit-tabellen',
-          'Används för beräkning av RR2: (Exit2 - Entry2) / Entry2 * 100'
+          'Används för beräkning av RR2: (Exit2 - Entry2) / Entry2 * 100',
+          'Röd färg om Price ≥ Exit2 × 0,95 (inkl. alla pris över exit)'
         ]
       },
       {
         columnKey: 'score',
-        dataSource: 'Beräknat från Score Board data med viktat poängsystem',
-        formula: 'Summa av (vikt × färgfaktor) för alla metrics, där färgfaktor = 1.0 (grön), 0.7 (blå), 0.0 (röd/tom/N/A)',
+        dataSource: 'Beräknat från Score Board data med viktat poängsystem. SMA-data från tabellen SMA.',
+        formula: 'Summa av (vikt × färgfaktor) för alla metrics, där färgfaktor = 1.0 (grön), 0.7 (blå), 0.0 (röd/tom/N/A). Total max 100p.',
         conditions: [
-          'Poängsystem från 0-100',
+          'Poängsystem från 0-100 (total max 100p)',
           'Beräknas baserat på färgkodning i SCORE BOARD',
-          'Fundamental metrics (50p totalt):',
-          '  - VALUE CREATION (vikt: 7)',
-          '  - Munger Quality Score (vikt: 7)',
-          '  - IRR (vikt: 6)',
-          '  - Ro40 F1 (vikt: 3)',
-          '  - Ro40 F2 (vikt: 3)',
-          '  - LEVERAGE F2 (vikt: 4)',
-          '  - Cash/SDebt (vikt: 5)',
-          '  - Current Ratio (vikt: 3)',
-          '  - P/E1 INDUSTRY (vikt: 5)',
-          '  - P/E2 INDUSTRY (vikt: 5)',
-          '  - (TB/S)/Price (vikt: 2)',
-          'Technical metrics (47.5p totalt):',
-          '  - THEOENTRY (vikt: 40)',
-          '  - SMA(200) (vikt: 2.5)',
+          'Fundamental metrics (55p totalt):',
+          '  - VALUE CREATION (7.5), Munger Quality Score (7), IRR (4.5), Ro40 F1/F2 (4.5 vardera)',
+          '  - LEVERAGE F2, Cash/SDebt, Current Ratio, P/E1 INDUSTRY, P/E2 INDUSTRY, (TB/S)/Price (4.5 vardera)',
+          'Technical metrics (45p totalt):',
+          '  - TheoEntry (40), SMA(9) (0.5), SMA(21) (2.5), SMA(55) (1), SMA(200) (1)',
           'Färgmarkering:',
           '  - GRÖN om score >= 70',
           '  - BLÅ om score >= 45',

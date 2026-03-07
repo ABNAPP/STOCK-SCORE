@@ -23,7 +23,7 @@ interface TransformMessage {
   // For ScoreBoard transformer, include external data
   industryPe1Map?: Record<string, number>;
   industryPe2Map?: Record<string, number>;
-  smaDataMap?: Record<string, { sma200: number | null }>;
+  smaDataMap?: Record<string, { sma9: number | null; sma21: number | null; sma55: number | null; sma200: number | null }>;
 }
 
 interface ProgressMessage {
@@ -320,7 +320,7 @@ function transformScoreBoardData(
   results: { data: DataRow[]; meta: { fields: string[] | null } },
   industryPe1Map: Record<string, number>,
   industryPe2Map: Record<string, number>,
-  smaDataMap: Record<string, { sma200: number | null }>
+  smaDataMap: Record<string, { sma9: number | null; sma21: number | null; sma55: number | null; sma200: number | null }>
 ): unknown[] {
   const scoreBoardData = results.data
     .map((row: DataRow) => {
@@ -397,7 +397,7 @@ function transformScoreBoardData(
         }
       }
 
-      // Match SMA(200) from SMA sheet by ticker (sma200Color is computed in view from price vs sma200)
+      // Match SMA data from SMA table by ticker (colors computed in view from price vs SMA values)
       const tickerKey = ticker.toLowerCase().trim();
       const smaMatch = smaDataMap[tickerKey];
 
@@ -418,6 +418,9 @@ function transformScoreBoardData(
         currentRatio: currentRatio,
         cashSdebt: finalCashSdebt,
         isCashSdebtDivZero: isCashSdebtDivZero || false,
+        sma9: smaMatch ? smaMatch.sma9 : null,
+        sma21: smaMatch ? smaMatch.sma21 : null,
+        sma55: smaMatch ? smaMatch.sma55 : null,
         sma200: smaMatch ? smaMatch.sma200 : null,
       };
     })

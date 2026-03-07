@@ -51,9 +51,8 @@ function ScoreBoardViewInner() {
     }
   }, [data, initializeFromData]);
 
-  // Match Price data with Score Board data based on ticker (SMA(200) is now fetched directly in fetchScoreBoardData)
+  // Match Price data with Score Board data; SMA values from SMA table, colors from price vs SMA
   const dataWithPrice: ScoreBoardData[] = useMemo(() => {
-    // Create a map of Price data by ticker (case-insensitive)
     const priceMap = new Map<string, number | null>();
     if (benjaminGrahamData && benjaminGrahamData.length > 0) {
       benjaminGrahamData.forEach(bg => {
@@ -62,16 +61,20 @@ function ScoreBoardViewInner() {
       });
     }
 
-    // Match Score Board data with Price data; compute SMA(200) color from price vs sma200
     return data.map(item => {
       const tickerKey = item.ticker.toLowerCase().trim();
       const price = priceMap.get(tickerKey) ?? null;
-      const color = getSMAColor(price, item.sma200);
-      const sma200Color = (color === 'GREEN' || color === 'RED') ? color : null;
+      const sma9Color = (() => { const c = getSMAColor(price, item.sma9); return c === 'GREEN' || c === 'RED' ? c : null; })();
+      const sma21Color = (() => { const c = getSMAColor(price, item.sma21); return c === 'GREEN' || c === 'RED' ? c : null; })();
+      const sma55Color = (() => { const c = getSMAColor(price, item.sma55); return c === 'GREEN' || c === 'RED' ? c : null; })();
+      const sma200Color = (() => { const c = getSMAColor(price, item.sma200); return c === 'GREEN' || c === 'RED' ? c : null; })();
 
       return {
         ...item,
         price,
+        sma9Color,
+        sma21Color,
+        sma55Color,
         sma200Color,
       };
     });

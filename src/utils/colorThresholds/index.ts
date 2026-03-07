@@ -6,5 +6,6 @@
 export type { ColorType } from './types';
 export * from './colorLogic';
 export * from './theoEntryLogic';
+export * from './entryExitCellColors';
 export { COLORS, colorTypeToCssClass } from './cssMapping';
 export type { ColorToCssOptions } from './cssMapping';

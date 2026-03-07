@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchScoreBoardData, ProgressCallback } from '../services/sheets';
-import { createScoreBoardTransformer } from '../services/sheets/scoreBoardService';
+import { createScoreBoardTransformer, type SMADataMapEntry } from '../services/sheets/scoreBoardService';
 import { fetchPEIndustryData } from '../services/sheets/peIndustryService';
 import { fetchSMAData } from '../services/sheets/smaService';
 import type { DataRow } from '../services/sheets';
@@ -121,13 +121,13 @@ export function useScoreBoardData() {
       }
     });
 
-    // Process SMAData results (sma200Color is computed in view from price vs sma200)
-    let smaDataMap = new Map<string, { sma200: number | null }>();
+    // Process SMAData results from SMA table (SMA colors computed in view from price vs SMA values)
+    let smaDataMap = new Map<string, SMADataMapEntry>();
     if (smaResult.status === 'fulfilled') {
       const smaData = smaResult.value;
       smaData.forEach((sma) => {
         const tickerKey = sma.ticker.toLowerCase().trim();
-        smaDataMap.set(tickerKey, { sma200: sma.sma200 });
+        smaDataMap.set(tickerKey, { sma9: sma.sma9, sma21: sma.sma21, sma55: sma.sma55, sma200: sma.sma200 });
       });
     } else {
       logger.warn(
@@ -148,7 +148,7 @@ export function useScoreBoardData() {
     industryPe2Map.forEach((value, key) => {
       industryPe2MapObj[key] = value;
     });
-    const smaDataMapObj: Record<string, { sma200: number | null }> = {};
+    const smaDataMapObj: Record<string, SMADataMapEntry> = {};
     smaDataMap.forEach((value, key) => {
       smaDataMapObj[key] = value;
     });
