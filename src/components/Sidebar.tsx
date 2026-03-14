@@ -10,6 +10,7 @@ import {
   CursorArrowRaysIcon, 
   ChartPieIcon,
   BuildingOfficeIcon,
+  UserGroupIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   UserIcon,
@@ -71,6 +72,12 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
     items: [{ id: 'industry-threshold', label: t('navigation.industryThreshold') }],
     collapsible: false,
   },
+  {
+    id: 'management-monitoring',
+    label: t('navigation.managementMonitoring'),
+    items: [{ id: 'management-monitoring', label: t('navigation.managementMonitoring') }],
+    collapsible: false,
+  },
 ];
 
 // Icon mapping for each view
@@ -90,6 +97,8 @@ const getViewIcon = (viewId: ViewId) => {
       return ChartPieIcon;
     case 'industry-threshold':
       return BuildingOfficeIcon;
+    case 'management-monitoring':
+      return UserGroupIcon;
     default:
       return null;
   }

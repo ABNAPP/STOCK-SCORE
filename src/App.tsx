@@ -35,6 +35,7 @@ const IndustryThresholdView = lazyWithRetry<typeof import('./components/views/In
 const PersonalPortfolioView = lazyWithRetry<typeof import('./components/views/PersonalPortfolioView').default>(() => import('./components/views/PersonalPortfolioView'), 'PersonalPortfolioView');
 const ISMPostureView = lazyWithRetry<typeof import('./components/views/ISMPostureView').default>(() => import('./components/views/ISMPostureView'), 'ISMPostureView');
 const SMAView = lazyWithRetry<typeof import('./components/views/SMAView').default>(() => import('./components/views/SMAView'), 'SMAView');
+const ManagementMonitoringPage = lazyWithRetry<typeof import('./pages/ManagementMonitoringPage').default>(() => import('./pages/ManagementMonitoringPage'), 'ManagementMonitoringPage');
 
 // Lazy load modal components
 const ConditionsModal = lazyWithRetry<typeof import('./components/ConditionsModal').default>(() => import('./components/ConditionsModal'), 'ConditionsModal');
@@ -49,6 +50,7 @@ const MAIN_VIEW_IDS: ViewId[] = [
   'entry-exit-benjamin-graham',
   'fundamental-pe-industry',
   'industry-threshold',
+  'management-monitoring',
   'personal-portfolio',
 ];
 
@@ -179,6 +181,7 @@ function App() {
       'entry-exit-benjamin-graham': t('navigation.benjaminGraham'),
       'fundamental-pe-industry': t('navigation.peIndustry'),
       'industry-threshold': t('navigation.industryThreshold'),
+      'management-monitoring': t('navigation.managementMonitoring'),
       'personal-portfolio': t('navigation.personalPortfolio'),
     };
     return names[viewId] || viewId;
@@ -237,6 +240,14 @@ function App() {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <IndustryThresholdView />
+        </Suspense>
+      );
+    }
+
+    if (activeView === 'management-monitoring') {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <ManagementMonitoringPage />
         </Suspense>
       );
     }

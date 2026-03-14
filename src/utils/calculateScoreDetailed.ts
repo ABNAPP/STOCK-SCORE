@@ -41,27 +41,25 @@ interface Metric {
 }
 
 const METRICS: Metric[] = [
-  // Fundamental (55p)
-  { name: 'VALUE CREATION', weight: 7.5, method: '3Band' },
+  // Fundamental (50p)
+  { name: 'VALUE CREATION', weight: 7, method: '3Band' },
   { name: 'Munger Quality Score', weight: 7, method: '3Band' },
-  { name: 'IRR', weight: 4.5, method: '3Band' },
-  { name: 'Ro40 F1', weight: 4.5, method: '3Band' },
-  { name: 'Ro40 F2', weight: 4.5, method: '3Band' },
-  { name: 'LEVERAGE F2', weight: 4.5, method: '3Band' },
-  { name: 'Cash/SDebt', weight: 4.5, method: '3Band' },
-  { name: 'Current Ratio', weight: 4.5, method: '3Band' },
-  { name: 'P/E1 INDUSTRY', weight: 4.5, method: '3Band' },
-  { name: 'P/E2 INDUSTRY', weight: 4.5, method: '3Band' },
-  { name: '(TB/S)/Price', weight: 4.5, method: '3Band' },
-  // Technical (45p)
-  { name: 'THEOENTRY', weight: 40, method: 'GreenOnly' },
-  { name: 'SMA(9)', weight: 0.5, method: 'GreenOnly' },
+  { name: 'IRR', weight: 4, method: '3Band' },
+  { name: 'Ro40 F1', weight: 4, method: '3Band' },
+  { name: 'Ro40 F2', weight: 4, method: '3Band' },
+  { name: 'LEVERAGE F2', weight: 4, method: '3Band' },
+  { name: 'Cash/SDebt', weight: 4, method: '3Band' },
+  { name: 'Current Ratio', weight: 4, method: '3Band' },
+  { name: 'P/E1 INDUSTRY', weight: 4, method: '3Band' },
+  { name: 'P/E2 INDUSTRY', weight: 4, method: '3Band' },
+  { name: '(TB/S)/Price', weight: 4, method: '3Band' },
+  // Technical (50p)
+  { name: 'THEOENTRY', weight: 45, method: 'GreenOnly' },
+  { name: 'SMA(9)', weight: 2.5, method: 'GreenOnly' },
   { name: 'SMA(21)', weight: 2.5, method: 'GreenOnly' },
-  { name: 'SMA(55)', weight: 1, method: 'GreenOnly' },
-  { name: 'SMA(200)', weight: 1, method: 'GreenOnly' },
 ];
 
-const TOTAL_WEIGHT = 100; // 55 fundamental + 45 technical
+const TOTAL_WEIGHT = 100; // 50 fundamental + 50 technical
 
 // Get price from BenjaminGrahamData
 function getPriceFromBenjaminGraham(
@@ -256,12 +254,6 @@ export function calculateDetailedScoreBreakdown(
       case 'SMA(21)':
         color = scoreBoardData.sma21Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma21Color === 'RED' ? 'RED' : 'BLANK';
         break;
-      case 'SMA(55)':
-        color = scoreBoardData.sma55Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma55Color === 'RED' ? 'RED' : 'BLANK';
-        break;
-      case 'SMA(200)':
-        color = scoreBoardData.sma200Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma200Color === 'RED' ? 'RED' : 'BLANK';
-        break;
     }
 
     // Map ORANGE -> BLUE for detailed view (factor lookup and display)
@@ -404,12 +396,6 @@ export function calculateDetailedScore(
         break;
       case 'SMA(21)':
         color = scoreBoardData.sma21Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma21Color === 'RED' ? 'RED' : 'BLANK';
-        break;
-      case 'SMA(55)':
-        color = scoreBoardData.sma55Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma55Color === 'RED' ? 'RED' : 'BLANK';
-        break;
-      case 'SMA(200)':
-        color = scoreBoardData.sma200Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma200Color === 'RED' ? 'RED' : 'BLANK';
         break;
     }
 

@@ -59,6 +59,7 @@ export function useUserRole() {
     'entry-exit-benjamin-graham',
     'fundamental-pe-industry',
     'industry-threshold',
+    'management-monitoring',
     'personal-portfolio',
   ];
 

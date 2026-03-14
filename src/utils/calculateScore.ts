@@ -52,39 +52,37 @@ interface Metric {
 /**
  * Metrics configuration with weights and calculation methods
  * 
- * Total weight: 100 points (55 fundamental + 45 technical).
+ * Total weight: 100 points (50 fundamental + 50 technical).
  * 
  * Weight distribution:
- * - Fundamental metrics (55p): VALUE CREATION 7.5, Munger 7, IRR 4.5, Ro40 F1/F2 4.5 each,
- *   LEVERAGE F2, Cash/SDebt, Current Ratio, P/E1 INDUSTRY, P/E2 INDUSTRY, (TB/S)/Price 4.5 each.
- * - Technical metrics (45p): TheoEntry 40, SMA(9) 0.5, SMA(21) 2.5, SMA(55) 1, SMA(200) 1.
+ * - Fundamental metrics (50p): VALUE CREATION 7, Munger 7, IRR 4, Ro40 F1/F2 4 each,
+ *   LEVERAGE F2, Cash/SDebt, Current Ratio, P/E1 INDUSTRY, P/E2 INDUSTRY, (TB/S)/Price 4 each.
+ * - Technical metrics (50p): TheoEntry 45, SMA(9) 2.5, SMA(21) 2.5.
  * 
  * Calculation methods:
  * - 3Band: Uses color factors (GREEN=1.0, ORANGE=0.7, RED=0.0) for nuanced scoring
  * - GreenOnly: Binary scoring - full points if GREEN, 0 otherwise
  */
 const METRICS: Metric[] = [
-  // Fundamental (55p)
-  { name: 'VALUE CREATION', weight: 7.5, method: '3Band' },
+  // Fundamental (50p)
+  { name: 'VALUE CREATION', weight: 7, method: '3Band' },
   { name: 'Munger Quality Score', weight: 7, method: '3Band' },
-  { name: 'IRR', weight: 4.5, method: '3Band' },
-  { name: 'Ro40 F1', weight: 4.5, method: '3Band' },
-  { name: 'Ro40 F2', weight: 4.5, method: '3Band' },
-  { name: 'LEVERAGE F2', weight: 4.5, method: '3Band' },
-  { name: 'Cash/SDebt', weight: 4.5, method: '3Band' },
-  { name: 'Current Ratio', weight: 4.5, method: '3Band' },
-  { name: 'P/E1 INDUSTRY', weight: 4.5, method: '3Band' },
-  { name: 'P/E2 INDUSTRY', weight: 4.5, method: '3Band' },
-  { name: '(TB/S)/Price', weight: 4.5, method: '3Band' },
-  // Technical (45p)
-  { name: 'TheoEntry', weight: 40, method: 'GreenOnly' },
-  { name: 'SMA(9)', weight: 0.5, method: 'GreenOnly' },
+  { name: 'IRR', weight: 4, method: '3Band' },
+  { name: 'Ro40 F1', weight: 4, method: '3Band' },
+  { name: 'Ro40 F2', weight: 4, method: '3Band' },
+  { name: 'LEVERAGE F2', weight: 4, method: '3Band' },
+  { name: 'Cash/SDebt', weight: 4, method: '3Band' },
+  { name: 'Current Ratio', weight: 4, method: '3Band' },
+  { name: 'P/E1 INDUSTRY', weight: 4, method: '3Band' },
+  { name: 'P/E2 INDUSTRY', weight: 4, method: '3Band' },
+  { name: '(TB/S)/Price', weight: 4, method: '3Band' },
+  // Technical (50p)
+  { name: 'TheoEntry', weight: 45, method: 'GreenOnly' },
+  { name: 'SMA(9)', weight: 2.5, method: 'GreenOnly' },
   { name: 'SMA(21)', weight: 2.5, method: 'GreenOnly' },
-  { name: 'SMA(55)', weight: 1, method: 'GreenOnly' },
-  { name: 'SMA(200)', weight: 1, method: 'GreenOnly' },
 ];
 
-const TOTAL_ACTIVE_POINTS = 100; // 55 fundamental + 45 technical
+const TOTAL_ACTIVE_POINTS = 100; // 50 fundamental + 50 technical
 
 // Get price from BenjaminGrahamData
 function getPriceFromBenjaminGraham(
@@ -215,12 +213,6 @@ export function calculateScore(
         break;
       case 'SMA(21)':
         color = scoreBoardData.sma21Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma21Color === 'RED' ? 'RED' : 'BLANK';
-        break;
-      case 'SMA(55)':
-        color = scoreBoardData.sma55Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma55Color === 'RED' ? 'RED' : 'BLANK';
-        break;
-      case 'SMA(200)':
-        color = scoreBoardData.sma200Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma200Color === 'RED' ? 'RED' : 'BLANK';
         break;
     }
 
