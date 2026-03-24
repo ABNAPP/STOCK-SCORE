@@ -121,7 +121,6 @@ function transformBenjaminGraham(data: DataRow[]): Array<Record<string, unknown>
         companyName,
         ticker,
         price: parseNum(getValue(['Price', 'price', 'PRICE'], row)),
-        benjaminGraham: parseNum(getValue(['Benjamin Graham', 'benjamin graham', 'Benjamin', 'benjamin'], row)),
         ivFcf: parseNum(getValue(['IV (FCF)', 'IV(FCF)', 'iv fcf', 'ivfcf'], row)),
         irr1: parseNum(getValue(['IRR1', 'irr1', 'IRR 1', 'irr 1'], row)),
       };
@@ -165,22 +164,16 @@ function transformIndustryThreshold(data: DataRow[]): Array<Record<string, unkno
     .map((row) => {
       const industry = getValue(['Industry', 'INDUSTRY', 'industry'], row);
       if (!isValidValue(industry)) return null;
-      const irr = parseNum(getValue(['IRR', 'irr', 'Irr'], row));
       const leverageF2Min = parseNum(getValue(['Leverage F2 Min', 'Leverage F2 min', 'leverageF2Min', 'leverageF2Min'], row));
       const leverageF2Max = parseNum(getValue(['Leverage F2 Max', 'Leverage F2 max', 'leverageF2Max', 'leverageF2Max'], row));
-      const ro40Min = parseNum(getValue(['Ro40 Min', 'Ro40 min', 'ro40Min', 'ro40Min'], row));
-      const ro40Max = parseNum(getValue(['Ro40 Max', 'Ro40 max', 'ro40Max', 'ro40Max'], row));
       const cashSdebtMin = parseNum(getValue(['Cash/SDebt Min', 'Cash/SDebt min', 'cashSdebtMin', 'cashSdebtMin'], row));
       const cashSdebtMax = parseNum(getValue(['Cash/SDebt Max', 'Cash/SDebt max', 'cashSdebtMax', 'cashSdebtMax'], row));
       const currentRatioMin = parseNum(getValue(['Current Ratio Min', 'Current Ratio min', 'currentRatioMin', 'currentRatioMin'], row));
       const currentRatioMax = parseNum(getValue(['Current Ratio Max', 'Current Ratio max', 'currentRatioMax', 'currentRatioMax'], row));
       return {
         industry,
-        irr: irr ?? 0,
         leverageF2Min: leverageF2Min ?? 0,
         leverageF2Max: leverageF2Max ?? 0,
-        ro40Min: ro40Min ?? 0,
-        ro40Max: ro40Max ?? 0,
         cashSdebtMin: cashSdebtMin ?? 0,
         cashSdebtMax: cashSdebtMax ?? 0,
         currentRatioMin: currentRatioMin ?? 0,
@@ -246,13 +239,8 @@ function transformScoreBoard(
         companyName,
         ticker,
         industry: industryStr || '',
-        irr: parseNum(getValueAllowZero(['IRR', 'irr', 'Irr'], row)),
         mungerQualityScore: parseNum(getValueAllowZero(['Munger Quality Score', 'Munger Quality Score', 'munger quality score', 'MUNGER QUALITY SCORE'], row)),
         valueCreation: parsePct(getValueAllowZero(['VALUE CREATION', 'Value Creation', 'value creation', 'VALUE_CREATION'], row)),
-        tbSPrice: parseNum(getValueAllowZero(['(TB/S)/Price', '(TB/S)/Price', '(tb/s)/price', '(TB/S)/PRICE'], row)),
-        ro40Cy: parsePct(getValueAllowZero(['Ro40 CY', 'Ro40 CY', 'ro40 cy', 'RO40 CY'], row)),
-        ro40F1: parsePct(getValueAllowZero(['Ro40 F1', 'Ro40 F1', 'ro40 f1', 'RO40 F1'], row)),
-        ro40F2: parsePct(getValueAllowZero(['Ro40 F2', 'Ro40 F2', 'ro40 f2', 'RO40 F2'], row)),
         leverageF2: parseNum(getValueAllowZero(['Leverage F2', 'Leverage F2', 'leverage f2', 'LEVERAGE F2'], row)),
         currentRatio: parseNum(getValueAllowZero(['Current Ratio', 'Current Ratio', 'current ratio', 'CURRENT RATIO'], row)),
         cashSdebt: finalCashSdebt,

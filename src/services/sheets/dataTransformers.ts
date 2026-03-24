@@ -185,13 +185,3 @@ export function calculateMedian(values: number[]): number | null {
     return sorted[mid];
   }
 }
-
-/**
- * Helper function to find IRR threshold for an industry
- * 
- * Looks up the IRR (Internal Rate of Return) threshold value for a given industry
- * from the industry thresholds configuration. Performs case-insensitive matching.
- * 
- * @param industryName - Name of the industry to look up
- * @returns IRR threshold value, or 0 if industry not found
- */

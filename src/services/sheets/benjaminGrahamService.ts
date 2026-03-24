@@ -26,8 +26,6 @@ export function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { 
       const companyName = getValue(['Company Name', 'Company', 'company'], row);
       const ticker = getValue(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
       const priceStr = getValue(['Price', 'price', 'PRICE'], row);
-      const benjaminGrahamStr = getValue(['Benjamin Graham', 'benjamin graham', 'Benjamin', 'benjamin'], row);
-      
       // Only process if company name is valid (not #N/A)
       if (!isValidValue(companyName)) {
         return null;
@@ -40,9 +38,6 @@ export function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { 
       
       // Parse Price value as number (handle #N/A)
       const price = parseNumericValueNullable(priceStr);
-      
-      // Parse Benjamin Graham value as number (handle #N/A)
-      const benjaminGraham = parseNumericValueNullable(benjaminGrahamStr);
       
       // Parse IV (FCF) if it exists
       const ivFcfStr = getValue(['IV (FCF)', 'IV(FCF)', 'iv fcf', 'ivfcf'], row);
@@ -57,7 +52,6 @@ export function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { 
         companyName: companyName,
         ticker: ticker,
         price: price,
-        benjaminGraham: benjaminGraham,
         ivFcf: ivFcf, // Include if it exists
         irr1: irr1, // Include if it exists
       };
@@ -70,7 +64,7 @@ export function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { 
 /**
  * Fetches Benjamin Graham data from Google Sheets
  * 
- * Retrieves company valuation data including Benjamin Graham value, price, IV (FCF), and IRR1.
+ * Retrieves company data including price, IV (FCF), and IRR1.
  * Tries Apps Script API first (fast), falls back to CSV proxy if needed (slower).
  * 
  * @param forceRefresh - If true, bypasses cache and forces network request (default: false)
@@ -86,7 +80,7 @@ export async function fetchBenjaminGrahamData(
     sheetName: 'DashBoard',
     dataTypeName: 'Benjamin Graham',
     transformer: transformBenjaminGrahamData,
-    requiredColumns: ['Benjamin Graham', 'Company Name', 'Ticker'],
+    requiredColumns: ['Company Name', 'Ticker'],
     cacheKey: CACHE_KEYS.BENJAMIN_GRAHAM,
     forceRefresh,
     ttl: DEFAULT_TTL,

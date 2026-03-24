@@ -5,15 +5,12 @@ import {
   COLOR_FACTOR_ORANGE_BLUE,
 } from '../config/constants';
 import {
-  getIRRColor,
   getMungerQualityScoreColor,
   getValueCreationColor,
-  getRo40Color,
   getLeverageF2Color,
   getCashSdebtColor,
   getCurrentRatioColor,
   getPEPercentageColor,
-  getTBSPPriceColor,
   isTheoEntryGreen,
 } from './colorThresholds';
 import type { ColorType } from './colorThresholds';
@@ -52,12 +49,12 @@ interface Metric {
 /**
  * Metrics configuration with weights and calculation methods
  * 
- * Total weight: 100 points (50 fundamental + 50 technical).
- * 
+ * Total weight: 100 points (50 fundamental + 50 technical), score scale 0–100.
+ *
  * Weight distribution:
- * - Fundamental metrics (50p): VALUE CREATION 7, Munger 7, IRR 4, Ro40 F1/F2 4 each,
- *   LEVERAGE F2, Cash/SDebt, Current Ratio, P/E1 INDUSTRY, P/E2 INDUSTRY, (TB/S)/Price 4 each.
- * - Technical metrics (50p): TheoEntry 45, SMA(9) 2.5, SMA(21) 2.5.
+ * - Fundamental: VALUE CREATION 9, Munger Quality Score 12, LEVERAGE F2 7, Cash/SDebt 7,
+ *   Current Ratio 5, P/E1 INDUSTRY 5, P/E2 INDUSTRY 5.
+ * - Technical: TheoEntry 45, SMA(9) 2.5, SMA(21) 2.5.
  * 
  * Calculation methods:
  * - 3Band: Uses color factors (GREEN=1.0, ORANGE=0.7, RED=0.0) for nuanced scoring
@@ -65,24 +62,20 @@ interface Metric {
  */
 const METRICS: Metric[] = [
   // Fundamental (50p)
-  { name: 'VALUE CREATION', weight: 7, method: '3Band' },
-  { name: 'Munger Quality Score', weight: 7, method: '3Band' },
-  { name: 'IRR', weight: 4, method: '3Band' },
-  { name: 'Ro40 F1', weight: 4, method: '3Band' },
-  { name: 'Ro40 F2', weight: 4, method: '3Band' },
-  { name: 'LEVERAGE F2', weight: 4, method: '3Band' },
-  { name: 'Cash/SDebt', weight: 4, method: '3Band' },
-  { name: 'Current Ratio', weight: 4, method: '3Band' },
-  { name: 'P/E1 INDUSTRY', weight: 4, method: '3Band' },
-  { name: 'P/E2 INDUSTRY', weight: 4, method: '3Band' },
-  { name: '(TB/S)/Price', weight: 4, method: '3Band' },
+  { name: 'VALUE CREATION', weight: 9, method: '3Band' },
+  { name: 'Munger Quality Score', weight: 12, method: '3Band' },
+  { name: 'LEVERAGE F2', weight: 7, method: '3Band' },
+  { name: 'Cash/SDebt', weight: 7, method: '3Band' },
+  { name: 'Current Ratio', weight: 5, method: '3Band' },
+  { name: 'P/E1 INDUSTRY', weight: 5, method: '3Band' },
+  { name: 'P/E2 INDUSTRY', weight: 5, method: '3Band' },
   // Technical (50p)
   { name: 'TheoEntry', weight: 45, method: 'GreenOnly' },
   { name: 'SMA(9)', weight: 2.5, method: 'GreenOnly' },
   { name: 'SMA(21)', weight: 2.5, method: 'GreenOnly' },
 ];
 
-const TOTAL_ACTIVE_POINTS = 100; // 50 fundamental + 50 technical
+const TOTAL_ACTIVE_POINTS = METRICS.reduce((sum, m) => sum + m.weight, 0);
 
 // Get price from BenjaminGrahamData
 function getPriceFromBenjaminGraham(
@@ -171,17 +164,6 @@ export function calculateScore(
       case 'Munger Quality Score':
         color = getMungerQualityScoreColor(scoreBoardData.mungerQualityScore);
         break;
-      case 'IRR':
-        // Edge case: If threshold data is missing for this industry, getIRRColor returns BLANK (0 points)
-        // This ensures missing threshold data doesn't break scoring, but also doesn't give false positives
-        color = getIRRColor(scoreBoardData.irr, scoreBoardData.industry, thresholdData);
-        break;
-      case 'Ro40 F1':
-        color = getRo40Color(scoreBoardData.ro40F1, scoreBoardData.industry, thresholdData);
-        break;
-      case 'Ro40 F2':
-        color = getRo40Color(scoreBoardData.ro40F2, scoreBoardData.industry, thresholdData);
-        break;
       case 'LEVERAGE F2':
         color = getLeverageF2Color(scoreBoardData.leverageF2, scoreBoardData.industry, thresholdData);
         break;
@@ -201,9 +183,6 @@ export function calculateScore(
         break;
       case 'P/E2 INDUSTRY':
         color = getPEPercentageColor(scoreBoardData.pe2Industry);
-        break;
-      case '(TB/S)/Price':
-        color = getTBSPPriceColor(scoreBoardData.tbSPrice);
         break;
       case 'TheoEntry':
         color = isTheoEntryGreen(entryExitValue, price) ? 'GREEN' : 'BLANK';

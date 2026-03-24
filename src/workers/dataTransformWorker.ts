@@ -187,8 +187,6 @@ function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields:
       const companyName = getValue(['Company Name', 'Company', 'company'], row);
       const ticker = getValue(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
       const priceStr = getValue(['Price', 'price', 'PRICE'], row);
-      const benjaminGrahamStr = getValue(['Benjamin Graham', 'benjamin graham', 'Benjamin', 'benjamin'], row);
-      
       // Only process if company name is valid (not #N/A)
       if (!isValidValue(companyName)) {
         return null;
@@ -202,9 +200,6 @@ function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields:
       // Parse Price value as number (handle #N/A)
       const price = parseNumericValueNullable(priceStr);
       
-      // Parse Benjamin Graham value as number (handle #N/A)
-      const benjaminGraham = parseNumericValueNullable(benjaminGrahamStr);
-      
       // Parse IV (FCF) if it exists
       const ivFcfStr = getValue(['IV (FCF)', 'IV(FCF)', 'iv fcf', 'ivfcf'], row);
       const ivFcf = parseNumericValueNullable(ivFcfStr);
@@ -217,7 +212,6 @@ function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields:
         companyName: companyName,
         ticker: ticker,
         price: price,
-        benjaminGraham: benjaminGraham,
         ivFcf: ivFcf,
         irr1: irr1,
       };
@@ -326,12 +320,8 @@ function transformScoreBoardData(
     .map((row: DataRow) => {
       const companyName = getValueAllowZero(['Company Name', 'Company', 'company'], row);
       const ticker = getValueAllowZero(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
-      const irrStr = getValueAllowZero(['IRR', 'irr', 'Irr'], row);
       const mungerQualityScoreStr = getValueAllowZero(['Munger Quality Score', 'Munger Quality Score', 'munger quality score', 'MUNGER QUALITY SCORE'], row);
       const valueCreationStr = getValueAllowZero(['VALUE CREATION', 'Value Creation', 'value creation', 'VALUE_CREATION'], row);
-      const ro40CyStr = getValueAllowZero(['Ro40 CY', 'Ro40 CY', 'ro40 cy', 'RO40 CY'], row);
-      const ro40F1Str = getValueAllowZero(['Ro40 F1', 'Ro40 F1', 'ro40 f1', 'RO40 F1'], row);
-      const ro40F2Str = getValueAllowZero(['Ro40 F2', 'Ro40 F2', 'ro40 f2', 'RO40 F2'], row);
       const leverageF2Str = getValueAllowZero(['Leverage F2', 'Leverage F2', 'leverage f2', 'LEVERAGE F2'], row);
       const currentRatioStr = getValueAllowZero(['Current Ratio', 'Current Ratio', 'current ratio', 'CURRENT RATIO'], row);
       const cashSdebtStr = getValueAllowZero(['Cash/SDebt', 'Cash/SDebt', 'cash/sdebt', 'CASH/SDEBT'], row);
@@ -342,9 +332,6 @@ function transformScoreBoardData(
          cashSdebtStr.trim().toUpperCase() === 'INF' ||
          cashSdebtStr.trim().toUpperCase() === '∞');
       
-      // Get (TB/S)/Price directly from Dashboard sheet
-      const tbSPriceStr = getValueAllowZero(['(TB/S)/Price', '(TB/S)/Price', '(tb/s)/price', '(TB/S)/PRICE'], row);
-      
       const pe1Str = getValueAllowZero(['P/E1', 'P/E 1', 'pe1', 'PE1'], row);
       const pe2Str = getValueAllowZero(['P/E2', 'P/E 2', 'pe2', 'PE2'], row);
       const industryStr = getValueAllowZero(['INDUSTRY', 'Industry', 'industry'], row);
@@ -354,20 +341,13 @@ function transformScoreBoardData(
         return null;
       }
 
-      const irr = parseNumericValueNullable(irrStr);
       const mungerQualityScore = parseNumericValueNullable(mungerQualityScoreStr);
       const valueCreation = parsePercentageValueNullable(valueCreationStr);
-      const ro40Cy = parsePercentageValueNullable(ro40CyStr);
-      const ro40F1 = parsePercentageValueNullable(ro40F1Str);
-      const ro40F2 = parsePercentageValueNullable(ro40F2Str);
       const leverageF2 = parseNumericValueNullable(leverageF2Str);
       const currentRatio = parseNumericValueNullable(currentRatioStr);
       const cashSdebt = parseNumericValueNullable(cashSdebtStr);
       // Om #DIV/0! detekteras, sätt cashSdebt till 0 istället för null
       const finalCashSdebt = isCashSdebtDivZero ? 0 : cashSdebt;
-      
-      // Parse (TB/S)/Price directly from column
-      const tbSPrice = parseNumericValueNullable(tbSPriceStr);
       
       // Calculate P/E1 INDUSTRY (procentuell skillnad)
       const pe1 = parseNumericValueNullable(pe1Str);
@@ -405,13 +385,8 @@ function transformScoreBoardData(
         companyName: companyName,
         ticker: ticker,
         industry: industryStr || '',
-        irr: irr,
         mungerQualityScore: mungerQualityScore,
         valueCreation: valueCreation,
-        tbSPrice: tbSPrice,
-        ro40Cy: ro40Cy,
-        ro40F1: ro40F1,
-        ro40F2: ro40F2,
         leverageF2: leverageF2,
         pe1Industry: pe1Industry,
         pe2Industry: pe2Industry,

@@ -284,13 +284,12 @@ export function isInRange(value: unknown, min: number, max: number): value is nu
 /**
  * Type guard to check if a value is a non-null BenjaminGrahamData-like object
  */
-export function isBenjaminGrahamData(value: unknown): value is { companyName: string; ticker: string; price: number | null; benjaminGraham: number | null } {
+export function isBenjaminGrahamData(value: unknown): value is { companyName: string; ticker: string; price: number | null } {
   return (
     isObject(value) &&
     isString(value.companyName) &&
     isString(value.ticker) &&
-    (isNumber(value.price) || value.price === null) &&
-    (isNumber(value.benjaminGraham) || value.benjaminGraham === null)
+    (isNumber(value.price) || value.price === null)
   );
 }
 

@@ -7,8 +7,7 @@
  */
 
 // Price tolerance multipliers
-export const PRICE_TOLERANCE_GREEN = 1.05; // 5% above entry/benjamin graham
-export const PRICE_TOLERANCE_BLUE = 1.15; // 15% above benjamin graham
+export const PRICE_TOLERANCE_GREEN = 1.05; // 5% above entry (TheoEntry / RR coloring)
 export const PRICE_TOLERANCE_RED_EXIT_LOW = 0.95; // Red when price >= exit * this (within 5% below exit, at exit, or above exit)
 
 // Return rate thresholds (percentages)
@@ -25,7 +24,4 @@ export const DATE_NEAR_OLD_THRESHOLD_DAYS = 30;
 // Color factors
 export const COLOR_FACTOR_GREEN = 1.00;
 export const COLOR_FACTOR_ORANGE_BLUE = 0.70;
-
-// TB/S Price threshold
-export const TB_S_PRICE_GREEN_THRESHOLD = 1.00;
 

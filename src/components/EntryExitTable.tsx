@@ -12,7 +12,6 @@ import { useUserRole } from '../hooks/useUserRole';
 import { DATE_NEAR_OLD_THRESHOLD_DAYS } from '../config/constants';
 import {
   PRICE_TOLERANCE_GREEN,
-  PRICE_TOLERANCE_BLUE,
   RR1_GREEN_THRESHOLD_PERCENT,
 } from '../config/constants';
 import { getRR1Value, getRR2Value } from '../utils/colorThresholds/theoEntryLogic';
@@ -34,7 +33,6 @@ const ENTRY_EXIT_COLUMNS: ColumnDefinition<BenjaminGrahamData>[] = [
   { key: 'ticker', label: 'Ticker', required: true, sticky: false, sortable: true },
   { key: 'currency', label: 'Currency', required: true, sticky: false, sortable: true, align: 'center' },
   { key: 'price', label: 'Price', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'benjaminGraham', label: 'Benjamin Graham', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'entry1', label: 'ENTRY1', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'entry2', label: 'ENTRY2', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'exit1', label: 'EXIT1', defaultVisible: true, sortable: true, align: 'center' },
@@ -94,13 +92,6 @@ const ENTRY_EXIT_FILTERS: FilterConfig[] = [
   {
     key: 'price',
     label: 'Pris',
-    type: 'numberRange',
-    min: 0,
-    step: 0.01,
-  },
-  {
-    key: 'benjaminGraham',
-    label: 'Benjamin Graham',
     type: 'numberRange',
     min: 0,
     step: 0.01,
@@ -563,26 +554,6 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         );
       case 'price':
         return <span className="text-black dark:text-white">{item.price !== null ? item.price.toLocaleString() : 'N/A'}</span>;
-      case 'benjaminGraham':
-        return (
-          <span className={
-            item.benjaminGraham === null
-              ? 'text-black dark:text-white'
-              : item.benjaminGraham < 0 
-              ? 'text-red-700 dark:text-red-400'
-              : item.benjaminGraham > 0 && 
-                item.price !== null && item.price > 0 && 
-                item.price <= item.benjaminGraham * PRICE_TOLERANCE_GREEN
-              ? 'text-green-700 dark:text-green-200'
-              : item.benjaminGraham > 0 && 
-                item.price !== null && item.price > 0 && 
-                item.price <= item.benjaminGraham * PRICE_TOLERANCE_BLUE
-              ? 'text-blue-700 dark:text-blue-400'
-              : 'text-black dark:text-white'
-          }>
-            {item.benjaminGraham !== null ? item.benjaminGraham.toLocaleString() : 'N/A'}
-          </span>
-        );
       case 'ivFcf':
         if (!hasIvFcf) return null;
         return <span className="text-black dark:text-white">{item.ivFcf !== null && item.ivFcf !== undefined ? item.ivFcf.toLocaleString() : 'N/A'}</span>;
@@ -747,26 +718,6 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Price</span>
               <span className="text-sm text-black dark:text-white">
                 {item.price !== null ? item.price.toLocaleString() : 'N/A'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Benjamin Graham</span>
-              <span className={`text-sm text-center ${
-                item.benjaminGraham === null
-                  ? 'text-black dark:text-white'
-                  : item.benjaminGraham < 0 
-                  ? 'text-red-700 dark:text-red-300'
-                  : item.benjaminGraham > 0 && 
-                    item.price !== null && item.price > 0 && 
-                    item.price <= item.benjaminGraham * PRICE_TOLERANCE_GREEN
-                  ? 'text-green-700 dark:text-green-200'
-                  : item.benjaminGraham > 0 && 
-                    item.price !== null && item.price > 0 && 
-                    item.price <= item.benjaminGraham * PRICE_TOLERANCE_BLUE
-                  ? 'text-blue-700 dark:text-blue-400'
-                  : 'text-black dark:text-white'
-              }`}>
-                {item.benjaminGraham !== null ? item.benjaminGraham.toLocaleString() : 'N/A'}
               </span>
             </div>
             {hasIvFcf && (

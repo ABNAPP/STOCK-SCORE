@@ -7,26 +7,8 @@ import type { IndustryThresholdData } from '../../types/stock';
 import {
   MUNGER_QUALITY_SCORE_RED_THRESHOLD,
   MUNGER_QUALITY_SCORE_GREEN_THRESHOLD,
-  TB_S_PRICE_GREEN_THRESHOLD,
 } from '../../config/constants';
 import type { ColorType } from './types';
-
-export function getIRRColor(
-  irrValue: number | null,
-  industry: string,
-  thresholdData: IndustryThresholdData[]
-): ColorType {
-  if (irrValue === null || !isFinite(irrValue)) return 'BLANK';
-  if (!industry || industry.trim() === '') return 'BLANK';
-
-  const threshold = thresholdData.find(
-    (t) => t.industry.toLowerCase() === industry.toLowerCase()
-  );
-  if (!threshold) return 'BLANK';
-
-  const { irr: irrThreshold } = threshold;
-  return irrValue >= irrThreshold ? 'GREEN' : 'RED';
-}
 
 export function getMungerQualityScoreColor(mungerQualityScore: number | null): ColorType {
   if (mungerQualityScore === null || !isFinite(mungerQualityScore)) return 'BLANK';
@@ -42,26 +24,6 @@ export function getMungerQualityScoreColor(mungerQualityScore: number | null): C
 export function getValueCreationColor(valueCreation: number | null): ColorType {
   if (valueCreation === null || !isFinite(valueCreation)) return 'BLANK';
   return valueCreation >= 0 ? 'GREEN' : 'RED';
-}
-
-export function getRo40Color(
-  ro40Value: number | null,
-  industry: string,
-  thresholdData: IndustryThresholdData[]
-): ColorType {
-  if (ro40Value === null || !isFinite(ro40Value)) return 'BLANK';
-  if (!industry || industry.trim() === '') return 'BLANK';
-
-  const threshold = thresholdData.find(
-    (t) => t.industry.toLowerCase() === industry.toLowerCase()
-  );
-  if (!threshold) return 'BLANK';
-
-  const { ro40Min, ro40Max } = threshold;
-  const ro40Decimal = ro40Value / 100;
-  if (ro40Decimal <= ro40Min) return 'RED';
-  if (ro40Decimal >= ro40Max) return 'GREEN';
-  return 'ORANGE';
 }
 
 export function getLeverageF2Color(
@@ -126,11 +88,6 @@ export function getCurrentRatioColor(
 export function getPEPercentageColor(peIndustry: number | null): ColorType {
   if (peIndustry === null || !isFinite(peIndustry)) return 'BLANK';
   return peIndustry <= 0 ? 'GREEN' : 'RED';
-}
-
-export function getTBSPPriceColor(tbSPrice: number | null): ColorType {
-  if (tbSPrice === null || !isFinite(tbSPrice)) return 'BLANK';
-  return tbSPrice >= TB_S_PRICE_GREEN_THRESHOLD ? 'GREEN' : 'RED';
 }
 
 export function getSMAColor(

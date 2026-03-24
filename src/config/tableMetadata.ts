@@ -89,17 +89,6 @@ export const tableMetadata: TableMetadata[] = [
         ]
       },
       {
-        columnKey: 'benjaminGraham',
-        dataSource: 'Dashboard sheet, kolumn "Benjamin Graham"',
-        conditions: [
-          'Visa N/A om värdet är null eller ogiltigt',
-          'Visa faktiska 0-värden som "0"',
-          'Röd färg om värdet är negativt (< 0)',
-          'Grön färg om Price är inom +5% av Benjamin Graham-värdet (price <= benjaminGraham * 1.05)',
-          'Filtrera bort rader där Company Name eller Ticker är N/A'
-        ]
-      },
-      {
         columnKey: 'ivFcf',
         dataSource: 'Dashboard sheet, kolumn "IV (FCF)"',
         conditions: [
@@ -288,8 +277,7 @@ export const tableMetadata: TableMetadata[] = [
           'Poängsystem från 0-100 (total max 100p)',
           'Beräknas baserat på färgkodning i SCORE BOARD',
           'Fundamental metrics (50p totalt):',
-          '  - VALUE CREATION (7), Munger Quality Score (7), IRR (4), Ro40 F1/F2 (4 vardera)',
-          '  - LEVERAGE F2, Cash/SDebt, Current Ratio, P/E1 INDUSTRY, P/E2 INDUSTRY, (TB/S)/Price (4 vardera)',
+          '  - VALUE CREATION (9), Munger Quality Score (12), LEVERAGE F2 (7), Cash/SDebt (7), Current Ratio (5), P/E1 INDUSTRY (5), P/E2 INDUSTRY (5)',
           'Technical metrics (50p totalt):',
           '  - TheoEntry (45), SMA(9) (2.5), SMA(21) (2.5)',
           'Färgmarkering:',
@@ -321,20 +309,6 @@ export const tableMetadata: TableMetadata[] = [
         ]
       },
       {
-        columnKey: 'irr',
-        dataSource: 'Dashboard sheet, kolumn "IRR"',
-        conditions: [
-          'Visa N/A om värdet är null eller ogiltigt',
-          'Visa faktiska 0-värden som "0%"',
-          'Formateras som procent med %-tecken och noll decimaler',
-          'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Industry Threshold:',
-          '  - GRÖN om IRR >= IRR threshold (från Industry Threshold baserat på industry)',
-          '  - RÖD om IRR < IRR threshold (från Industry Threshold baserat på industry)',
-          '  - Ingen färg om industry inte hittas eller värdet är null/N/A'
-        ]
-      },
-      {
         columnKey: 'mungerQualityScore',
         dataSource: 'Dashboard sheet, kolumn "Munger Quality Score"',
         conditions: [
@@ -357,53 +331,6 @@ export const tableMetadata: TableMetadata[] = [
           'Röd färg om värdet är mindre än 0',
           'Grön färg om värdet är >= 0',
           'Filtrera bort rader där Company Name eller Ticker är N/A'
-        ]
-      },
-      {
-        columnKey: 'tbSPrice',
-        dataSource: 'Dashboard sheet, kolumn "(TB/S)/Price"',
-        formula: 'Hämtas direkt från kolumnen (TB/S)/Price',
-        conditions: [
-          'Hämtas direkt från kolumnen "(TB/S)/Price" i Dashboard sheet',
-          'Visa N/A om värdet är null',
-          'Formateras med två decimaler',
-          'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering:',
-          '  - RÖD om (TB/S)/Price < 1.00',
-          '  - GRÖN om (TB/S)/Price ≥ 1.00',
-          '  - Ingen färg om värdet är null eller ogiltigt'
-        ]
-      },
-      {
-        columnKey: 'ro40F1',
-        dataSource: 'Dashboard sheet, kolumn "Ro40 F1"',
-        conditions: [
-          'Visa N/A om värdet är null eller ogiltigt',
-          'Visa faktiska 0-värden som "0.0%"',
-          'Formateras som procent med %-tecken och en decimal',
-          'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Industry Threshold:',
-          '  - RÖD om Ro40-värdet ≤ RO40 MIN (från Industry Threshold baserat på industry)',
-          '  - GRÖN om Ro40-värdet ≥ RO40 MAX (från Industry Threshold baserat på industry)',
-          '  - BLÅ om RO40 MIN < Ro40-värdet < RO40 MAX (från Industry Threshold baserat på industry)',
-          '  - Ingen färg om industry inte hittas eller värdet är null/N/A',
-          'Konverterar procent till decimal för jämförelse (t.ex. 25.0% → 0.25)'
-        ]
-      },
-      {
-        columnKey: 'ro40F2',
-        dataSource: 'Dashboard sheet, kolumn "Ro40 F2"',
-        conditions: [
-          'Visa N/A om värdet är null eller ogiltigt',
-          'Visa faktiska 0-värden som "0.0%"',
-          'Formateras som procent med %-tecken och en decimal',
-          'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Industry Threshold:',
-          '  - RÖD om Ro40-värdet ≤ RO40 MIN (från Industry Threshold baserat på industry)',
-          '  - GRÖN om Ro40-värdet ≥ RO40 MAX (från Industry Threshold baserat på industry)',
-          '  - BLÅ om RO40 MIN < Ro40-värdet < RO40 MAX (från Industry Threshold baserat på industry)',
-          '  - Ingen färg om industry inte hittas eller värdet är null/N/A',
-          'Konverterar procent till decimal för jämförelse (t.ex. 25.0% → 0.25)'
         ]
       },
       {
@@ -493,15 +420,6 @@ export const tableMetadata: TableMetadata[] = [
         ]
       },
       {
-        columnKey: 'irr',
-        dataSource: 'Dashboard sheet, kolumn "IRR"',
-        conditions: [
-          'Kan redigeras manuellt',
-          'Används som threshold för färgmarkering av IRR-kolumnen i SCORE BOARD',
-          'Matchning sker baserat på industry (case-insensitive)'
-        ]
-      },
-      {
         columnKey: 'leverageF2Min',
         dataSource: 'Auto-fylld baserat på industry mapping (Green_Max värde)',
         conditions: [
@@ -513,24 +431,6 @@ export const tableMetadata: TableMetadata[] = [
       {
         columnKey: 'leverageF2Max',
         dataSource: 'Auto-fylld baserat på industry mapping (Red_Min värde)',
-        conditions: [
-          'Auto-fylld baserat på industry namn',
-          'Kan redigeras manuellt',
-          'Visa 0 om industry inte hittas i mappningen'
-        ]
-      },
-      {
-        columnKey: 'ro40Min',
-        dataSource: 'Auto-fylld baserat på industry mapping (Min värde)',
-        conditions: [
-          'Auto-fylld baserat på industry namn',
-          'Kan redigeras manuellt',
-          'Visa 0 om industry inte hittas i mappningen'
-        ]
-      },
-      {
-        columnKey: 'ro40Max',
-        dataSource: 'Auto-fylld baserat på industry mapping (Max värde)',
         conditions: [
           'Auto-fylld baserat på industry namn',
           'Kan redigeras manuellt',

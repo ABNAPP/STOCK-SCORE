@@ -56,8 +56,6 @@ function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields:
       const companyName = getValue(['Company Name', 'Company', 'company'], row);
       const ticker = getValue(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
       const priceStr = getValue(['Price', 'price', 'PRICE'], row);
-      const benjaminGrahamStr = getValue(['Benjamin Graham', 'benjamin graham', 'Benjamin', 'benjamin'], row);
-      
       // Only process if company name is valid (not #N/A)
       if (!isValidValue(companyName)) {
         return null;
@@ -70,9 +68,6 @@ function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields:
       
       // Parse Price value as number (handle #N/A)
       const price = parseNumericValueNullable(priceStr);
-      
-      // Parse Benjamin Graham value as number (handle #N/A)
-      const benjaminGraham = parseNumericValueNullable(benjaminGrahamStr);
       
       // Parse IV (FCF) if it exists
       const ivFcfStr = getValue(['IV (FCF)', 'IV(FCF)', 'iv fcf', 'ivfcf'], row);
@@ -87,7 +82,6 @@ function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields:
         companyName: companyName,
         ticker: ticker,
         price: price,
-        benjaminGraham: benjaminGraham,
         ivFcf: ivFcf, // Include if it exists
         irr1: irr1, // Include if it exists
       };

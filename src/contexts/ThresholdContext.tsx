@@ -6,11 +6,8 @@ import { db } from '../config/firebase';
 import { logger } from '../utils/logger';
 
 export interface ThresholdValues {
-  irr: number;
   leverageF2Min: number;
   leverageF2Max: number;
-  ro40Min: number;
-  ro40Max: number;
   cashSdebtMin: number;
   cashSdebtMax: number;
   currentRatioMin: number;
@@ -35,7 +32,7 @@ interface ThresholdProviderProps {
 export function ThresholdProvider({ children }: ThresholdProviderProps) {
   const { currentUser, userRole } = useAuth();
   const [serverRows, setServerRows] = useState<Map<string, ThresholdValues>>(new Map());
-  // draft: only fields user is currently editing (e.g. "Technology.irr": 15)
+  // draft: only fields user is currently editing (e.g. "Technology.leverageF2Min": 2)
   const [draft, setDraft] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -107,11 +104,8 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
             const industryKey = docSnap.id;
             const remoteThreshold = docSnap.data() as ThresholdValues;
             const prevRow = next.get(industryKey) || {
-              irr: 0,
               leverageF2Min: 0,
               leverageF2Max: 0,
-              ro40Min: 0,
-              ro40Max: 0,
               cashSdebtMin: 0,
               cashSdebtMax: 0,
               currentRatioMin: 0,
@@ -121,7 +115,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
             const merged: ThresholdValues = { ...prevRow, ...remoteThreshold };
 
             const fields: Array<keyof ThresholdValues> = [
-              'irr', 'leverageF2Min', 'leverageF2Max', 'ro40Min', 'ro40Max',
+              'leverageF2Min', 'leverageF2Max',
               'cashSdebtMin', 'cashSdebtMax', 'currentRatioMin', 'currentRatioMax'
             ];
 
@@ -166,11 +160,8 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
     for (const [draftKey, draftValue] of Object.entries(draft)) {
       const [industry, field] = draftKey.split('.');
       const entry = currentState.get(industry) || {
-        irr: 0,
         leverageF2Min: 0,
         leverageF2Max: 0,
-        ro40Min: 0,
-        ro40Max: 0,
         cashSdebtMin: 0,
         cashSdebtMax: 0,
         currentRatioMin: 0,
@@ -228,7 +219,7 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
     // Build result from server entry, but replace with draft values if they exist
     const result: ThresholdValues = { ...serverEntry };
     const fields: Array<keyof ThresholdValues> = [
-      'irr', 'leverageF2Min', 'leverageF2Max', 'ro40Min', 'ro40Max',
+      'leverageF2Min', 'leverageF2Max',
       'cashSdebtMin', 'cashSdebtMax', 'currentRatioMin', 'currentRatioMax'
     ];
     
@@ -259,11 +250,8 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
       setServerRows((rows) => {
         const newRows = new Map(rows);
         const current = newRows.get(industry) || {
-          irr: 0,
           leverageF2Min: 0,
           leverageF2Max: 0,
-          ro40Min: 0,
-          ro40Max: 0,
           cashSdebtMin: 0,
           cashSdebtMax: 0,
           currentRatioMin: 0,
@@ -286,11 +274,8 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
       if (value === undefined) return;
 
       const serverEntry = serverRows.get(industry) || {
-        irr: 0,
         leverageF2Min: 0,
         leverageF2Max: 0,
-        ro40Min: 0,
-        ro40Max: 0,
         cashSdebtMin: 0,
         cashSdebtMax: 0,
         currentRatioMin: 0,
@@ -327,11 +312,8 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
         const key = item.industryKey || item.industry;
         if (!newMap.has(key)) {
           newMap.set(key, {
-            irr: item.irr || 0,
             leverageF2Min: item.leverageF2Min || 0,
             leverageF2Max: item.leverageF2Max || 0,
-            ro40Min: item.ro40Min || 0,
-            ro40Max: item.ro40Max || 0,
             cashSdebtMin: item.cashSdebtMin || 0,
             cashSdebtMax: item.cashSdebtMax || 0,
             currentRatioMin: item.currentRatioMin || 0,
@@ -349,11 +331,8 @@ export function ThresholdProvider({ children }: ThresholdProviderProps) {
     for (const [draftKey, draftValue] of Object.entries(draft)) {
       const [industry, field] = draftKey.split('.');
       const entry = result.get(industry) || {
-        irr: 0,
         leverageF2Min: 0,
         leverageF2Max: 0,
-        ro40Min: 0,
-        ro40Max: 0,
         cashSdebtMin: 0,
         cashSdebtMax: 0,
         currentRatioMin: 0,

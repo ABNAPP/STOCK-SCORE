@@ -1,48 +1,28 @@
 import { describe, it, expect } from 'vitest';
 import {
-  getIRRColor,
   getMungerQualityScoreColor,
   getValueCreationColor,
-  getRo40Color,
   getLeverageF2Color,
   getCashSdebtColor,
   getCurrentRatioColor,
   getPEPercentageColor,
-  getTBSPPriceColor,
   getSMAColor,
 } from '../colorLogic';
-import { createMockThresholdData } from '../../../test/helpers';
+import type { IndustryThresholdData } from '../../../types/stock';
 
 describe('colorThresholds colorLogic', () => {
-  const thresholdData = [
-    createMockThresholdData({
+  const thresholdData: IndustryThresholdData[] = [
+    {
+      industryKey: 'test',
       industry: 'Test Industry',
-      irr: 25,
-      ro40Min: 0.15,
-      ro40Max: 0.25,
       leverageF2Min: 2.0,
       leverageF2Max: 3.0,
       cashSdebtMin: 0.7,
       cashSdebtMax: 1.2,
       currentRatioMin: 1.1,
       currentRatioMax: 2.0,
-    }),
+    },
   ];
-
-  describe('getIRRColor', () => {
-    it('returns GREEN when irr >= threshold', () => {
-      expect(getIRRColor(30, 'Test Industry', thresholdData)).toBe('GREEN');
-      expect(getIRRColor(25, 'Test Industry', thresholdData)).toBe('GREEN');
-    });
-    it('returns RED when irr < threshold', () => {
-      expect(getIRRColor(20, 'Test Industry', thresholdData)).toBe('RED');
-    });
-    it('returns BLANK for null, NaN, empty industry', () => {
-      expect(getIRRColor(null, 'Test Industry', thresholdData)).toBe('BLANK');
-      expect(getIRRColor(30, '', thresholdData)).toBe('BLANK');
-      expect(getIRRColor(30, 'Unknown Industry', thresholdData)).toBe('BLANK');
-    });
-  });
 
   describe('getMungerQualityScoreColor', () => {
     it('returns RED when < 40', () => {
@@ -63,21 +43,6 @@ describe('colorThresholds colorLogic', () => {
     it('returns GREEN when >= 0', () => expect(getValueCreationColor(10)).toBe('GREEN'));
     it('returns RED when < 0', () => expect(getValueCreationColor(-5)).toBe('RED'));
     it('returns BLANK for null', () => expect(getValueCreationColor(null)).toBe('BLANK'));
-  });
-
-  describe('getRo40Color', () => {
-    it('returns RED when <= min (15%)', () => {
-      expect(getRo40Color(10, 'Test Industry', thresholdData)).toBe('RED');
-    });
-    it('returns GREEN when >= max (25%)', () => {
-      expect(getRo40Color(30, 'Test Industry', thresholdData)).toBe('GREEN');
-    });
-    it('returns ORANGE when between min and max', () => {
-      expect(getRo40Color(20, 'Test Industry', thresholdData)).toBe('ORANGE');
-    });
-    it('returns BLANK for unknown industry', () => {
-      expect(getRo40Color(20, 'Unknown', thresholdData)).toBe('BLANK');
-    });
   });
 
   describe('getLeverageF2Color', () => {
@@ -122,11 +87,6 @@ describe('colorThresholds colorLogic', () => {
   describe('getPEPercentageColor', () => {
     it('returns GREEN when <= 0', () => expect(getPEPercentageColor(-5)).toBe('GREEN'));
     it('returns RED when > 0', () => expect(getPEPercentageColor(5)).toBe('RED'));
-  });
-
-  describe('getTBSPPriceColor', () => {
-    it('returns GREEN when >= 1.0', () => expect(getTBSPPriceColor(1.5)).toBe('GREEN'));
-    it('returns RED when < 1.0', () => expect(getTBSPPriceColor(0.5)).toBe('RED'));
   });
 
   describe('getSMAColor', () => {

@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip } from 'recharts';
-import { ScoreBreakdown } from '../utils/calculateScoreDetailed';
+import {
+  ScoreBreakdown,
+  FUNDAMENTAL_MAX_SCORE_POINTS,
+  TECHNICAL_MAX_SCORE_POINTS,
+} from '../utils/calculateScoreDetailed';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface ScoreBreakdownRowProps {
@@ -75,11 +79,12 @@ export default function ScoreBreakdownRow({ breakdown }: ScoreBreakdownRowProps)
   const StackedBarTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0];
+      const cap = data.name === 'Fundamental' ? FUNDAMENTAL_MAX_SCORE_POINTS : TECHNICAL_MAX_SCORE_POINTS;
       return (
         <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
           <p className="font-semibold text-black dark:text-white">{data.name}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Poäng: {data.value.toFixed(1)} / 50
+            Poäng: {data.value.toFixed(1)} / {cap}
           </p>
         </div>
       );
@@ -102,7 +107,7 @@ export default function ScoreBreakdownRow({ breakdown }: ScoreBreakdownRowProps)
           >
             <XAxis 
               type="number" 
-              domain={[0, 50]}
+              domain={[0, Math.max(FUNDAMENTAL_MAX_SCORE_POINTS, TECHNICAL_MAX_SCORE_POINTS)]}
               tick={{ fill: isDarkMode ? '#e5e7eb' : '#374151', fontSize: 12 }}
             />
             <YAxis 
@@ -135,7 +140,7 @@ export default function ScoreBreakdownRow({ breakdown }: ScoreBreakdownRowProps)
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">Fundamental</span>
               <span className="text-xs text-gray-600 dark:text-gray-400">
-                ({breakdown.fundamentalTotal.toFixed(1)} / 50p)
+                ({breakdown.fundamentalTotal.toFixed(1)} / {FUNDAMENTAL_MAX_SCORE_POINTS}p)
               </span>
             </div>
             <div className="space-y-1">
@@ -163,7 +168,7 @@ export default function ScoreBreakdownRow({ breakdown }: ScoreBreakdownRowProps)
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-green-600 dark:text-green-400">Technical</span>
               <span className="text-xs text-gray-600 dark:text-gray-400">
-                ({breakdown.technicalTotal.toFixed(1)} / 50p)
+                ({breakdown.technicalTotal.toFixed(1)} / {TECHNICAL_MAX_SCORE_POINTS}p)
               </span>
             </div>
             <div className="space-y-1">

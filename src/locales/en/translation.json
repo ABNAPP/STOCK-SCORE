@@ -20,9 +20,6 @@
     "pe2Industry": "P/E2 INDUSTRY",
     "currentRatio": "Current Ratio",
     "cashSdebt": "Cash/SDebt",
-    "ro40Cy": "Ro40 CY",
-    "ro40F1": "Ro40 F1",
-    "ro40F2": "Ro40 F2",
     "tachart": "TAChart",
     "sma200": "SMA(200)",
     "pe": "PE:",
@@ -294,7 +291,7 @@
   "helpThisView": {
     "score": "View for summary score and overview.",
     "score-board": "Detailed table with all metrics and industry comparisons.",
-    "entry-exit-benjamin-graham": "Entry/Exit values and Benjamin Graham valuations.",
+    "entry-exit-benjamin-graham": "Entry/Exit values and live prices from the dashboard.",
     "fundamental-pe-industry": "P/E comparisons by industry.",
     "industry-threshold": "Threshold values per industry.",
     "personal-portfolio": "Your personal stock portfolio.",

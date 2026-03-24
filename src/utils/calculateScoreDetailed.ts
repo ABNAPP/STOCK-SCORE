@@ -5,15 +5,12 @@ import {
   COLOR_FACTOR_ORANGE_BLUE,
 } from '../config/constants';
 import {
-  getIRRColor,
   getMungerQualityScoreColor,
   getValueCreationColor,
-  getRo40Color,
   getLeverageF2Color,
   getCashSdebtColor,
   getCurrentRatioColor,
   getPEPercentageColor,
-  getTBSPPriceColor,
   isTheoEntryGreen,
 } from './colorThresholds';
 import type { ColorType } from './colorThresholds';
@@ -42,24 +39,38 @@ interface Metric {
 
 const METRICS: Metric[] = [
   // Fundamental (50p)
-  { name: 'VALUE CREATION', weight: 7, method: '3Band' },
-  { name: 'Munger Quality Score', weight: 7, method: '3Band' },
-  { name: 'IRR', weight: 4, method: '3Band' },
-  { name: 'Ro40 F1', weight: 4, method: '3Band' },
-  { name: 'Ro40 F2', weight: 4, method: '3Band' },
-  { name: 'LEVERAGE F2', weight: 4, method: '3Band' },
-  { name: 'Cash/SDebt', weight: 4, method: '3Band' },
-  { name: 'Current Ratio', weight: 4, method: '3Band' },
-  { name: 'P/E1 INDUSTRY', weight: 4, method: '3Band' },
-  { name: 'P/E2 INDUSTRY', weight: 4, method: '3Band' },
-  { name: '(TB/S)/Price', weight: 4, method: '3Band' },
+  { name: 'VALUE CREATION', weight: 9, method: '3Band' },
+  { name: 'Munger Quality Score', weight: 12, method: '3Band' },
+  { name: 'LEVERAGE F2', weight: 7, method: '3Band' },
+  { name: 'Cash/SDebt', weight: 7, method: '3Band' },
+  { name: 'Current Ratio', weight: 5, method: '3Band' },
+  { name: 'P/E1 INDUSTRY', weight: 5, method: '3Band' },
+  { name: 'P/E2 INDUSTRY', weight: 5, method: '3Band' },
   // Technical (50p)
   { name: 'THEOENTRY', weight: 45, method: 'GreenOnly' },
   { name: 'SMA(9)', weight: 2.5, method: 'GreenOnly' },
   { name: 'SMA(21)', weight: 2.5, method: 'GreenOnly' },
 ];
 
-const TOTAL_WEIGHT = 100; // 50 fundamental + 50 technical
+const FUNDAMENTAL_METRIC_NAMES = new Set<string>([
+  'VALUE CREATION',
+  'Munger Quality Score',
+  'LEVERAGE F2',
+  'Cash/SDebt',
+  'Current Ratio',
+  'P/E1 INDUSTRY',
+  'P/E2 INDUSTRY',
+]);
+
+export const FUNDAMENTAL_MAX_SCORE_POINTS = METRICS.filter((m) =>
+  FUNDAMENTAL_METRIC_NAMES.has(m.name)
+).reduce((sum, m) => sum + m.weight, 0);
+
+export const TECHNICAL_MAX_SCORE_POINTS = METRICS.filter(
+  (m) => !FUNDAMENTAL_METRIC_NAMES.has(m.name)
+).reduce((sum, m) => sum + m.weight, 0);
+
+export const TOTAL_SCORE_WEIGHT = METRICS.reduce((sum, m) => sum + m.weight, 0);
 
 // Get price from BenjaminGrahamData
 function getPriceFromBenjaminGraham(
@@ -187,20 +198,7 @@ export function calculateDetailedScoreBreakdown(
     entryExitValues
   );
 
-  // Define which metrics are Fundamental vs Technical
-  const fundamentalMetrics = [
-    'VALUE CREATION',
-    'Munger Quality Score',
-    'IRR',
-    'Ro40 F1',
-    'Ro40 F2',
-    'LEVERAGE F2',
-    'Cash/SDebt',
-    'Current Ratio',
-    'P/E1 INDUSTRY',
-    'P/E2 INDUSTRY',
-    '(TB/S)/Price',
-  ];
+  const fundamentalMetrics = [...FUNDAMENTAL_METRIC_NAMES];
 
   // Process each metric
   for (const metric of METRICS) {
@@ -212,15 +210,6 @@ export function calculateDetailedScoreBreakdown(
         break;
       case 'Munger Quality Score':
         color = getMungerQualityScoreColor(scoreBoardData.mungerQualityScore);
-        break;
-      case 'IRR':
-        color = getIRRColor(scoreBoardData.irr, scoreBoardData.industry, thresholdData);
-        break;
-      case 'Ro40 F1':
-        color = getRo40Color(scoreBoardData.ro40F1, scoreBoardData.industry, thresholdData);
-        break;
-      case 'Ro40 F2':
-        color = getRo40Color(scoreBoardData.ro40F2, scoreBoardData.industry, thresholdData);
         break;
       case 'LEVERAGE F2':
         color = getLeverageF2Color(scoreBoardData.leverageF2, scoreBoardData.industry, thresholdData);
@@ -241,9 +230,6 @@ export function calculateDetailedScoreBreakdown(
         break;
       case 'P/E2 INDUSTRY':
         color = getPEPercentageColor(scoreBoardData.pe2Industry);
-        break;
-      case '(TB/S)/Price':
-        color = getTBSPPriceColor(scoreBoardData.tbSPrice);
         break;
       case 'THEOENTRY':
         color = isTheoEntryGreen(entryExitValue, price) ? 'GREEN' : 'BLANK';
@@ -283,7 +269,11 @@ export function calculateDetailedScoreBreakdown(
     }
   }
 
-  const totalScore = Math.round(Math.max(0, Math.min(100, fundamentalTotal + technicalTotal)) * 10) / 10;
+  const rawTotal = fundamentalTotal + technicalTotal;
+  const totalScore =
+    TOTAL_SCORE_WEIGHT > 0
+      ? Math.round(Math.max(0, Math.min(100, (rawTotal / TOTAL_SCORE_WEIGHT) * 100)) * 10) / 10
+      : 0;
 
   return {
     totalScore,
@@ -300,7 +290,7 @@ export function calculateDetailedScoreBreakdown(
  * different metric weights optimized for the detailed view. The main
  * differences are:
  * 
- * - Different weight distribution (50p fundamental + 45p technical)
+ * - Same metric weights as calculateScore (50p fundamental + 50p technical, total 100)
  * - Uses BLUE color classification instead of ORANGE
  * 
  * **When to use:**
@@ -356,15 +346,6 @@ export function calculateDetailedScore(
       case 'Munger Quality Score':
         color = getMungerQualityScoreColor(scoreBoardData.mungerQualityScore);
         break;
-      case 'IRR':
-        color = getIRRColor(scoreBoardData.irr, scoreBoardData.industry, thresholdData);
-        break;
-      case 'Ro40 F1':
-        color = getRo40Color(scoreBoardData.ro40F1, scoreBoardData.industry, thresholdData);
-        break;
-      case 'Ro40 F2':
-        color = getRo40Color(scoreBoardData.ro40F2, scoreBoardData.industry, thresholdData);
-        break;
       case 'LEVERAGE F2':
         color = getLeverageF2Color(scoreBoardData.leverageF2, scoreBoardData.industry, thresholdData);
         break;
@@ -385,9 +366,6 @@ export function calculateDetailedScore(
       case 'P/E2 INDUSTRY':
         color = getPEPercentageColor(scoreBoardData.pe2Industry);
         break;
-      case '(TB/S)/Price':
-        color = getTBSPPriceColor(scoreBoardData.tbSPrice);
-        break;
       case 'THEOENTRY':
         color = isTheoEntryGreen(entryExitValue, price) ? 'GREEN' : 'BLANK';
         break;
@@ -406,7 +384,9 @@ export function calculateDetailedScore(
     totalPoints += metric.weight * factor;
   }
 
-  // Score is already 0-100 (total weight is 100)
-  // Round to 1 decimal
-  return Math.round(Math.max(0, Math.min(100, totalPoints)) * 10) / 10;
+  const scaled =
+    TOTAL_SCORE_WEIGHT > 0
+      ? Math.max(0, Math.min(100, (totalPoints / TOTAL_SCORE_WEIGHT) * 100))
+      : 0;
+  return Math.round(scaled * 10) / 10;
 }

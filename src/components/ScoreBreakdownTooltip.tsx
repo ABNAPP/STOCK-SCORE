@@ -1,5 +1,9 @@
 import { useState, useRef, useEffect, useId } from 'react';
-import { ScoreBreakdown } from '../utils/calculateScoreDetailed';
+import {
+  ScoreBreakdown,
+  FUNDAMENTAL_MAX_SCORE_POINTS,
+  TECHNICAL_MAX_SCORE_POINTS,
+} from '../utils/calculateScoreDetailed';
 
 interface ScoreBreakdownTooltipProps {
   breakdown: ScoreBreakdown;
@@ -113,7 +117,7 @@ export default function ScoreBreakdownTooltip({ breakdown, children }: ScoreBrea
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="font-semibold text-blue-400">Fundamental</span>
-                <span className="text-gray-300 text-xs">({breakdown.fundamentalTotal.toFixed(1)} / 50p)</span>
+                <span className="text-gray-300 text-xs">({breakdown.fundamentalTotal.toFixed(1)} / {FUNDAMENTAL_MAX_SCORE_POINTS}p)</span>
               </div>
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {fundamentalItems.map((item, index) => (
@@ -136,7 +140,7 @@ export default function ScoreBreakdownTooltip({ breakdown, children }: ScoreBrea
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="font-semibold text-green-400">Technical</span>
-                <span className="text-gray-300 text-xs">({breakdown.technicalTotal.toFixed(1)} / 50p)</span>
+                <span className="text-gray-300 text-xs">({breakdown.technicalTotal.toFixed(1)} / {TECHNICAL_MAX_SCORE_POINTS}p)</span>
               </div>
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {technicalItems.map((item, index) => (

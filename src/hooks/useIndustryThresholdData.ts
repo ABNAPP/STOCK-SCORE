@@ -52,11 +52,8 @@ export function useIndustryThresholdData() {
           return {
             industryKey,
             industry,
-            irr: entry?.irr ?? 0,
             leverageF2Min: entry?.leverageF2Min ?? 0,
             leverageF2Max: entry?.leverageF2Max ?? 0,
-            ro40Min: entry?.ro40Min ?? 0,
-            ro40Max: entry?.ro40Max ?? 0,
             cashSdebtMin: entry?.cashSdebtMin ?? 0,
             cashSdebtMax: entry?.cashSdebtMax ?? 0,
             currentRatioMin: entry?.currentRatioMin ?? 0,
@@ -102,11 +99,8 @@ export function useIndustryThresholdData() {
           return {
             industryKey,
             industry,
-            irr: entry?.irr ?? 0,
             leverageF2Min: entry?.leverageF2Min ?? 0,
             leverageF2Max: entry?.leverageF2Max ?? 0,
-            ro40Min: entry?.ro40Min ?? 0,
-            ro40Max: entry?.ro40Max ?? 0,
             cashSdebtMin: entry?.cashSdebtMin ?? 0,
             cashSdebtMax: entry?.cashSdebtMax ?? 0,
             currentRatioMin: entry?.currentRatioMin ?? 0,

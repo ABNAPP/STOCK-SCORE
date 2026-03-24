@@ -106,7 +106,7 @@ export function useTableSort<T>(
     };
     
     // Helper function to check if a row has N/A in ANY column (for backward compatibility)
-    // For BenjaminGrahamData: check price and benjaminGraham (0 = N/A)
+    // For BenjaminGrahamData: numeric fields (e.g. price) may be 0 = N/A
     // For other types: check all numeric columns except score and industry
     const hasNAInAnyColumn = (item: T): boolean => {
       // Get all keys from the item

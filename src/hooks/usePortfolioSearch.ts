@@ -6,7 +6,6 @@ export interface StockSearchResult {
   companyName: string;
   ticker: string;
   price: number | null;
-  benjaminGraham: number | null;
 }
 
 /**
@@ -54,7 +53,6 @@ export function usePortfolioSearch(
           companyName: item.companyName,
           ticker: item.ticker,
           price: item.price ?? null,
-          benjaminGraham: item.benjaminGraham ?? null,
         });
       }
     }

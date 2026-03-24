@@ -10,15 +10,12 @@ import { useTranslation } from 'react-i18next';
 import { useEntryExitValues } from '../contexts/EntryExitContext';
 import { useBenjaminGrahamData } from '../hooks/useBenjaminGrahamData';
 import {
-  getIRRColor,
   getMungerQualityScoreColor,
   getValueCreationColor,
-  getRo40Color,
   getLeverageF2Color,
   getCashSdebtColor,
   getCurrentRatioColor,
   getPEPercentageColor,
-  getTBSPPriceColor,
   isTheoEntryGreen,
   colorTypeToCssClass,
 } from '../utils/colorThresholds';
@@ -36,12 +33,8 @@ const SCORE_BOARD_COLUMNS: ColumnDefinition[] = [
   { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
   { key: 'companyName', label: 'Company Name', required: true, sticky: true, sortable: true },
   { key: 'ticker', label: 'Ticker', required: true, sticky: true, sortable: true },
-  { key: 'irr', label: 'IRR', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'mungerQualityScore', label: 'Munger Quality Score', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'valueCreation', label: 'Value Creation', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'tbSPrice', label: '(TB/S)/Price', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'ro40F1', label: 'Ro40 F1', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'ro40F2', label: 'Ro40 F2', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'currentRatio', label: 'Current Ratio', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'cashSdebt', label: 'Cash/SDebt', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'leverageF2', label: 'Leverage F2', defaultVisible: true, sortable: true, align: 'center' },
@@ -85,12 +78,6 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
       options: uniqueIndustries,
     },
     {
-      key: 'irr',
-      label: 'IRR (%)',
-      type: 'numberRange',
-      step: 0.1,
-    },
-    {
       key: 'mungerQualityScore',
       label: 'Munger Quality Score',
       type: 'numberRange',
@@ -101,18 +88,6 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
     {
       key: 'valueCreation',
       label: 'Value Creation (%)',
-      type: 'numberRange',
-      step: 0.1,
-    },
-    {
-      key: 'ro40F1',
-      label: 'Ro40 F1 (%)',
-      type: 'numberRange',
-      step: 0.1,
-    },
-    {
-      key: 'ro40F2',
-      label: 'Ro40 F2 (%)',
       type: 'numberRange',
       step: 0.1,
     },
@@ -327,12 +302,6 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         return <span className="font-medium">{item.companyName}</span>;
       case 'ticker':
         return <span className="text-gray-600 dark:text-gray-300">{item.ticker}</span>;
-      case 'irr':
-        return (
-          <span className={colorTypeToCssClass(getIRRColor(item.irr, item.industry, thresholdData)) || 'text-black dark:text-white'}>
-            {item.irr !== null ? `${item.irr.toFixed(2)}%` : 'N/A'}
-          </span>
-        );
       case 'mungerQualityScore':
         return (
           <span className={colorTypeToCssClass(getMungerQualityScoreColor(item.mungerQualityScore), { orangeVariant: 'blue' }) || 'text-black dark:text-white'}>
@@ -343,24 +312,6 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         return (
           <span className={colorTypeToCssClass(getValueCreationColor(item.valueCreation)) || 'text-black dark:text-white'}>
             {item.valueCreation !== null ? `${item.valueCreation.toFixed(2)}%` : 'N/A'}
-          </span>
-        );
-      case 'tbSPrice':
-        return (
-          <span className={colorTypeToCssClass(getTBSPPriceColor(item.tbSPrice)) || 'text-black dark:text-white'}>
-            {item.tbSPrice !== null ? item.tbSPrice.toFixed(2) : 'N/A'}
-          </span>
-        );
-      case 'ro40F1':
-        return (
-          <span className={colorTypeToCssClass(getRo40Color(item.ro40F1, item.industry, thresholdData)) || 'text-black dark:text-white'}>
-            {item.ro40F1 !== null ? `${item.ro40F1.toFixed(2)}%` : 'N/A'}
-          </span>
-        );
-      case 'ro40F2':
-        return (
-          <span className={colorTypeToCssClass(getRo40Color(item.ro40F2, item.industry, thresholdData)) || 'text-black dark:text-white'}>
-            {item.ro40F2 !== null ? `${item.ro40F2.toFixed(2)}%` : 'N/A'}
           </span>
         );
       case 'currentRatio':
@@ -449,7 +400,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
         </div>
         {isExpanded && (
           <div className="border-t border-gray-200 dark:border-gray-700 p-4 space-y-3 animate-fade-in">
-            {['irr', 'mungerQualityScore', 'valueCreation', 'tbSPrice', 'ro40F1', 'ro40F2', 'currentRatio', 'cashSdebt', 'leverageF2', 'pe1Industry', 'pe2Industry', 'theoEntry'].map((key) => {
+            {['mungerQualityScore', 'valueCreation', 'currentRatio', 'cashSdebt', 'leverageF2', 'pe1Industry', 'pe2Industry', 'theoEntry'].map((key) => {
               const column = SCORE_BOARD_COLUMNS.find(c => c.key === key);
               if (!column) return null;
               return (

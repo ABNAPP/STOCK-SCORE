@@ -20,9 +20,6 @@
     "pe2Industry": "P/E2 INDUSTRY",
     "currentRatio": "Current Ratio",
     "cashSdebt": "Cash/SDebt",
-    "ro40Cy": "Ro40 CY",
-    "ro40F1": "Ro40 F1",
-    "ro40F2": "Ro40 F2",
     "tachart": "TAChart",
     "sma200": "SMA(200)",
     "pe": "PE:",
@@ -294,7 +291,7 @@
   "helpThisView": {
     "score": "Vy för sammanfattad poäng och översikt.",
     "score-board": "Detaljerad tabell med alla nyckeltal och branschjämförelser.",
-    "entry-exit-benjamin-graham": "Entry/Exit-värden och Benjamin Graham-värderingar.",
+    "entry-exit-benjamin-graham": "Entry/Exit-värden och aktuella priser från dashboard.",
     "fundamental-pe-industry": "P/E-jämförelser per bransch.",
     "industry-threshold": "Tröskelvärden per bransch.",
     "personal-portfolio": "Din personliga aktieportfölj.",

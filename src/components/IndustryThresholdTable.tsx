@@ -20,11 +20,8 @@ interface IndustryThresholdTableProps {
 const THRESHOLD_INDUSTRY_COLUMNS: ColumnDefinition<IndustryThresholdData>[] = [
   { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
   { key: 'industry', label: 'INDUSTRY', required: true, sticky: true, sortable: true },
-  { key: 'irr', label: 'IRR', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'leverageF2Min', label: 'LEVERAGE F2 MIN', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'leverageF2Max', label: 'LEVERAGE F2 MAX', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'ro40Min', label: 'RO40 MIN', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'ro40Max', label: 'RO40 MAX', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'cashSdebtMin', label: 'Cash/SDebt MIN', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'cashSdebtMax', label: 'Cash/SDebt MAX', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'currentRatioMin', label: 'Current Ratio MIN', defaultVisible: true, sortable: true, align: 'center' },
@@ -39,11 +36,8 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
   const isReadOnly = userRole !== 'admin';
   const [editingRow, setEditingRow] = useState<IndustryThresholdData | null>(null);
   const [modalValues, setModalValues] = useState({
-    irr: '',
     leverageF2Min: '',
     leverageF2Max: '',
-    ro40Min: '',
-    ro40Max: '',
     cashSdebtMin: '',
     cashSdebtMax: '',
     currentRatioMin: '',
@@ -69,12 +63,6 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
       options: uniqueIndustries,
     },
     {
-      key: 'irr',
-      label: 'IRR',
-      type: 'numberRange',
-      step: 0.1,
-    },
-    {
       key: 'leverageF2Min',
       label: 'Leverage F2 Min',
       type: 'numberRange',
@@ -86,27 +74,12 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
       type: 'numberRange',
       step: 0.01,
     },
-    {
-      key: 'ro40Min',
-      label: 'Ro40 Min',
-      type: 'numberRange',
-      step: 0.1,
-    },
-    {
-      key: 'ro40Max',
-      label: 'Ro40 Max',
-      type: 'numberRange',
-      step: 0.1,
-    },
   ], [uniqueIndustries]);
 
   const openEditModal = useCallback((item: IndustryThresholdData) => {
     setModalValues({
-      irr: String(getFieldValue(item.industryKey, 'irr') || ''),
       leverageF2Min: String(getFieldValue(item.industryKey, 'leverageF2Min') || ''),
       leverageF2Max: String(getFieldValue(item.industryKey, 'leverageF2Max') || ''),
-      ro40Min: String(getFieldValue(item.industryKey, 'ro40Min') || ''),
-      ro40Max: String(getFieldValue(item.industryKey, 'ro40Max') || ''),
       cashSdebtMin: String(getFieldValue(item.industryKey, 'cashSdebtMin') || ''),
       cashSdebtMax: String(getFieldValue(item.industryKey, 'cashSdebtMax') || ''),
       currentRatioMin: String(getFieldValue(item.industryKey, 'currentRatioMin') || ''),
@@ -126,11 +99,8 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
   const handleModalSave = useCallback(() => {
     if (!editingRow) return;
     const parsed = {
-      irr: parseFloat(modalValues.irr),
       leverageF2Min: parseFloat(modalValues.leverageF2Min),
       leverageF2Max: parseFloat(modalValues.leverageF2Max),
-      ro40Min: parseFloat(modalValues.ro40Min),
-      ro40Max: parseFloat(modalValues.ro40Max),
       cashSdebtMin: parseFloat(modalValues.cashSdebtMin),
       cashSdebtMax: parseFloat(modalValues.cashSdebtMax),
       currentRatioMin: parseFloat(modalValues.currentRatioMin),
@@ -138,11 +108,8 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
     };
 
     const values: ThresholdValues = {
-      irr: Number.isFinite(parsed.irr) ? parsed.irr : 0,
       leverageF2Min: Number.isFinite(parsed.leverageF2Min) ? parsed.leverageF2Min : 0,
       leverageF2Max: Number.isFinite(parsed.leverageF2Max) ? parsed.leverageF2Max : 0,
-      ro40Min: Number.isFinite(parsed.ro40Min) ? parsed.ro40Min : 0,
-      ro40Max: Number.isFinite(parsed.ro40Max) ? parsed.ro40Max : 0,
       cashSdebtMin: Number.isFinite(parsed.cashSdebtMin) ? parsed.cashSdebtMin : 0,
       cashSdebtMax: Number.isFinite(parsed.cashSdebtMax) ? parsed.cashSdebtMax : 0,
       currentRatioMin: Number.isFinite(parsed.currentRatioMin) ? parsed.currentRatioMin : 0,
@@ -329,32 +296,23 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
   // Render cell content with editable inputs
   const renderCell = useCallback((item: IndustryThresholdData, column: ColumnDefinition<IndustryThresholdData>, index: number, globalIndex: number) => {
     // Use getFieldValue for individual fields (supports draft)
-    const irr = getFieldValue(item.industryKey, 'irr');
     const leverageF2Min = getFieldValue(item.industryKey, 'leverageF2Min');
     const leverageF2Max = getFieldValue(item.industryKey, 'leverageF2Max');
-    const ro40Min = getFieldValue(item.industryKey, 'ro40Min');
-    const ro40Max = getFieldValue(item.industryKey, 'ro40Max');
     const cashSdebtMin = getFieldValue(item.industryKey, 'cashSdebtMin');
     const cashSdebtMax = getFieldValue(item.industryKey, 'cashSdebtMax');
     const currentRatioMin = getFieldValue(item.industryKey, 'currentRatioMin');
     const currentRatioMax = getFieldValue(item.industryKey, 'currentRatioMax');
-    const values = { irr, leverageF2Min, leverageF2Max, ro40Min, ro40Max, cashSdebtMin, cashSdebtMax, currentRatioMin, currentRatioMax };
+    const values = { leverageF2Min, leverageF2Max, cashSdebtMin, cashSdebtMax, currentRatioMin, currentRatioMax };
 
     switch (column.key) {
       case 'antal':
         return globalIndex + 1;
       case 'industry':
         return <span className="font-medium">{item.industry}</span>;
-      case 'irr':
-        return <span className="text-sm text-black dark:text-white">{values.irr}</span>;
       case 'leverageF2Min':
         return <span className="text-sm text-black dark:text-white">{values.leverageF2Min}</span>;
       case 'leverageF2Max':
         return <span className="text-sm text-black dark:text-white">{values.leverageF2Max}</span>;
-      case 'ro40Min':
-        return <span className="text-sm text-black dark:text-white">{values.ro40Min}</span>;
-      case 'ro40Max':
-        return <span className="text-sm text-black dark:text-white">{values.ro40Max}</span>;
       case 'cashSdebtMin':
         return <span className="text-sm text-black dark:text-white">{values.cashSdebtMin}</span>;
       case 'cashSdebtMax':
@@ -393,11 +351,8 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
     
     // Use getFieldValue for individual fields (supports draft)
     const values = {
-      irr: getFieldValue(item.industryKey, 'irr'),
       leverageF2Min: getFieldValue(item.industryKey, 'leverageF2Min'),
       leverageF2Max: getFieldValue(item.industryKey, 'leverageF2Max'),
-      ro40Min: getFieldValue(item.industryKey, 'ro40Min'),
-      ro40Max: getFieldValue(item.industryKey, 'ro40Max'),
       cashSdebtMin: getFieldValue(item.industryKey, 'cashSdebtMin'),
       cashSdebtMax: getFieldValue(item.industryKey, 'cashSdebtMax'),
       currentRatioMin: getFieldValue(item.industryKey, 'currentRatioMin'),
@@ -448,11 +403,8 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
         {isExpanded && (
           <div className="border-t border-gray-300 dark:border-gray-600 p-4 space-y-3 animate-fade-in">
             {Object.entries({
-              irr: { label: 'IRR', step: '0.1' as const },
               leverageF2Min: { label: 'LEVERAGE F2 MIN', step: '0.1' as const },
               leverageF2Max: { label: 'LEVERAGE F2 MAX', step: '0.1' as const },
-              ro40Min: { label: 'RO40 MIN', step: '0.01' as const },
-              ro40Max: { label: 'RO40 MAX', step: '0.01' as const },
               cashSdebtMin: { label: 'Cash/SDebt MIN', step: '0.1' as const },
               cashSdebtMax: { label: 'Cash/SDebt MAX', step: '0.1' as const },
               currentRatioMin: { label: 'Current Ratio MIN', step: '0.1' as const },
@@ -542,11 +494,8 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
 
             <div className="px-6 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {([
-                { field: 'irr', label: 'IRR', step: '0.1' },
                 { field: 'leverageF2Min', label: 'LEVERAGE F2 MIN', step: '0.1' },
                 { field: 'leverageF2Max', label: 'LEVERAGE F2 MAX', step: '0.1' },
-                { field: 'ro40Min', label: 'RO40 MIN', step: '0.01' },
-                { field: 'ro40Max', label: 'RO40 MAX', step: '0.01' },
                 { field: 'cashSdebtMin', label: 'Cash/SDebt MIN', step: '0.1' },
                 { field: 'cashSdebtMax', label: 'Cash/SDebt MAX', step: '0.1' },
                 { field: 'currentRatioMin', label: 'Current Ratio MIN', step: '0.1' },

@@ -40,9 +40,6 @@ export default function FundamentalView({ viewId }: FundamentalViewProps) {
       'fundamental-pe-industry': t('navigation.peIndustry'),
       'fundamental-current-ratio': t('navigation.currentRatio'),
       'fundamental-cash-sdebt': t('navigation.cashSdebt'),
-      'fundamental-ro40-cy': t('navigation.ro40Cy'),
-      'fundamental-ro40-f1': t('navigation.ro40F1'),
-      'fundamental-ro40-f2': t('navigation.ro40F2'),
     };
     return titles[viewId] || t('navigation.fundamental');
   };
