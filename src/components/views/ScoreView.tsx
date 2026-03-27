@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { useMemo, lazy, Suspense, useEffect } from 'react';
-import { useShareableHydration } from '../../contexts/ShareableHydrationContext';
 import { useScoreBoardData } from '../../hooks/useScoreBoardData';
 import { useIndustryThresholdData } from '../../hooks/useIndustryThresholdData';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
@@ -34,7 +33,6 @@ const TABLE_ID = 'score';
 // Inner component that uses EntryExitContext
 function ScoreViewInner() {
   const { t } = useTranslation();
-  const { link, consume } = useShareableHydration();
   const { data: scoreBoardData, loading, error } = useScoreBoardData();
   const { data: thresholdData, loading: thresholdLoading } = useIndustryThresholdData();
   const { data: benjaminGrahamData, loading: bgLoading } = useBenjaminGrahamData();
@@ -122,20 +120,6 @@ function ScoreViewInner() {
     });
   }, [scoreBoardData, benjaminGrahamData, thresholdData, entryExitValues]);
 
-  const initialTableState = useMemo(() => {
-    if (!link || link.viewId !== VIEW_ID || link.tableId !== TABLE_ID) return undefined;
-    return {
-      filterState: link.filterState ?? {},
-      columnFilters: link.columnFilters ?? {},
-      searchValue: link.searchValue ?? '',
-      sortConfig: link.sortConfig,
-    };
-  }, [link]);
-
-  useEffect(() => {
-    if (initialTableState) consume();
-  }, [initialTableState, consume]);
-
   return (
     <div className="h-full bg-gray-100 dark:bg-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6 flex flex-col transition-all duration-300 ease-in-out">
       <div className="w-full flex flex-col flex-1 min-h-0">
@@ -169,7 +153,6 @@ function ScoreViewInner() {
                   thresholdData={thresholdData || []}
                   benjaminGrahamData={benjaminGrahamData || []}
                   entryExitValues={entryExitValues}
-                  initialTableState={initialTableState}
                 />
               </Suspense>
             </div>

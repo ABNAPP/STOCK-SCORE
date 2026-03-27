@@ -279,10 +279,6 @@
       "score": {
         "title": "How Score & breakdown works",
         "content": "Score is a composite rating based on multiple metrics. Breakdown shows how each part contributes to the total score. Higher scores indicate better valuation according to the selected criteria."
-      },
-      "shareExport": {
-        "title": "Share and Export",
-        "content": "Shareable links save your current view (filters, sort, columns). The link respects permissions – recipients see only their allowed data. Export to CSV or Excel saves the filtered data."
       }
     },
     "thisView": "This view",
@@ -346,36 +342,6 @@
     "saveAsTemplate": "Save as Template",
     "loadTemplate": "Load Template",
     "filterSaved": "Filter saved!"
-  },
-  "shareableLinks": {
-    "title": "Create Shareable Link",
-    "linkName": "Link Name (optional)",
-    "linkNamePlaceholder": "e.g., High Score Stocks",
-    "description": "Description (optional)",
-    "descriptionPlaceholder": "Add a description...",
-    "expiresIn": "Expires In (days)",
-    "create": "Create Link",
-    "saving": "Saving...",
-    "linkCreated": "Link created!",
-    "copy": "Copy",
-    "share": "Share",
-    "myLinks": "My Shareable Links",
-    "noLinks": "No shareable links yet",
-    "invalidLink": "Invalid link",
-    "linkNotFound": "Link not found or expired",
-    "loadError": "Failed to load link",
-    "error": "Error",
-    "goHome": "Go to Home",
-    "linkLoaded": "Shareable link loaded successfully",
-    "confirmDelete": "Are you sure you want to delete this link?",
-    "delete": "Delete"
-  },
-  "export": {
-    "csv": "Export to CSV",
-    "excel": "Export to Excel"
-  },
-  "print": {
-    "print": "Print"
   },
   "profile": {
     "notificationPreferences": "Notification Preferences",

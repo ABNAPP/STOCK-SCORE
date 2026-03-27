@@ -9,16 +9,10 @@ import TableSearchBar from './TableSearchBar';
 import Pagination from './Pagination';
 import ColumnVisibilityToggle from './ColumnVisibilityToggle';
 import { FilterConfig, FilterValues, ShareableTableState } from '../types/filters';
-import ShareableLinkModal from './ShareableLinkModal';
 import { useTranslation } from 'react-i18next';
-import { exportTableData, ExportColumn } from '../services/exportService';
-import { useNotifications } from '../contexts/NotificationContext';
-import { useAuth } from '../contexts/AuthContext';
-import Button from './ui/Button';
 import { useColumnResize } from '../hooks/useColumnResize';
 import { useColumnReorder } from '../hooks/useColumnReorder';
 import { SortableTableHeader } from './SortableTableHeader';
-import { printTable } from '../utils/printUtils';
 import { useColumnFilters, ColumnFilters, ColumnFilter } from '../hooks/useColumnFilters';
 import { UniqueValue } from '../hooks/useColumnUniqueValues';
 import ColumnFilterMenu from './ColumnFilterMenu';
@@ -125,10 +119,6 @@ export interface BaseTableProps<T> {
   // Custom row key generator
   getRowKey?: (item: T, index: number) => string;
   
-  // Export configuration
-  enableExport?: boolean;
-  exportFilename?: string;
-  
   // Column resizing
   enableColumnResize?: boolean;
   defaultColumnWidth?: number;
@@ -137,14 +127,6 @@ export interface BaseTableProps<T> {
   
   // Column reordering
   enableColumnReorder?: boolean;
-  
-  // Print configuration
-  enablePrint?: boolean;
-  printTableName?: string;
-  
-  // Shareable link configuration
-  enableShareableLink?: boolean;
-  viewId?: string;
 
   // Initial state from shareable link (one-shot hydration)
   initialFilterState?: FilterValues;
@@ -186,17 +168,11 @@ export default function BaseTable<T extends Record<string, unknown>>({
   minTableWidth = '600px',
   headerActions,
   getRowKey,
-  enableExport = false,
-  exportFilename,
   enableColumnResize = false,
   defaultColumnWidth = 150,
   minColumnWidth = 80,
   maxColumnWidth = 500,
   enableColumnReorder = false,
-  enablePrint = false,
-  printTableName,
-  enableShareableLink = false,
-  viewId,
   initialFilterState,
   initialColumnFilters,
   initialSearchValue,
@@ -204,10 +180,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
   onRetry,
 }: BaseTableProps<T>) {
   const { t } = useTranslation();
-  const { createNotification } = useNotifications();
-  const { currentUser } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>(initialFilterState ?? {});
-  const [shareableLinkModalOpen, setShareableLinkModalOpen] = useState(false);
 
   useEffect(() => {
     if (import.meta.env.DEV && (initialFilterState ?? initialColumnFilters ?? initialSearchValue ?? initialSortConfig)) {
@@ -468,115 +441,6 @@ export default function BaseTable<T extends Record<string, unknown>>({
   const handleRowClick = useCallback((index: number) => {
     setFocusedRowIndex(index);
   }, []);
-
-  // Export handler
-  const handleExport = useCallback((format: 'csv' | 'excel' = 'csv') => {
-    if (!enableExport || sortedData.length === 0) return;
-
-    // Convert columns to export format
-    const exportColumns: ExportColumn<T>[] = columns
-      .filter((col) => isColumnVisible(col.key))
-      .map((col) => ({
-        key: col.key,
-        label: col.label,
-        accessor: (item: T) => {
-          // Try to get value from renderCell if available, otherwise use direct access
-          const value = item[col.key];
-          if (value === null || value === undefined) {
-            return '';
-          }
-          if (typeof value === 'object') {
-            return JSON.stringify(value);
-          }
-          return String(value);
-        },
-      }));
-
-    const filename = exportFilename || `${tableId}_export_${new Date().toISOString().split('T')[0]}`;
-    const exportDate = new Date();
-    
-    // Build filter info string
-    const activeFilters = Object.entries(filterValues)
-      .filter(([_, value]) => value !== null && value !== '' && value !== undefined)
-      .map(([key, value]) => {
-        const filter = filters.find((f) => f.key === key);
-        const label = filter?.label || key;
-        if (typeof value === 'object' && value !== null && ('min' in value || 'max' in value)) {
-          const range = value as { min?: number; max?: number };
-          const parts: string[] = [];
-          if (range.min !== undefined) parts.push(`≥${range.min}`);
-          if (range.max !== undefined) parts.push(`≤${range.max}`);
-          return `${label}: ${parts.join(' - ')}`;
-        }
-        return `${label}: ${value}`;
-      })
-      .join(', ');
-
-    try {
-      exportTableData(data, sortedData, exportColumns, format, {
-        filename,
-        includeHeaders: true,
-        includeMetadata: true,
-        metadata: {
-          tableName: tableId,
-          exportDate,
-          filterInfo: activeFilters || 'No filters',
-          rowCount: sortedData.length,
-        },
-      });
-      
-      createNotification(
-        'success',
-        'Export Complete',
-        `Exported ${sortedData.length} rows to ${format.toUpperCase()}`,
-        {
-          showDesktop: false,
-          persistent: false,
-        }
-      );
-    } catch (error) {
-      createNotification(
-        'error',
-        'Export Failed',
-        `Failed to export data: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        {
-          showDesktop: true,
-          persistent: false,
-        }
-      );
-    }
-  }, [enableExport, sortedData, columns, isColumnVisible, data, tableId, exportFilename, createNotification]);
-
-  // Print handler
-  const handlePrint = useCallback(() => {
-    if (!enablePrint) return;
-    const tableElement = tableRef.current;
-    const tableName = printTableName || tableId;
-    
-    // Build filter info string
-    const activeFilters = Object.entries(filterValues)
-      .filter(([_, value]) => value !== null && value !== '' && value !== undefined)
-      .map(([key, value]) => {
-        const filter = filters.find((f) => f.key === key);
-        const label = filter?.label || key;
-        if (typeof value === 'object' && value !== null && ('min' in value || 'max' in value)) {
-          const range = value as { min?: number; max?: number };
-          const parts: string[] = [];
-          if (range.min !== undefined) parts.push(`≥${range.min}`);
-          if (range.max !== undefined) parts.push(`≤${range.max}`);
-          return `${label}: ${parts.join(' - ')}`;
-        }
-        return `${label}: ${value}`;
-      })
-      .join(', ');
-    
-    printTable(tableElement, tableName, {
-      includeHeader: true,
-      includeFooter: true,
-      filterInfo: activeFilters || 'No filters',
-      rowCount: sortedData.length,
-    });
-  }, [enablePrint, printTableName, tableId, filterValues, filters, sortedData.length]);
 
   // Default header renderer
   const defaultRenderHeader = useCallback((props: HeaderRenderProps<T>) => {
@@ -853,16 +717,6 @@ export default function BaseTable<T extends Record<string, unknown>>({
           onHideAll={hideAllColumns}
           onResetToDefaults={resetToDefaults}
           isColumnVisible={isColumnVisible}
-          enableExport={enableExport}
-          sortedRowCount={sortedData.length}
-          onExportCsv={() => handleExport('csv')}
-          onExportExcel={() => handleExport('excel')}
-          enablePrint={enablePrint}
-          onPrint={handlePrint}
-          enableShareableLink={enableShareableLink}
-          hasCurrentUser={!!currentUser}
-          viewId={viewId}
-          onOpenShareableLink={() => setShareableLinkModalOpen(true)}
           headerActions={headerActions}
         />
 
@@ -1159,18 +1013,6 @@ export default function BaseTable<T extends Record<string, unknown>>({
           </div>
         )}
       </div>
-      {enableShareableLink && currentUser && viewId && (
-        <ShareableLinkModal
-          isOpen={shareableLinkModalOpen}
-          onClose={() => setShareableLinkModalOpen(false)}
-          filterState={filterValues}
-          viewId={viewId}
-          tableId={tableId}
-          sortConfig={sortConfig.key ? { key: String(sortConfig.key), direction: sortConfig.direction } : undefined}
-          columnFilters={Object.keys(columnFilters).length > 0 ? columnFilters : undefined}
-          searchValue={searchValue || undefined}
-        />
-      )}
     </>
   );
 }

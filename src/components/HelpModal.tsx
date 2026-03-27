@@ -113,15 +113,6 @@ export default function HelpModal({ isOpen, onClose, viewId }: HelpModalProps) {
               {t('help.sections.score.content')}
             </p>
           </section>
-
-          <section>
-            <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
-              {t('help.sections.shareExport.title')}
-            </h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              {t('help.sections.shareExport.content')}
-            </p>
-          </section>
         </div>
 
         <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">

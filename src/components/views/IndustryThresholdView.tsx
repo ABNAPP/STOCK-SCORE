@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { lazy, Suspense, useMemo, useEffect } from 'react';
-import { useShareableHydration } from '../../contexts/ShareableHydrationContext';
 import { useIndustryThresholdData } from '../../hooks/useIndustryThresholdData';
 import { TableSkeleton } from '../SkeletonLoader';
 import { ThresholdProvider } from '../../contexts/ThresholdContext';
@@ -13,22 +12,7 @@ const TABLE_ID = 'industry-threshold';
 
 export default function IndustryThresholdView() {
   const { t } = useTranslation();
-  const { link, consume } = useShareableHydration();
   const { data, loading, error } = useIndustryThresholdData();
-
-  const initialTableState = useMemo(() => {
-    if (!link || link.viewId !== VIEW_ID || link.tableId !== TABLE_ID) return undefined;
-    return {
-      filterState: link.filterState ?? {},
-      columnFilters: link.columnFilters ?? {},
-      searchValue: link.searchValue ?? '',
-      sortConfig: link.sortConfig,
-    };
-  }, [link]);
-
-  useEffect(() => {
-    if (initialTableState) consume();
-  }, [initialTableState, consume]);
 
   return (
     <ThresholdProvider>
@@ -44,7 +28,7 @@ export default function IndustryThresholdView() {
           </div>
           <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
             <Suspense fallback={<TableSkeleton rows={10} columns={8} hasStickyColumns={true} />}>
-              <IndustryThresholdTable data={data} loading={loading} error={error} initialTableState={initialTableState} />
+              <IndustryThresholdTable data={data} loading={loading} error={error} />
             </Suspense>
           </div>
         </div>

@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { useMemo, lazy, Suspense, useEffect } from 'react';
-import { useShareableHydration } from '../../contexts/ShareableHydrationContext';
 import { useScoreBoardData } from '../../hooks/useScoreBoardData';
 import { useIndustryThresholdData } from '../../hooks/useIndustryThresholdData';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
@@ -22,7 +21,6 @@ const TABLE_ID = 'score-board';
 // Inner component that uses EntryExitContext
 function ScoreBoardViewInner() {
   const { t } = useTranslation();
-  const { link, consume } = useShareableHydration();
   const isOnline = useOnlineStatus();
   const { data, loading, error, lastUpdated, refetch } = useScoreBoardData();
   const { data: thresholdData, loading: thresholdLoading } = useIndustryThresholdData();
@@ -80,20 +78,6 @@ function ScoreBoardViewInner() {
     });
   }, [data, benjaminGrahamData]);
 
-  const initialTableState = useMemo(() => {
-    if (!link || link.viewId !== VIEW_ID || link.tableId !== TABLE_ID) return undefined;
-    return {
-      filterState: link.filterState ?? {},
-      columnFilters: link.columnFilters ?? {},
-      searchValue: link.searchValue ?? '',
-      sortConfig: link.sortConfig,
-    };
-  }, [link]);
-
-  useEffect(() => {
-    if (initialTableState) consume();
-  }, [initialTableState, consume]);
-
   return (
     <div className="h-full bg-gray-100 dark:bg-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6 flex flex-col transition-all duration-300 ease-in-out">
       <div className="w-full flex flex-col flex-1 min-h-0">
@@ -129,7 +113,7 @@ function ScoreBoardViewInner() {
         <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
           {!isLoading && dataWithPrice.length > 0 ? (
             <Suspense fallback={<TableSkeleton rows={15} columns={12} hasStickyColumns={true} />}>
-              <ScoreBoardTable data={dataWithPrice} loading={false} error={error} thresholdData={thresholdData} initialTableState={initialTableState} onRetry={() => refetch(true)} />
+              <ScoreBoardTable data={dataWithPrice} loading={false} error={error} thresholdData={thresholdData} onRetry={() => refetch(true)} />
             </Suspense>
           ) : isLoading ? (
             <TableSkeleton rows={15} columns={12} hasStickyColumns={true} />

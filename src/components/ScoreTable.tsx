@@ -255,10 +255,6 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
       ariaLabel="Score"
       minTableWidth="100%"
       getRowKey={(item) => generateRowKey(item)}
-      enableExport={true}
-      enablePrint={true}
-      enableShareableLink={true}
-      viewId="score"
       initialFilterState={initialTableState?.filterState}
       initialColumnFilters={initialTableState?.columnFilters}
       initialSearchValue={initialTableState?.searchValue}

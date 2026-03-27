@@ -279,10 +279,6 @@
       "score": {
         "title": "Hur Score & breakdown fungerar",
         "content": "Score är en sammanvägd poäng baserad på flera nyckeltal. Breakdown visar hur varje del bidrar till totalpoängen. Högre poäng indikerar bättre värdering enligt valda kriterier."
-      },
-      "shareExport": {
-        "title": "Share och Export",
-        "content": "Delbara länkar sparar din nuvarande vy (filter, sortering, kolumner). Länken respekterar behörighet – mottagaren ser bara sin tillåtna data. Export till CSV eller Excel sparar den filtrerade datan."
       }
     },
     "thisView": "Denna vy",
@@ -346,36 +342,6 @@
     "saveAsTemplate": "Spara som Template",
     "loadTemplate": "Ladda template",
     "filterSaved": "Filter sparades!"
-  },
-  "shareableLinks": {
-    "title": "Skapa Delbar Länk",
-    "linkName": "Länknamn (valfritt)",
-    "linkNamePlaceholder": "t.ex. Hög Score Aktier",
-    "description": "Beskrivning (valfritt)",
-    "descriptionPlaceholder": "Lägg till en beskrivning...",
-    "expiresIn": "Går ut om (dagar)",
-    "create": "Skapa Länk",
-    "saving": "Sparar...",
-    "linkCreated": "Länk skapad!",
-    "copy": "Kopiera",
-    "share": "Dela",
-    "myLinks": "Mina Delbara Länkar",
-    "noLinks": "Inga delbara länkar ännu",
-    "invalidLink": "Ogiltig länk",
-    "linkNotFound": "Länk hittades inte eller har gått ut",
-    "loadError": "Kunde inte ladda länk",
-    "error": "Fel",
-    "goHome": "Gå till Hem",
-    "linkLoaded": "Delbar länk laddad",
-    "confirmDelete": "Är du säker på att du vill ta bort denna länk?",
-    "delete": "Ta bort"
-  },
-  "export": {
-    "csv": "Exportera till CSV",
-    "excel": "Exportera till Excel"
-  },
-  "print": {
-    "print": "Skriv ut"
   },
   "profile": {
     "notificationPreferences": "Notifikationsinställningar",

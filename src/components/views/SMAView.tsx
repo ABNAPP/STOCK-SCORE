@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { useMemo, useEffect } from 'react';
-import { useShareableHydration } from '../../contexts/ShareableHydrationContext';
 import { useSMAData } from '../../hooks/useSMAData';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
 import { getSMAColor } from '../../utils/colorThresholds/colorLogic';
@@ -16,7 +15,6 @@ function toSmaColor(color: ReturnType<typeof getSMAColor>): 'GREEN' | 'RED' | nu
 
 export default function SMAView() {
   const { t } = useTranslation();
-  const { link, consume } = useShareableHydration();
   const { data, loading, error, refetch } = useSMAData();
   const { data: benjaminGrahamData } = useBenjaminGrahamData();
 
@@ -39,20 +37,6 @@ export default function SMAView() {
     });
   }, [data, benjaminGrahamData]);
 
-  const initialTableState = useMemo(() => {
-    if (!link || link.viewId !== VIEW_ID || link.tableId !== TABLE_ID) return undefined;
-    return {
-      filterState: link.filterState ?? {},
-      columnFilters: link.columnFilters ?? {},
-      searchValue: link.searchValue ?? '',
-      sortConfig: link.sortConfig,
-    };
-  }, [link]);
-
-  useEffect(() => {
-    if (initialTableState) consume();
-  }, [initialTableState, consume]);
-
   return (
     <div className="h-full bg-gray-100 dark:bg-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6 flex flex-col">
       <div className="w-full flex flex-col flex-1 min-h-0">
@@ -72,7 +56,6 @@ export default function SMAView() {
             loading={loading}
             error={error}
             onRetry={refetch}
-            initialTableState={initialTableState}
           />
         </div>
       </div>

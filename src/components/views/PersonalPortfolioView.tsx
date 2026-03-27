@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
-import { useShareableHydration } from '../../contexts/ShareableHydrationContext';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
@@ -25,7 +24,6 @@ const TABLE_ID = 'personal-portfolio';
 // Inner component that uses EntryExitContext
 function PersonalPortfolioViewInner() {
   const { t } = useTranslation();
-  const { link, consume } = useShareableHydration();
   const { currentUser } = useAuth();
   const { data: benjaminGrahamData, loading: benjaminGrahamLoading } = useBenjaminGrahamData();
   const { entryExitValues, initializeFromData } = useEntryExitValues();
@@ -491,20 +489,6 @@ function PersonalPortfolioViewInner() {
     }, 0);
     return { transformedPortfolio: transformed, totalMarketValue: total, totalInvested };
   }, [portfolio, benjaminGrahamData, entryExitValues, exchangeRatesByCurrency]);
-
-  const initialTableState = useMemo(() => {
-    if (!link || link.viewId !== VIEW_ID || link.tableId !== TABLE_ID) return undefined;
-    return {
-      filterState: link.filterState ?? {},
-      columnFilters: link.columnFilters ?? {},
-      searchValue: link.searchValue ?? '',
-      sortConfig: link.sortConfig,
-    };
-  }, [link]);
-
-  useEffect(() => {
-    if (initialTableState) consume();
-  }, [initialTableState, consume]);
 
   // Row key for expand; must match getRowKey passed to BaseTable.
   // Stable identifier (ticker-companyName) so expanded state survives sort/filter changes.
@@ -1214,10 +1198,6 @@ function PersonalPortfolioViewInner() {
               columns={PORTFOLIO_COLUMNS}
               filters={[]}
               tableId="personal-portfolio"
-              initialFilterState={initialTableState?.filterState}
-              initialColumnFilters={initialTableState?.columnFilters}
-              initialSearchValue={initialTableState?.searchValue}
-              initialSortConfig={initialTableState?.sortConfig}
               renderCell={renderCell}
               renderHeader={renderHeader}
               searchFields={['companyName', 'ticker']}

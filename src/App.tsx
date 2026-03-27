@@ -21,10 +21,7 @@ import Login from './components/Login';
 import SkipLinks from './components/SkipLinks';
 import OfflineIndicator from './components/OfflineIndicator';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
-import ShareableView from './components/views/ShareableView';
-import { ShareableLink } from './services/shareableLinkService';
 import { runPostAuthMigrations } from './services/migrations';
-import { ShareableHydrationProvider } from './contexts/ShareableHydrationContext';
 
 // Lazy load view components for better performance (with retry for dev "Failed to fetch" resilience)
 const ScoreBoardView = lazyWithRetry<typeof import('./components/views/ScoreBoardView').default>(() => import('./components/views/ScoreBoardView'), 'ScoreBoardView');
@@ -71,7 +68,6 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [userProfileOpen, setUserProfileOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
-  const [loadedShareableLink, setLoadedShareableLink] = useState<ShareableLink | null>(null);
 
   const handleOpenHelpModal = useCallback(() => setHelpModalOpen(true), []);
   const handleCloseHelpModal = useCallback(() => setHelpModalOpen(false), []);
@@ -123,13 +119,6 @@ function App() {
 
   // IMPORTANT: All hooks (including useCallback, useMemo) must be called BEFORE any early returns
   // This ensures hooks are always called in the same order on every render
-  const handleLoadShareableLink = useCallback((link: ShareableLink) => {
-    setLoadedShareableLink(link);
-    setActiveView(link.viewId as ViewId);
-    // Apply filter state and sort config from link
-    // This will be handled by the view components
-  }, []);
-
   const handleViewChange = useCallback((viewId: ViewId) => {
     // Check if viewer is trying to access unauthorized view
     if (!canView(viewId)) {
@@ -278,20 +267,6 @@ function App() {
   return (
     <Routes>
       <Route
-        path="/share/:linkId"
-        element={
-          <LoadingProgressProvider>
-            <RefreshProvider>
-              <AutoRefreshProvider>
-                <Suspense fallback={<LoadingFallback />}>
-                  <ShareableView onLoadLink={handleLoadShareableLink} />
-                </Suspense>
-              </AutoRefreshProvider>
-            </RefreshProvider>
-          </LoadingProgressProvider>
-        }
-      />
-      <Route
         path="/*"
         element={
           <LoadingProgressProvider>
@@ -314,8 +289,6 @@ function App() {
                   helpModalOpen={helpModalOpen}
                   onOpenHelpModal={handleOpenHelpModal}
                   onCloseHelpModal={handleCloseHelpModal}
-                  loadedShareableLink={loadedShareableLink}
-                  onConsumeShareableLink={() => setLoadedShareableLink(null)}
                 />
               </AutoRefreshProvider>
             </RefreshProvider>
@@ -343,8 +316,6 @@ function AppContent({
   helpModalOpen,
   onOpenHelpModal,
   onCloseHelpModal,
-  loadedShareableLink,
-  onConsumeShareableLink,
 }: {
   activeView: ViewId;
   setActiveView: (view: ViewId) => void;
@@ -362,8 +333,6 @@ function AppContent({
   helpModalOpen: boolean;
   onOpenHelpModal: () => void;
   onCloseHelpModal: () => void;
-  loadedShareableLink: ShareableLink | null;
-  onConsumeShareableLink: () => void;
 }) {
   const { toasts, removeToast } = useToast();
   const { t } = useTranslation();
@@ -379,7 +348,6 @@ function AppContent({
   const isRefreshingAny = isRefreshing || isPullRefreshing;
 
   return (
-    <ShareableHydrationProvider link={loadedShareableLink} onConsume={onConsumeShareableLink}>
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       <SkipLinks />
       <Header 
@@ -499,7 +467,6 @@ function AppContent({
       <ToastContainer toasts={toasts} onClose={removeToast} />
       <OfflineIndicator />
     </div>
-    </ShareableHydrationProvider>
   );
 }
 
