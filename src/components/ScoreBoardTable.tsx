@@ -108,7 +108,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
     return match?.price ?? null;
   }, [benjaminGrahamData]);
 
-  // Check if TheoEntry should show "B" (either RR1+Entry1 OR RR2+Entry2 are green)
+  // Check if TheoEntry should show "B" (either RR T1+ENTRY T1 OR RR T2+ENTRY T2 are green)
   const isTheoEntryGreenForRow = useCallback((ticker: string, companyName: string): boolean => {
     const entryExitValues = getEntryExitValue(ticker, companyName);
     const price = getPriceFromBenjaminGraham(ticker, companyName);

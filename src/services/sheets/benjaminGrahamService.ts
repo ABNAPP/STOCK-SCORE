@@ -38,13 +38,16 @@ export function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { 
       
       // Parse Price value as number (handle #N/A)
       const price = parseNumericValueNullable(priceStr);
+
+      const entryF1Str = getValue(['ENTRY F1', 'entry f1', 'Entry F1', 'ENTRY_F1'], row);
+      const entryF1 = parseNumericValueNullable(entryF1Str);
       
       // Parse IV (FCF) if it exists
       const ivFcfStr = getValue(['IV (FCF)', 'IV(FCF)', 'iv fcf', 'ivfcf'], row);
       const ivFcf = parseNumericValueNullable(ivFcfStr);
       
-      // Parse IRR1 if it exists
-      const irr1Str = getValue(['IRR1', 'irr1', 'IRR 1', 'irr 1'], row);
+      // Parse optional sheet column (IRR1 / RR T1 label); property stays irr1
+      const irr1Str = getValue(['IRR1', 'irr1', 'IRR 1', 'irr 1', 'RR T1', 'rr t1'], row);
       const irr1 = parseNumericValueNullable(irr1Str);
       
       // Include row if both company name and ticker are valid (we already checked above)
@@ -52,6 +55,7 @@ export function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { 
         companyName: companyName,
         ticker: ticker,
         price: price,
+        entryF1,
         ivFcf: ivFcf, // Include if it exists
         irr1: irr1, // Include if it exists
       };
@@ -64,7 +68,7 @@ export function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { 
 /**
  * Fetches Benjamin Graham data from Google Sheets
  * 
- * Retrieves company data including price, IV (FCF), and IRR1.
+ * Retrieves company data including price, ENTRY F1, IV (FCF), and optional irr1 (RR T1 in UI).
  * Tries Apps Script API first (fast), falls back to CSV proxy if needed (slower).
  * 
  * @param forceRefresh - If true, bypasses cache and forces network request (default: false)

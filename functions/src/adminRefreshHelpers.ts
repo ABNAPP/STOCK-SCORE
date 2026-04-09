@@ -121,8 +121,9 @@ function transformBenjaminGraham(data: DataRow[]): Array<Record<string, unknown>
         companyName,
         ticker,
         price: parseNum(getValue(['Price', 'price', 'PRICE'], row)),
+        entryF1: parseNum(getValue(['ENTRY F1', 'entry f1', 'Entry F1', 'ENTRY_F1'], row)),
         ivFcf: parseNum(getValue(['IV (FCF)', 'IV(FCF)', 'iv fcf', 'ivfcf'], row)),
-        irr1: parseNum(getValue(['IRR1', 'irr1', 'IRR 1', 'irr 1'], row)),
+        irr1: parseNum(getValue(['IRR1', 'irr1', 'IRR 1', 'irr 1', 'RR T1', 'rr t1'], row)),
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);

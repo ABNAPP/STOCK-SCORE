@@ -2,8 +2,9 @@ export interface BenjaminGrahamData extends Record<string, unknown> {
   companyName: string;
   ticker: string;
   price: number | null; // null means invalid/missing value, 0 means actual zero
+  entryF1: number | null; // Dashboard column "ENTRY F1"; null if missing/invalid
   ivFcf?: number | null; // Optional: IV (FCF) column from Dashboard sheet
-  irr1?: number | null; // Optional: IRR1 column from Dashboard sheet
+  irr1?: number | null; // Optional: Dashboard column (IRR1 etc.); shown as RR T1 in UI
 }
 
 export interface PEIndustryData extends Record<string, unknown> {

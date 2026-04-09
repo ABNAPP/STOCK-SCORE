@@ -1,12 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-  fetchBenjaminGrahamData, 
-  ProgressCallback,
-  getValue,
-  isValidValue,
-  parseNumericValueNullable
-} from '../services/sheets';
+import { fetchBenjaminGrahamData, ProgressCallback } from '../services/sheets';
 import type { DataRow } from '../services/sheets';
+import { transformBenjaminGrahamData as transformBenjaminGrahamFromSheet } from '../services/sheets/benjaminGrahamService';
 import { 
   initSync, 
   pollChanges, 
@@ -41,54 +36,11 @@ const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
 const SHEET_NAME = 'DashBoard';
 const CACHE_KEY = CACHE_KEYS.BENJAMIN_GRAHAM;
 
-// Transformer function for Benjamin Graham data
 function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields: string[] | null } }): BenjaminGrahamData[] {
   if (!isDataRowArray(results.data)) {
-    const errorHandler = createErrorHandler({
-      operation: 'transform Benjamin Graham data',
-      component: 'useBenjaminGrahamData',
-    });
     throw new Error('Invalid data format: expected array of DataRow');
   }
-  
-  const benjaminGrahamData = results.data
-    .map((row: DataRow) => {
-      const companyName = getValue(['Company Name', 'Company', 'company'], row);
-      const ticker = getValue(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
-      const priceStr = getValue(['Price', 'price', 'PRICE'], row);
-      // Only process if company name is valid (not #N/A)
-      if (!isValidValue(companyName)) {
-        return null;
-      }
-      
-      // Filter out rows where Ticker is N/A (DashBoard rule: if Ticker is N/A, don't fetch data)
-      if (!isValidValue(ticker)) {
-        return null;
-      }
-      
-      // Parse Price value as number (handle #N/A)
-      const price = parseNumericValueNullable(priceStr);
-      
-      // Parse IV (FCF) if it exists
-      const ivFcfStr = getValue(['IV (FCF)', 'IV(FCF)', 'iv fcf', 'ivfcf'], row);
-      const ivFcf = parseNumericValueNullable(ivFcfStr);
-      
-      // Parse IRR1 if it exists
-      const irr1Str = getValue(['IRR1', 'irr1', 'IRR 1', 'irr 1'], row);
-      const irr1 = parseNumericValueNullable(irr1Str);
-      
-      // Include row if both company name and ticker are valid (we already checked above)
-      return {
-        companyName: companyName,
-        ticker: ticker,
-        price: price,
-        ivFcf: ivFcf, // Include if it exists
-        irr1: irr1, // Include if it exists
-      };
-    })
-    .filter((data) => data !== null) as BenjaminGrahamData[];
-  
-  return benjaminGrahamData;
+  return transformBenjaminGrahamFromSheet(results);
 }
 
 /**

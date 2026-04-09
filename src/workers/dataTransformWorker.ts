@@ -199,19 +199,23 @@ function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields:
       
       // Parse Price value as number (handle #N/A)
       const price = parseNumericValueNullable(priceStr);
+
+      const entryF1Str = getValue(['ENTRY F1', 'entry f1', 'Entry F1', 'ENTRY_F1'], row);
+      const entryF1 = parseNumericValueNullable(entryF1Str);
       
       // Parse IV (FCF) if it exists
       const ivFcfStr = getValue(['IV (FCF)', 'IV(FCF)', 'iv fcf', 'ivfcf'], row);
       const ivFcf = parseNumericValueNullable(ivFcfStr);
       
-      // Parse IRR1 if it exists
-      const irr1Str = getValue(['IRR1', 'irr1', 'IRR 1', 'irr 1'], row);
+      // Optional irr1 (sheet: IRR1 / RR T1 header)
+      const irr1Str = getValue(['IRR1', 'irr1', 'IRR 1', 'irr 1', 'RR T1', 'rr t1'], row);
       const irr1 = parseNumericValueNullable(irr1Str);
       
       return {
         companyName: companyName,
         ticker: ticker,
         price: price,
+        entryF1,
         ivFcf: ivFcf,
         irr1: irr1,
       };

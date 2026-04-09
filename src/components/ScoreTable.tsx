@@ -13,6 +13,7 @@ import {
   isExit1RedForCell,
   isExit2RedForCell,
 } from '../utils/colorThresholds/entryExitCellColors';
+import { ENTRY_EXIT_COLUMN_LABELS } from '../constants/entryExitColumnLabels';
 
 /** Memoized expanded row to avoid recalculating breakdown on every render */
 const MemoizedScoreBreakdownExpandedRow = memo(function MemoizedScoreBreakdownExpandedRow({
@@ -55,10 +56,10 @@ const SCORE_COLUMNS: ColumnDefinition[] = [
   { key: 'ticker', label: 'Ticker', required: true, sticky: true, sortable: true },
   { key: 'currency', label: 'Currency', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'price', label: 'Price', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'entry1', label: 'ENTRY1', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'entry2', label: 'ENTRY2', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'exit1', label: 'EXIT1', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'exit2', label: 'EXIT2', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'entry1', label: ENTRY_EXIT_COLUMN_LABELS.entry1, defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'entry2', label: ENTRY_EXIT_COLUMN_LABELS.entry2, defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'exit1', label: ENTRY_EXIT_COLUMN_LABELS.exit1, defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'exit2', label: ENTRY_EXIT_COLUMN_LABELS.exit2, defaultVisible: true, sortable: true, align: 'center' },
   { key: 'score', label: 'Score', defaultVisible: true, sortable: true, align: 'center' },
 ];
 
@@ -197,19 +198,19 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
             <span className="text-sm text-black dark:text-white">{item.price !== null ? item.price.toLocaleString() : 'N/A'}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY1</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.entry1}</span>
             <span className={`text-sm ${isEntry1GreenForCell(item.price, item.entry1 || 0) ? 'text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20' : 'text-black dark:text-white'}`}>{item.entry1 || '-'}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY2</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.entry2}</span>
             <span className={`text-sm ${isEntry2GreenForCell(item.price, item.entry2 || 0) ? 'text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20' : 'text-black dark:text-white'}`}>{item.entry2 || '-'}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT1</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.exit1}</span>
             <span className={`text-sm ${isExit1RedForCell(item.price, item.exit1 || 0) ? 'text-red-700 dark:text-red-200 bg-red-50 dark:bg-red-900/20' : 'text-black dark:text-white'}`}>{item.exit1 || '-'}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT2</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.exit2}</span>
             <span className={`text-sm ${isExit2RedForCell(item.price, item.exit2 || 0) ? 'text-red-700 dark:text-red-200 bg-red-50 dark:bg-red-900/20' : 'text-black dark:text-white'}`}>{item.exit2 || '-'}</span>
           </div>
           <div className="flex items-center justify-between">

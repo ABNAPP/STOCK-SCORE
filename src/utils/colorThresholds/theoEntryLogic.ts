@@ -1,5 +1,5 @@
 /**
- * TheoEntry (RR1/RR2) green logic.
+ * TheoEntry (RR T1 / RR T2) green logic.
  * Used by calculateScore, calculateScoreDetailed, ScoreBoardTable.
  */
 
@@ -16,8 +16,8 @@ function calculateRR1(entry1: number, exit: number): number | null {
 }
 
 /**
- * Returns RR1 for display: (Exit - Entry1) / Entry1 * 100.
- * Uses Exit1 when present and > 0, otherwise Exit2 (fallback when Exit1 cell is empty).
+ * Returns RR T1 for display: (Exit - ENTRY T1) / ENTRY T1 * 100.
+ * Uses EXIT T1 when present and > 0, otherwise EXIT T2 (fallback when EXIT T1 cell is empty).
  */
 export function getRR1Value(
   entryExitValues: EntryExitValuesForScore | undefined
@@ -37,8 +37,8 @@ function calculateRR2(entry2: number, exit: number): number | null {
 }
 
 /**
- * Returns RR2 for display: (Exit - Entry2) / Entry2 * 100.
- * Uses Exit2 when present and > 0, otherwise Exit1 (fallback when Exit2 cell is empty).
+ * Returns RR T2 for display: (Exit - ENTRY T2) / ENTRY T2 * 100.
+ * Uses EXIT T2 when present and > 0, otherwise EXIT T1 (fallback when EXIT T2 cell is empty).
  */
 export function getRR2Value(
   entryExitValues: EntryExitValuesForScore | undefined

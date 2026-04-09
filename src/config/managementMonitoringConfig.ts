@@ -1,4 +1,5 @@
 import type { ManagementMonitoringConfig } from '../types/managementMonitoring';
+import { ENTRY_EXIT_COLUMN_LABELS } from '../constants/entryExitColumnLabels';
 
 export const managementMonitoringConfig: ManagementMonitoringConfig = {
   pageTitle: 'MANAGEMENT MONITORING',
@@ -104,8 +105,8 @@ export const managementMonitoringConfig: ManagementMonitoringConfig = {
         { key: 'ticker', label: 'Ticker' },
         { key: 'currency', label: 'Currency' },
         { key: 'price', label: 'Price' },
-        { key: 'entry1', label: 'Entry1' },
-        { key: 'entry2', label: 'Entry2' },
+        { key: 'entry1', label: ENTRY_EXIT_COLUMN_LABELS.entry1 },
+        { key: 'entry2', label: ENTRY_EXIT_COLUMN_LABELS.entry2 },
       ],
       rows: [],
     },

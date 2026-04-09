@@ -36,7 +36,7 @@ export const tableMetadata: TableMetadata[] = [
           'Användaren fyller i värdet manuellt',
           'Värdet är numeriskt',
           'Date of Update uppdateras automatiskt när värdet ändras',
-          'Används för beräkning av RR1: (Exit1 - Entry1) / Entry1 * 100'
+          'Används för beräkning av RR T1: (EXIT T1 - ENTRY T1) / ENTRY T1 * 100'
         ]
       },
       {
@@ -46,7 +46,7 @@ export const tableMetadata: TableMetadata[] = [
           'Användaren fyller i värdet manuellt',
           'Värdet är numeriskt',
           'Date of Update uppdateras automatiskt när värdet ändras',
-          'Används för beräkning av RR2: (Exit2 - Entry2) / Entry2 * 100'
+          'Används för beräkning av RR T2: (EXIT T2 - ENTRY T2) / ENTRY T2 * 100'
         ]
       },
       {
@@ -56,7 +56,7 @@ export const tableMetadata: TableMetadata[] = [
           'Användaren fyller i värdet manuellt',
           'Värdet är numeriskt',
           'Date of Update uppdateras automatiskt när värdet ändras',
-          'Används för beräkning av RR1: (Exit1 - Entry1) / Entry1 * 100'
+          'Används för beräkning av RR T1: (EXIT T1 - ENTRY T1) / ENTRY T1 * 100'
         ]
       },
       {
@@ -66,15 +66,15 @@ export const tableMetadata: TableMetadata[] = [
           'Användaren fyller i värdet manuellt',
           'Värdet är numeriskt',
           'Date of Update uppdateras automatiskt när värdet ändras',
-          'Används för beräkning av RR2: (Exit2 - Entry2) / Entry2 * 100'
+          'Används för beräkning av RR T2: (EXIT T2 - ENTRY T2) / ENTRY T2 * 100'
         ]
       },
       {
         columnKey: 'dateOfUpdate',
         dataSource: 'Automatiskt beräknat',
         conditions: [
-          'Uppdateras automatiskt när ENTRY1, ENTRY2, EXIT1 eller EXIT2 ändras',
-          'Raderas om alla manuella fält (ENTRY1, ENTRY2, EXIT1, EXIT2) är tomma',
+          'Uppdateras automatiskt när ENTRY T1, ENTRY T2, EXIT T1 eller EXIT T2 ändras',
+          'Raderas om alla manuella fält (ENTRY T1, ENTRY T2, EXIT T1, EXIT T2) är tomma',
           'Visas i rött om datumet är äldre än idag och det finns värden i fälten',
           'Format: YYYY-MM-DD (endast datum, ingen tid)'
         ]
@@ -83,6 +83,16 @@ export const tableMetadata: TableMetadata[] = [
         columnKey: 'price',
         dataSource: 'Dashboard sheet, kolumn "Price"',
         conditions: [
+          'Visa N/A om värdet är null eller ogiltigt',
+          'Visa faktiska 0-värden som "0"',
+          'Filtrera bort rader där Company Name eller Ticker är N/A'
+        ]
+      },
+      {
+        columnKey: 'entryF1',
+        dataSource: 'Dashboard sheet, kolumn "ENTRY F1"',
+        conditions: [
+          'Skrivskyddad i appen; hämtas endast från Dashboard',
           'Visa N/A om värdet är null eller ogiltigt',
           'Visa faktiska 0-värden som "0"',
           'Filtrera bort rader där Company Name eller Ticker är N/A'
@@ -99,24 +109,24 @@ export const tableMetadata: TableMetadata[] = [
       {
         columnKey: 'irr1',
         dataSource: 'Beräknat från Entry/Exit-värden',
-        formula: 'RR1 = (Exit - Entry1) / Entry1 * 100, där Exit = Exit1 om ifyllt annars Exit2',
+        formula: 'RR T1 = (Exit - ENTRY T1) / ENTRY T1 * 100, där Exit = EXIT T1 om ifyllt annars EXIT T2',
         conditions: [
-          'Beräknas från Entry1 och Exit1, eller Entry1 och Exit2 om Exit1 är tomt',
-          'Visa N/A om Entry1 och både Exit1/Exit2 saknas eller är 0',
+          'Beräknas från ENTRY T1 och EXIT T1, eller ENTRY T1 och EXIT T2 om EXIT T1 är tomt',
+          'Visa N/A om ENTRY T1 och både EXIT T1/EXIT T2 saknas eller är 0',
           'Formateras som procent med %-tecken och noll decimaler',
-          'Grön färg om RR1 >= 60% OCH Price <= Entry1 * 1.05',
+          'Grön färg om RR T1 >= 60% OCH Price <= ENTRY T1 * 1.05',
           'Filtrera bort rader där Company Name eller Ticker är N/A'
         ]
       },
       {
         columnKey: 'rr2',
         dataSource: 'Beräknat från Entry/Exit-värden',
-        formula: 'RR2 = (Exit - Entry2) / Entry2 * 100, där Exit = Exit2 om ifyllt annars Exit1',
+        formula: 'RR T2 = (Exit - ENTRY T2) / ENTRY T2 * 100, där Exit = EXIT T2 om ifyllt annars EXIT T1',
         conditions: [
-          'Beräknas från Entry2 och Exit2, eller Entry2 och Exit1 om Exit2 är tomt',
-          'Visa N/A om Entry2 och både Exit1/Exit2 saknas eller är 0',
+          'Beräknas från ENTRY T2 och EXIT T2, eller ENTRY T2 och EXIT T1 om EXIT T2 är tomt',
+          'Visa N/A om ENTRY T2 och både EXIT T1/EXIT T2 saknas eller är 0',
           'Formateras som procent med %-tecken och noll decimaler',
-          'Grön färg om RR2 >= 60% OCH Price <= Entry2 * 1.05',
+          'Grön färg om RR T2 >= 60% OCH Price <= ENTRY T2 * 1.05',
           'Filtrera bort rader där Company Name eller Ticker är N/A'
         ]
       }
@@ -231,9 +241,9 @@ export const tableMetadata: TableMetadata[] = [
         conditions: [
           'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
           'Visar numeriskt värde om det finns, annars "-"',
-          'Entry1 kan endast redigeras i Entry/Exit-tabellen',
-          'Används för beräkning av RR1: (Exit1 - Entry1) / Entry1 * 100',
-          'Grön färg om Price ≤ Entry1 × 1,05 (inkl. alla pris under entry)'
+          'ENTRY T1 kan endast redigeras i Entry/Exit-tabellen',
+          'Används för beräkning av RR T1: (EXIT T1 - ENTRY T1) / ENTRY T1 * 100',
+          'Grön färg om Price ≤ ENTRY T1 × 1,05 (inkl. alla pris under entry)'
         ]
       },
       {
@@ -242,9 +252,9 @@ export const tableMetadata: TableMetadata[] = [
         conditions: [
           'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
           'Visar numeriskt värde om det finns, annars "-"',
-          'Entry2 kan endast redigeras i Entry/Exit-tabellen',
-          'Används för beräkning av RR2: (Exit2 - Entry2) / Entry2 * 100',
-          'Grön färg om Price ≤ Entry2 × 1,05 (inkl. alla pris under entry)'
+          'ENTRY T2 kan endast redigeras i Entry/Exit-tabellen',
+          'Används för beräkning av RR T2: (EXIT T2 - ENTRY T2) / ENTRY T2 * 100',
+          'Grön färg om Price ≤ ENTRY T2 × 1,05 (inkl. alla pris under entry)'
         ]
       },
       {
@@ -253,9 +263,9 @@ export const tableMetadata: TableMetadata[] = [
         conditions: [
           'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
           'Visar numeriskt värde om det finns, annars "-"',
-          'Exit1 kan endast redigeras i Entry/Exit-tabellen',
-          'Används för beräkning av RR1: (Exit1 - Entry1) / Entry1 * 100',
-          'Röd färg om Price ≥ Exit1 × 0,95 (inkl. alla pris över exit)'
+          'EXIT T1 kan endast redigeras i Entry/Exit-tabellen',
+          'Används för beräkning av RR T1: (EXIT T1 - ENTRY T1) / ENTRY T1 * 100',
+          'Röd färg om Price ≥ EXIT T1 × 0,95 (inkl. alla pris över exit)'
         ]
       },
       {
@@ -264,9 +274,9 @@ export const tableMetadata: TableMetadata[] = [
         conditions: [
           'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
           'Visar numeriskt värde om det finns, annars "-"',
-          'Exit2 kan endast redigeras i Entry/Exit-tabellen',
-          'Används för beräkning av RR2: (Exit2 - Entry2) / Entry2 * 100',
-          'Röd färg om Price ≥ Exit2 × 0,95 (inkl. alla pris över exit)'
+          'EXIT T2 kan endast redigeras i Entry/Exit-tabellen',
+          'Används för beräkning av RR T2: (EXIT T2 - ENTRY T2) / ENTRY T2 * 100',
+          'Röd färg om Price ≥ EXIT T2 × 0,95 (inkl. alla pris över exit)'
         ]
       },
       {

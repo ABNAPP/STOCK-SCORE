@@ -32,10 +32,9 @@ All metadata definieras centralt i `src/config/tableMetadata.ts`. Denna fil inne
 
 - **score** - Huvudpoängtabellen
 - **score-board** - Detaljerad poängtabell med alla metrics
-- **benjamin-graham** - Benjamin Graham-värderingar
+- **benjamin-graham** - Entry/Exit-tabellen (Benjamin Graham-värderingar, manuella kolumner ENTRY T1, ENTRY T2, EXIT T1, EXIT T2)
 - **pe-industry** - P/E-industri-medianer
 - **industry-threshold** - Tröskelvärden per industri
-- **entry-exit-entry1** - Manuella entry/exit-värden
 - **sma-100** - SMA-tekniska indikatorer (SMA(200))
 
 Varje tabell har en `tableId` som används för att hämta rätt metadata.
@@ -90,7 +89,6 @@ interface ConditionsSidebarProps {
 'score-board' → 'score-board'
 'entry-exit-benjamin-graham' → 'benjamin-graham'
 'fundamental-pe-industry' → 'pe-industry'
-'entry-exit-entry1' → 'entry-exit-entry1'
 'industry-threshold' → 'industry-threshold'
 ```
 

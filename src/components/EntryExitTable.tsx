@@ -17,6 +17,8 @@ import {
 import { getRR1Value, getRR2Value } from '../utils/colorThresholds/theoEntryLogic';
 import { isNumber, isString } from '../utils/typeGuards';
 import { validateEntryExitValue } from '../utils/inputValidator';
+import { ENTRY_EXIT_COLUMN_LABELS } from '../constants/entryExitColumnLabels';
+import { RR_COLUMN_LABELS } from '../constants/rrColumnLabels';
 
 interface EntryExitTableProps {
   data: BenjaminGrahamData[];
@@ -33,13 +35,14 @@ const ENTRY_EXIT_COLUMNS: ColumnDefinition<BenjaminGrahamData>[] = [
   { key: 'ticker', label: 'Ticker', required: true, sticky: false, sortable: true },
   { key: 'currency', label: 'Currency', required: true, sticky: false, sortable: true, align: 'center' },
   { key: 'price', label: 'Price', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'entry1', label: 'ENTRY1', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'entry2', label: 'ENTRY2', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'exit1', label: 'EXIT1', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'exit2', label: 'EXIT2', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'entryF1', label: 'ENTRY F1', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'entry1', label: ENTRY_EXIT_COLUMN_LABELS.entry1, defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'entry2', label: ENTRY_EXIT_COLUMN_LABELS.entry2, defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'exit1', label: ENTRY_EXIT_COLUMN_LABELS.exit1, defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'exit2', label: ENTRY_EXIT_COLUMN_LABELS.exit2, defaultVisible: true, sortable: true, align: 'center' },
   { key: 'ivFcf', label: 'IV (FCF)', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'irr1', label: 'RR1', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'rr2', label: 'RR2', defaultVisible: true, sortable: false, align: 'center' },
+  { key: 'irr1', label: RR_COLUMN_LABELS.irr1, defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'rr2', label: RR_COLUMN_LABELS.rr2, defaultVisible: true, sortable: false, align: 'center' },
   { key: 'dateOfUpdate', label: 'Date of Update', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'actions', label: 'Actions', defaultVisible: true, sortable: false, align: 'center' },
 ];
@@ -63,28 +66,28 @@ const ENTRY_EXIT_FILTERS: FilterConfig[] = [
   },
   {
     key: 'entry1',
-    label: 'Entry1',
+    label: ENTRY_EXIT_COLUMN_LABELS.entry1,
     type: 'numberRange',
     min: 0,
     step: 0.01,
   },
   {
     key: 'entry2',
-    label: 'Entry2',
+    label: ENTRY_EXIT_COLUMN_LABELS.entry2,
     type: 'numberRange',
     min: 0,
     step: 0.01,
   },
   {
     key: 'exit1',
-    label: 'Exit1',
+    label: ENTRY_EXIT_COLUMN_LABELS.exit1,
     type: 'numberRange',
     min: 0,
     step: 0.01,
   },
   {
     key: 'exit2',
-    label: 'Exit2',
+    label: ENTRY_EXIT_COLUMN_LABELS.exit2,
     type: 'numberRange',
     min: 0,
     step: 0.01,
@@ -92,6 +95,13 @@ const ENTRY_EXIT_FILTERS: FilterConfig[] = [
   {
     key: 'price',
     label: 'Pris',
+    type: 'numberRange',
+    min: 0,
+    step: 0.01,
+  },
+  {
+    key: 'entryF1',
+    label: 'ENTRY F1',
     type: 'numberRange',
     min: 0,
     step: 0.01,
@@ -253,7 +263,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
     closeEditModal();
   }, [closeEditModal, editingRow, modalValues, setFieldValue]);
 
-  // Get color for RR1 cell: green when RR1 >= 60% and Price <= Entry1 * 1.05 (same as TheoEntry)
+  // Get color for RR T1 cell: green when RR >= 60% and Price <= ENTRY T1 * 1.05 (same as TheoEntry)
   const getRR1Color = useCallback((rr1: number | null, price: number | null, entry1: number): string | null => {
     if (rr1 !== null && rr1 >= RR1_GREEN_THRESHOLD_PERCENT && price !== null && price > 0 && entry1 > 0 && price <= entry1 * PRICE_TOLERANCE_GREEN) {
       return 'text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20';
@@ -261,8 +271,8 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
     return null;
   }, []);
 
-  // Get color for RR2 cell based on conditions
-  // RR2 column: green when RR2 >= 60% (same as TheoEntry), whether RR2 uses Exit2 or Exit1
+  // Get color for RR T2 cell based on conditions
+  // RR T2 column: green when RR >= 60% (same as TheoEntry), whether RR uses EXIT T2 or EXIT T1
   const getRR2Color = useCallback((rr2: number | null, price: number | null, entry2: number): string | null => {
     if (rr2 !== null && rr2 >= RR1_GREEN_THRESHOLD_PERCENT && price !== null && price > 0 && entry2 > 0 && price <= entry2 * PRICE_TOLERANCE_GREEN) {
       return 'text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20';
@@ -554,6 +564,14 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         );
       case 'price':
         return <span className="text-black dark:text-white">{item.price !== null ? item.price.toLocaleString() : 'N/A'}</span>;
+      case 'entryF1': {
+        const v = item.entryF1;
+        return (
+          <span className="text-black dark:text-white">
+            {v !== null && v !== undefined ? v.toLocaleString() : 'N/A'}
+          </span>
+        );
+      }
       case 'ivFcf':
         if (!hasIvFcf) return null;
         return <span className="text-black dark:text-white">{item.ivFcf !== null && item.ivFcf !== undefined ? item.ivFcf.toLocaleString() : 'N/A'}</span>;
@@ -673,19 +691,19 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         {isExpanded && (
           <div className="border-t border-gray-300 dark:border-gray-600 p-4 space-y-3 animate-fade-in">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY1</span>
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.entry1}</span>
               <span className="text-sm text-black dark:text-white">{entry1 || '-'}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ENTRY2</span>
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.entry2}</span>
               <span className="text-sm text-black dark:text-white">{entry2 || '-'}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT1</span>
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.exit1}</span>
               <span className="text-sm text-black dark:text-white">{exit1 || '-'}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">EXIT2</span>
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.exit2}</span>
               <span className="text-sm text-black dark:text-white">{exit2 || '-'}</span>
             </div>
             {isAdmin && (
@@ -720,6 +738,12 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
                 {item.price !== null ? item.price.toLocaleString() : 'N/A'}
               </span>
             </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">ENTRY F1</span>
+              <span className="text-sm text-black dark:text-white">
+                {item.entryF1 !== null && item.entryF1 !== undefined ? item.entryF1.toLocaleString() : 'N/A'}
+              </span>
+            </div>
             {hasIvFcf && (
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">IV (FCF)</span>
@@ -729,13 +753,13 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
               </div>
             )}
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">RR1</span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{RR_COLUMN_LABELS.irr1}</span>
               <span className={`text-sm ${rr1Color || 'text-black dark:text-white'}`}>
                 {rr1 !== null ? `${Math.round(rr1)}%` : 'N/A'}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">RR2</span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{RR_COLUMN_LABELS.rr2}</span>
               <span className={`text-sm ${rr2Color || 'text-black dark:text-white'}`}>
                 {rr2 !== null ? `${Math.round(rr2)}%` : 'N/A'}
               </span>
@@ -817,7 +841,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
               {(['entry1', 'entry2', 'exit1', 'exit2'] as const).map((field) => (
                 <div key={field} className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                    {field.toUpperCase()}
+                    {ENTRY_EXIT_COLUMN_LABELS[field]}
                   </label>
                   <input
                     type="number"
