@@ -41,7 +41,8 @@ function toCamelCase(value: string): string {
 
 function shouldPersistEntry(entry: { entry1: number; entry2: number; exit1: number; exit2: number; currency: string; dateOfUpdate: string | null }): boolean {
   const hasValues = entry.entry1 !== 0 || entry.entry2 !== 0 || entry.exit1 !== 0 || entry.exit2 !== 0;
-  return hasValues || !!entry.dateOfUpdate;
+  const hasCurrency = (entry.currency?.trim() ?? '') !== '';
+  return hasValues || !!entry.dateOfUpdate || hasCurrency;
 }
 
 /**
@@ -101,7 +102,7 @@ export async function loadEntryExitValues(
         entry2: typeof data.entry2 === 'number' ? data.entry2 : 0,
         exit1: typeof data.exit1 === 'number' ? data.exit1 : 0,
         exit2: typeof data.exit2 === 'number' ? data.exit2 : 0,
-        currency: typeof data.currency === 'string' ? data.currency : 'USD',
+        currency: typeof data.currency === 'string' ? data.currency : '',
         dateOfUpdate: typeof data.dateOfUpdate === 'string' ? data.dateOfUpdate : null,
       };
     });
@@ -117,9 +118,9 @@ export async function loadEntryExitValues(
         
         for (const [key, currency] of Object.entries(currencyValues)) {
           if (!values[key]) {
-            values[key] = { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: isCurrencyString(currency) ? currency : 'USD', dateOfUpdate: null };
+            values[key] = { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: isCurrencyString(currency) ? currency : '', dateOfUpdate: null };
           } else if (!values[key].currency) {
-            values[key].currency = isCurrencyString(currency) ? currency : 'USD';
+            values[key].currency = isCurrencyString(currency) ? currency : '';
           }
         }
       }
@@ -127,13 +128,12 @@ export async function loadEntryExitValues(
       logger.warn('Failed to migrate currency data', { component: 'userDataService', operation: 'loadEntryExitValues', error: currencyError });
     }
     
-    // Ensure all values have currency field
     for (const key in values) {
-      if (!values[key].currency) {
-        values[key].currency = 'USD';
+      if (typeof values[key].currency !== 'string') {
+        values[key].currency = '';
       }
     }
-    
+
     return Object.keys(values).length > 0 ? values : null;
   } catch (error) {
     logger.error('Error loading EntryExit values from Firestore', error, { component: 'userDataService', operation: 'loadEntryExitValues' });

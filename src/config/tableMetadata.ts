@@ -25,7 +25,7 @@ export const tableMetadata: TableMetadata[] = [
         dataSource: 'Manuell inmatning via dropdown',
         conditions: [
           'Användaren väljer valuta från dropdown-lista',
-          'Standardvärde är USD',
+          'Tom som standard tills användaren väljer valuta',
           'Tillgängliga valutor: USD, EUR, SEK, DKK, NOK, GBP, AUD, CAD, NZD'
         ]
       },
@@ -137,53 +137,53 @@ export const tableMetadata: TableMetadata[] = [
     columns: [
       {
         columnKey: 'industry',
-        dataSource: 'Dashboard sheet, kolumn "INDUSTRY"',
+        dataSource: 'Dashboard sheet, kolumn "SECTOR (ISM)"',
         conditions: [
-          'Filtrera bort rader där Industry är N/A eller tomt',
+          'Filtrera bort rader där SECTOR (ISM) är N/A eller tomt',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Gruppera rader per Industry'
+          'Gruppera rader per sektor (ISM)'
         ]
       },
       {
         columnKey: 'pe',
         dataSource: 'Dashboard sheet, kolumn "P/E"',
-        formula: 'Median(P/E per industry)',
+        formula: 'Median(P/E per sektor (ISM))',
         conditions: [
           'Filtrera bort N/A och ogiltiga värden',
-          'Beräkna median för alla P/E-värden per industry',
+          'Beräkna median för alla P/E-värden per sektor (ISM)',
           'Visa N/A om inga giltiga värden finns (0-värden visas som "0.00")',
-          'Filtrera bort rader där Industry, Company Name eller Ticker är N/A'
+          'Filtrera bort rader där SECTOR (ISM), Company Name eller Ticker är N/A'
         ]
       },
       {
         columnKey: 'pe1',
         dataSource: 'Dashboard sheet, kolumn "P/E1"',
-        formula: 'Median(P/E1 per industry)',
+        formula: 'Median(P/E1 per sektor (ISM))',
         conditions: [
           'Filtrera bort N/A och ogiltiga värden',
-          'Beräkna median för alla P/E1-värden per industry',
+          'Beräkna median för alla P/E1-värden per sektor (ISM)',
           'Visa N/A om inga giltiga värden finns (0-värden visas som "0.00")',
-          'Filtrera bort rader där Industry, Company Name eller Ticker är N/A'
+          'Filtrera bort rader där SECTOR (ISM), Company Name eller Ticker är N/A'
         ]
       },
       {
         columnKey: 'pe2',
         dataSource: 'Dashboard sheet, kolumn "P/E2"',
-        formula: 'Median(P/E2 per industry)',
+        formula: 'Median(P/E2 per sektor (ISM))',
         conditions: [
           'Filtrera bort N/A och ogiltiga värden',
-          'Beräkna median för alla P/E2-värden per industry',
+          'Beräkna median för alla P/E2-värden per sektor (ISM)',
           'Visa N/A om inga giltiga värden finns (0-värden visas som "0.00")',
-          'Filtrera bort rader där Industry, Company Name eller Ticker är N/A'
+          'Filtrera bort rader där SECTOR (ISM), Company Name eller Ticker är N/A'
         ]
       },
       {
         columnKey: 'companyCount',
         dataSource: 'Beräknat från Dashboard sheet',
-        formula: 'Count(företag per industry)',
+        formula: 'Count(företag per sektor (ISM))',
         conditions: [
-          'Räkna antal företag per industry',
-          'Endast räkna företag där Industry, Company Name och Ticker är giltiga (inte N/A)'
+          'Räkna antal företag per sektor (ISM)',
+          'Endast räkna företag där SECTOR (ISM), Company Name och Ticker är giltiga (inte N/A)'
         ]
       }
     ]
@@ -220,7 +220,7 @@ export const tableMetadata: TableMetadata[] = [
         dataSource: 'Speglat från Entry/Exit-tabellen',
         conditions: [
           'Skrivskyddad kolumn som endast visar värdet från Entry/Exit-tabellen',
-          'Standardvärde är USD om currency saknas',
+          'Tom (—) om ingen valuta valts i Entry/Exit',
           'Tillgängliga valutor: USD, EUR, SEK, DKK, NOK, GBP, AUD, CAD, NZD',
           'Currency kan endast redigeras i Entry/Exit-tabellen'
         ]
@@ -287,7 +287,7 @@ export const tableMetadata: TableMetadata[] = [
           'Poängsystem från 0-100 (total max 100p)',
           'Beräknas baserat på färgkodning i SCORE BOARD',
           'Fundamental metrics (50p totalt):',
-          '  - VALUE CREATION (9), Munger Quality Score (12), LEVERAGE F2 (7), Cash/SDebt (7), Current Ratio (5), P/E1 INDUSTRY (5), P/E2 INDUSTRY (5)',
+          '  - VALUE CREATION (9), Munger Quality Score (12), LEVERAGE F2 (7), Cash/SDebt (7), Current Ratio (5), P/E1 SECTOR (ISM) (5), P/E2 SECTOR (ISM) (5)',
           'Technical metrics (50p totalt):',
           '  - TheoEntry (45), SMA(9) (2.5), SMA(21) (2.5)',
           'Färgmarkering:',
@@ -351,11 +351,11 @@ export const tableMetadata: TableMetadata[] = [
           'Visa faktiska 0-värden som "0.00"',
           'Formateras med två decimaler',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Industry Threshold:',
-          '  - RÖD om Current Ratio < Current Ratio MIN (från Industry Threshold baserat på industry)',
-          '  - GRÖN om Current Ratio MIN ≤ Current Ratio < Current Ratio MAX (från Industry Threshold baserat på industry)',
-          '  - BLÅ om Current Ratio ≥ Current Ratio MAX (från Industry Threshold baserat på industry)',
-          '  - Ingen färg om industry inte hittas eller värdet är null/N/A'
+          'Färgmarkering baserat på threshold-värden från Sector (ISM) threshold:',
+          '  - RÖD om Current Ratio < Current Ratio MIN (från Sector (ISM) threshold baserat på sektor (ISM))',
+          '  - GRÖN om Current Ratio MIN ≤ Current Ratio < Current Ratio MAX (från Sector (ISM) threshold baserat på sektor (ISM))',
+          '  - BLÅ om Current Ratio ≥ Current Ratio MAX (från Sector (ISM) threshold baserat på sektor (ISM))',
+          '  - Ingen färg om sektor (ISM) inte hittas eller värdet är null/N/A'
         ]
       },
       {
@@ -366,12 +366,12 @@ export const tableMetadata: TableMetadata[] = [
           'Visa faktiska 0-värden som "0.00"',
           'Formateras med två decimaler',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Industry Threshold:',
+          'Färgmarkering baserat på threshold-värden från Sector (ISM) threshold:',
           '  - GRÖN om division-by-zero (#DIV/0!)',
-          '  - RÖD om Cash/SDebt ≤ Cash/SDebt MIN (från Industry Threshold baserat på industry)',
-          '  - GRÖN om Cash/SDebt ≥ Cash/SDebt MAX (från Industry Threshold baserat på industry)',
-          '  - BLÅ om Cash/SDebt MIN < Cash/SDebt < Cash/SDebt MAX (från Industry Threshold baserat på industry)',
-          '  - Ingen färg om industry inte hittas eller värdet är null/N/A'
+          '  - RÖD om Cash/SDebt ≤ Cash/SDebt MIN (från Sector (ISM) threshold baserat på sektor (ISM))',
+          '  - GRÖN om Cash/SDebt ≥ Cash/SDebt MAX (från Sector (ISM) threshold baserat på sektor (ISM))',
+          '  - BLÅ om Cash/SDebt MIN < Cash/SDebt < Cash/SDebt MAX (från Sector (ISM) threshold baserat på sektor (ISM))',
+          '  - Ingen färg om sektor (ISM) inte hittas eller värdet är null/N/A'
         ]
       },
       {
@@ -381,36 +381,36 @@ export const tableMetadata: TableMetadata[] = [
           'Visa N/A om värdet är null eller ogiltigt',
           'Visa faktiska 0-värden som "0"',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Industry Threshold:',
-          '  - GRÖN om Leverage F2 ≤ Leverage F2 MIN (från Industry Threshold baserat på industry)',
-          '  - BLÅ om Leverage F2 MIN < Leverage F2 ≤ Leverage F2 MAX (från Industry Threshold baserat på industry)',
-          '  - RÖD om Leverage F2 > Leverage F2 MAX (från Industry Threshold baserat på industry)',
-          '  - Ingen färg om industry inte hittas eller värdet är null/N/A'
+          'Färgmarkering baserat på threshold-värden från Sector (ISM) threshold:',
+          '  - GRÖN om Leverage F2 ≤ Leverage F2 MIN (från Sector (ISM) threshold baserat på sektor (ISM))',
+          '  - BLÅ om Leverage F2 MIN < Leverage F2 ≤ Leverage F2 MAX (från Sector (ISM) threshold baserat på sektor (ISM))',
+          '  - RÖD om Leverage F2 > Leverage F2 MAX (från Sector (ISM) threshold baserat på sektor (ISM))',
+          '  - Ingen färg om sektor (ISM) inte hittas eller värdet är null/N/A'
         ]
       },
       {
         columnKey: 'pe1Industry',
-        dataSource: 'Dashboard sheet, kolumn "P/E1" jämfört med P/E INDUSTRY tabell, kolumn "P/E1 INDUSTRY" (median)',
+        dataSource: 'Dashboard sheet, kolumn "P/E1" jämfört med P/E SECTOR (ISM)-tabell, kolumn "P/E1 SECTOR (ISM)" (median)',
         conditions: [
-          'Beräknar procentuell skillnad: (P/E1 från Dashboard - P/E1 INDUSTRY från P/E INDUSTRY) / P/E1 INDUSTRY från P/E INDUSTRY * 100',
-          'Visa N/A om värdet är null eller om industry inte hittas i P/E INDUSTRY tabellen',
+          'Beräknar procentuell skillnad: (P/E1 från Dashboard - P/E1 SECTOR (ISM) från P/E SECTOR (ISM)-tabellen) / P/E1 SECTOR (ISM) från P/E SECTOR (ISM)-tabellen * 100',
+          'Visa N/A om värdet är null eller om sektor (ISM) inte hittas i P/E SECTOR (ISM)-tabellen',
           'Visa faktiska 0-värden som "0.0%"',
           'Formateras som procent med %-tecken och en decimal',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Matchar industry från Dashboard med industry i P/E INDUSTRY tabellen (case-insensitive)',
+          'Matchar sektor (ISM) från Dashboard med sektor (ISM) i P/E SECTOR (ISM)-tabellen (case-insensitive)',
           'Röd färg om procenttalet > 0, grön färg om procenttalet <= 0'
         ]
       },
       {
         columnKey: 'pe2Industry',
-        dataSource: 'Dashboard sheet, kolumn "P/E2" jämfört med P/E INDUSTRY tabell, kolumn "P/E2 INDUSTRY" (median)',
+        dataSource: 'Dashboard sheet, kolumn "P/E2" jämfört med P/E SECTOR (ISM)-tabell, kolumn "P/E2 SECTOR (ISM)" (median)',
         conditions: [
-          'Beräknar procentuell skillnad: (P/E2 från Dashboard - P/E2 INDUSTRY från P/E INDUSTRY) / P/E2 INDUSTRY från P/E INDUSTRY * 100',
-          'Visa N/A om värdet är null eller om industry inte hittas i P/E INDUSTRY tabellen',
+          'Beräknar procentuell skillnad: (P/E2 från Dashboard - P/E2 SECTOR (ISM) från P/E SECTOR (ISM)-tabellen) / P/E2 SECTOR (ISM) från P/E SECTOR (ISM)-tabellen * 100',
+          'Visa N/A om värdet är null eller om sektor (ISM) inte hittas i P/E SECTOR (ISM)-tabellen',
           'Visa faktiska 0-värden som "0.0%"',
           'Formateras som procent med %-tecken och en decimal',
           'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Matchar industry från Dashboard med industry i P/E INDUSTRY tabellen (case-insensitive)',
+          'Matchar sektor (ISM) från Dashboard med sektor (ISM) i P/E SECTOR (ISM)-tabellen (case-insensitive)',
           'Röd färg om procenttalet > 0, grön färg om procenttalet <= 0'
         ]
       }
@@ -421,66 +421,66 @@ export const tableMetadata: TableMetadata[] = [
     columns: [
       {
         columnKey: 'industry',
-        dataSource: 'Dashboard sheet, kolumn "INDUSTRY"',
+        dataSource: 'Dashboard sheet, kolumn "SECTOR (ISM)"',
         conditions: [
-          'Hämtar alla unika industries från Dashboard',
-          'Filtrera bort rader där Industry är N/A, tomt eller ogiltigt',
-          'Varje industry visas endast en gång (inga dubbletter)',
+          'Hämtar alla unika sektorer (ISM) från Dashboard',
+          'Filtrera bort rader där SECTOR (ISM) är N/A, tomt eller ogiltigt',
+          'Varje sektor (ISM) visas endast en gång (inga dubbletter)',
           'Sorteras alfabetiskt'
         ]
       },
       {
         columnKey: 'leverageF2Min',
-        dataSource: 'Auto-fylld baserat på industry mapping (Green_Max värde)',
+        dataSource: 'Auto-fylld baserat på sektor (ISM)-mappning (Green_Max värde)',
         conditions: [
-          'Auto-fylld baserat på industry namn',
+          'Auto-fylld baserat på sektor (ISM) namn',
           'Kan redigeras manuellt',
-          'Visa 0 om industry inte hittas i mappningen'
+          'Visa 0 om sektor (ISM) inte hittas i mappningen'
         ]
       },
       {
         columnKey: 'leverageF2Max',
-        dataSource: 'Auto-fylld baserat på industry mapping (Red_Min värde)',
+        dataSource: 'Auto-fylld baserat på sektor (ISM)-mappning (Red_Min värde)',
         conditions: [
-          'Auto-fylld baserat på industry namn',
+          'Auto-fylld baserat på sektor (ISM) namn',
           'Kan redigeras manuellt',
-          'Visa 0 om industry inte hittas i mappningen'
+          'Visa 0 om sektor (ISM) inte hittas i mappningen'
         ]
       },
       {
         columnKey: 'cashSdebtMin',
-        dataSource: 'Auto-fylld baserat på industry mapping (Min värde)',
+        dataSource: 'Auto-fylld baserat på sektor (ISM)-mappning (Min värde)',
         conditions: [
-          'Auto-fylld baserat på industry namn',
+          'Auto-fylld baserat på sektor (ISM) namn',
           'Kan redigeras manuellt',
-          'Visa 0 om industry inte hittas i mappningen'
+          'Visa 0 om sektor (ISM) inte hittas i mappningen'
         ]
       },
       {
         columnKey: 'cashSdebtMax',
-        dataSource: 'Auto-fylld baserat på industry mapping (Max värde)',
+        dataSource: 'Auto-fylld baserat på sektor (ISM)-mappning (Max värde)',
         conditions: [
-          'Auto-fylld baserat på industry namn',
+          'Auto-fylld baserat på sektor (ISM) namn',
           'Kan redigeras manuellt',
-          'Visa 0 om industry inte hittas i mappningen'
+          'Visa 0 om sektor (ISM) inte hittas i mappningen'
         ]
       },
       {
         columnKey: 'currentRatioMin',
-        dataSource: 'Auto-fylld baserat på industry mapping (Min värde)',
+        dataSource: 'Auto-fylld baserat på sektor (ISM)-mappning (Min värde)',
         conditions: [
-          'Auto-fylld baserat på industry namn',
+          'Auto-fylld baserat på sektor (ISM) namn',
           'Kan redigeras manuellt',
-          'Visa 0 om industry inte hittas i mappningen'
+          'Visa 0 om sektor (ISM) inte hittas i mappningen'
         ]
       },
       {
         columnKey: 'currentRatioMax',
-        dataSource: 'Auto-fylld baserat på industry mapping (Max värde)',
+        dataSource: 'Auto-fylld baserat på sektor (ISM)-mappning (Max värde)',
         conditions: [
-          'Auto-fylld baserat på industry namn',
+          'Auto-fylld baserat på sektor (ISM) namn',
           'Kan redigeras manuellt',
-          'Visa 0 om industry inte hittas i mappningen'
+          'Visa 0 om sektor (ISM) inte hittas i mappningen'
         ]
       }
     ]
@@ -553,7 +553,7 @@ export const tableMetadata: TableMetadata[] = [
         columnKey: 'currency',
         dataSource: 'Speglat från Entry/Exit-tabellen',
         conditions: [
-          'Standardvärde är USD om currency saknas',
+          'Valutan sätts i Entry/Exit; om den lämnas tom används tickerinferens (SEK för vissa nordiska suffix, annars USD) för omräkning i portföljen',
           'Currency kan endast redigeras i Entry/Exit-tabellen'
         ]
       }

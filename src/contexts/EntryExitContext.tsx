@@ -36,8 +36,7 @@ function isEntryExitValues(value: unknown): value is EntryExitValues {
     return false;
   }
   
-  // Check required string field
-  if (!isString(obj.currency)) {
+  if (obj.currency !== undefined && obj.currency !== null && !isString(obj.currency)) {
     return false;
   }
   
@@ -127,8 +126,11 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
               logger.warn(`Invalid EntryExitValues format for key ${key}`, { component: 'EntryExitContext', operation: 'loadEntryExitValues', key, remoteValue: data });
               return;
             }
-            const prevRow = next.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
+            const prevRow = next.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: '', dateOfUpdate: null };
             const merged: EntryExitValues = { ...prevRow, ...(data as EntryExitValues) };
+            if (typeof merged.currency !== 'string') {
+              merged.currency = '';
+            }
 
             const fields: Array<keyof EntryExitValues> = ['entry1', 'entry2', 'exit1', 'exit2', 'currency', 'dateOfUpdate'];
             for (const field of fields) {
@@ -171,7 +173,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     const currentState = new Map(serverRows);
     for (const [draftKey, draftValue] of Object.entries(draft)) {
       const [key, field] = draftKey.split('.');
-      const entry = currentState.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
+      const entry = currentState.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: '', dateOfUpdate: null };
       // Type assertion is safe here because field comes from our own draft keys which are validated
       const updated: EntryExitValues = { ...entry, [field as keyof EntryExitValues]: draftValue as number | string | null };
       
@@ -221,7 +223,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     // Otherwise return server value
     const serverEntry = serverRows.get(key);
     if (field === 'dateOfUpdate') return serverEntry?.[field] ?? null;
-    if (field === 'currency') return serverEntry?.[field] ?? 'USD';
+    if (field === 'currency') return serverEntry?.[field] ?? '';
     return serverEntry?.[field] ?? 0;
   }, [serverRows, draft]);
 
@@ -283,7 +285,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     // Optional optimistic UI update (keeps tables consistent)
     setServerRows((rows) => {
       const newRows = new Map(rows);
-      const current = newRows.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
+      const current = newRows.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: '', dateOfUpdate: null };
       const updated: EntryExitValues = { ...current, [field]: value };
       
       // Update dateOfUpdate if needed
@@ -301,8 +303,8 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
   }, []);
 
   // Commit to Firestore on blur/enter, then release dirty lock
-  const commitField = useCallback(async (ticker: string, companyName: string, field: keyof EntryExitValues) => {
-    const key = `${ticker}-${companyName}`;
+  const commitField = useCallback(async (_ticker: string, companyName: string, field: keyof EntryExitValues) => {
+    const key = companyName;
     const dk = `${key}.${field}`;
     const value = draft[dk];
     
@@ -323,7 +325,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     }
 
     // Build the full entry to save
-    const serverEntry = serverRows.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
+    const serverEntry = serverRows.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: '', dateOfUpdate: null };
     const updated: EntryExitValues = { ...serverEntry, [field]: value };
     
     // Validate the complete entry
@@ -379,7 +381,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     setServerRows((prev) => {
       const newMap = new Map(prev);
       data.forEach((item) => {
-        const key = `${item.ticker}-${item.companyName}`;
+        const key = item.companyName;
         // Only initialize if key doesn't exist (preserve manually entered values)
         if (!newMap.has(key)) {
           newMap.set(key, {
@@ -387,7 +389,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
             entry2: item.entry2 || 0,
             exit1: item.exit1 || 0,
             exit2: item.exit2 || 0,
-            currency: item.currency || 'USD',
+            currency: item.currency ?? '',
             dateOfUpdate: item.dateOfUpdate || null,
           });
         }
@@ -401,7 +403,7 @@ export function EntryExitProvider({ children }: EntryExitProviderProps) {
     const result = new Map(serverRows);
     for (const [draftKey, draftValue] of Object.entries(draft)) {
       const [key, field] = draftKey.split('.');
-      const entry = result.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: 'USD', dateOfUpdate: null };
+      const entry = result.get(key) || { entry1: 0, entry2: 0, exit1: 0, exit2: 0, currency: '', dateOfUpdate: null };
       result.set(key, { ...entry, [field]: draftValue });
     }
     return result;

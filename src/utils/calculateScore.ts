@@ -53,7 +53,7 @@ interface Metric {
  *
  * Weight distribution:
  * - Fundamental: VALUE CREATION 9, Munger Quality Score 12, LEVERAGE F2 7, Cash/SDebt 7,
- *   Current Ratio 5, P/E1 INDUSTRY 5, P/E2 INDUSTRY 5.
+ *   Current Ratio 5, P/E1 SECTOR (ISM) 5, P/E2 SECTOR (ISM) 5.
  * - Technical: TheoEntry 45, SMA(9) 2.5, SMA(21) 2.5.
  * 
  * Calculation methods:
@@ -67,8 +67,8 @@ const METRICS: Metric[] = [
   { name: 'LEVERAGE F2', weight: 7, method: '3Band' },
   { name: 'Cash/SDebt', weight: 7, method: '3Band' },
   { name: 'Current Ratio', weight: 5, method: '3Band' },
-  { name: 'P/E1 INDUSTRY', weight: 5, method: '3Band' },
-  { name: 'P/E2 INDUSTRY', weight: 5, method: '3Band' },
+  { name: 'P/E1 SECTOR (ISM)', weight: 5, method: '3Band' },
+  { name: 'P/E2 SECTOR (ISM)', weight: 5, method: '3Band' },
   // Technical (50p)
   { name: 'TheoEntry', weight: 45, method: 'GreenOnly' },
   { name: 'SMA(9)', weight: 2.5, method: 'GreenOnly' },
@@ -178,10 +178,10 @@ export function calculateScore(
       case 'Current Ratio':
         color = getCurrentRatioColor(scoreBoardData.currentRatio, scoreBoardData.industry, thresholdData);
         break;
-      case 'P/E1 INDUSTRY':
+      case 'P/E1 SECTOR (ISM)':
         color = getPEPercentageColor(scoreBoardData.pe1Industry);
         break;
-      case 'P/E2 INDUSTRY':
+      case 'P/E2 SECTOR (ISM)':
         color = getPEPercentageColor(scoreBoardData.pe2Industry);
         break;
       case 'TheoEntry':

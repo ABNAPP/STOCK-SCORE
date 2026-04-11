@@ -272,19 +272,20 @@ export async function updatePortfolioItem(
 
 /**
  * Get currency for a stock from EntryExitValues
- * 
- * Returns the currency for a stock from EntryExitValues map,
- * or defaults to 'USD' if not found.
- * 
+ *
+ * Returns the currency from EntryExitValues when set (non-empty).
+ * When unset or empty, infers from ticker (e.g. SEK for certain Nordic suffixes, otherwise USD)
+ * for conversions and display in portfolio views.
+ *
  * @param ticker - Stock ticker symbol
  * @param companyName - Company name
  * @param entryExitValues - Map of EntryExitValues keyed by companyName
- * @returns Currency string (default: 'USD')
- * 
+ * @returns ISO-style currency code
+ *
  * @example
  * ```typescript
  * const currency = getCurrencyForStock('AAPL', 'Apple Inc.', entryExitValues);
- * // Returns 'USD' or the currency from EntryExitValues
+ * // Returns saved currency, or inferred SEK/USD when Entry/Exit currency is empty
  * ```
  */
 /** Nasdaq Nordic ticker suffixes that typically trade in SEK */

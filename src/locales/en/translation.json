@@ -15,9 +15,9 @@
     "exit2": "EXIT T2",
     "irr1": "RR T1",
     "ivFcf": "IV (FCF)",
-    "peIndustry": "P/E INDUSTRY",
-    "pe1Industry": "P/E1 INDUSTRY",
-    "pe2Industry": "P/E2 INDUSTRY",
+    "peIndustry": "P/E SECTOR (ISM)",
+    "pe1Industry": "P/E1 SECTOR (ISM)",
+    "pe2Industry": "P/E2 SECTOR (ISM)",
     "currentRatio": "Current Ratio",
     "cashSdebt": "Cash/SDebt",
     "tachart": "TAChart",
@@ -26,10 +26,20 @@
     "sma": "SMA",
     "conditions": "Conditions",
     "condition": "Condition",
-    "industryThreshold": " Industry threshold",
+    "industryThreshold": "Sector (ISM) threshold",
     "managementMonitoring": "MANAGEMENT MONITORING",
     "personalPortfolio": "Personal Portfolio",
     "userManagement": "User Management"
+  },
+  "viewUi": {
+    "fundamentalPeSubtitle": "Fundamental analysis by sector (ISM).",
+    "fundamentalPeSearchPlaceholder": "Search by sector (ISM)...",
+    "industryThresholdSubtitle": "Threshold values by sector (ISM).",
+    "industryThresholdSearchPlaceholder": "Search by sector (ISM)...",
+    "scoreBoardSearchPlaceholder": "Search company, ticker or sector (ISM)...",
+    "sectorIsmColumn": "SECTOR (ISM)",
+    "filterSectorLabel": "Sector (ISM)",
+    "editSectorIsmThresholdsTitle": "Edit sector (ISM) thresholds"
   },
   "admin": {
     "title": "User Management",
@@ -286,10 +296,10 @@
   },
   "helpThisView": {
     "score": "View for summary score and overview.",
-    "score-board": "Detailed table with all metrics and industry comparisons.",
+    "score-board": "Detailed table with all metrics and sector (ISM) comparisons.",
     "entry-exit-benjamin-graham": "Entry/Exit values and live prices from the dashboard.",
-    "fundamental-pe-industry": "P/E comparisons by industry.",
-    "industry-threshold": "Threshold values per industry.",
+    "fundamental-pe-industry": "P/E comparisons by sector (ISM).",
+    "industry-threshold": "Threshold values per sector (ISM).",
     "personal-portfolio": "Your personal stock portfolio.",
     "default": "Table view with search, filters and sorting."
   },

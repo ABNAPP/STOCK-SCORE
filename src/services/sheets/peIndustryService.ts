@@ -1,8 +1,8 @@
 /**
- * P/E Industry Service
- * 
- * Fetches and transforms P/E Industry data from Google Sheets.
- * Groups companies by industry and calculates median P/E ratios.
+ * P/E sector (ISM) sheet service
+ *
+ * Fetches and transforms the separate P/E sheet from Google Sheets.
+ * Groups rows by sector (ISM) column (aliases include INDUSTRY) and calculates median P/E ratios.
  */
 
 import { PEIndustryData } from '../../types/stock';
@@ -11,13 +11,13 @@ import { fetchWithFallback } from './fetchService';
 import { getValue, isValidValue, parseNumericValueNullable, calculateMedian } from './dataTransformers';
 import type { DataRow, ProgressCallback } from './types';
 
-// P/E Industry data configuration
+// P/E sector (ISM) sheet configuration (separate spreadsheet from Dashboard)
 const PE_INDUSTRY_SHEET_ID = '1KOOSLJVGdDZHBV1MUmb4D9oVIKUJj5TIgYCerjkWYcE';
 const PE_INDUSTRY_GID = '1180885830';
 const PE_INDUSTRY_CSV_URL = `https://docs.google.com/spreadsheets/d/${PE_INDUSTRY_SHEET_ID}/export?format=csv&gid=${PE_INDUSTRY_GID}`;
 
 /**
- * Transformer function for P/E Industry data
+ * Transformer for P/E sector (ISM) sheet rows → median P/E per sector key.
  */
 export function transformPEIndustryData(results: { data: DataRow[]; meta: { fields: string[] | null } }): PEIndustryData[] {
   // Group data by industry
@@ -26,7 +26,7 @@ export function transformPEIndustryData(results: { data: DataRow[]; meta: { fiel
   results.data.forEach((row: DataRow) => {
     const companyName = getValue(['Company Name', 'Company', 'company'], row);
     const ticker = getValue(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
-    const industry = getValue(['INDUSTRY', 'Industry', 'industry'], row);
+    const industry = getValue(['SECTOR (ISM)', 'INDUSTRY', 'Industry', 'industry'], row);
     
     // Filter out rows where Company Name, Ticker, or Industry is N/A
     if (!isValidValue(companyName) || !isValidValue(ticker) || !isValidValue(industry)) {
@@ -75,15 +75,14 @@ export function transformPEIndustryData(results: { data: DataRow[]; meta: { fiel
 }
 
 /**
- * Fetches P/E Industry data from Google Sheets
- * 
- * Retrieves industry-specific P/E ratio data by grouping companies by industry
- * and calculating median P/E, P/E1, and P/E2 values for each industry.
+ * Fetches P/E sector (ISM) sheet data from Google Sheets.
+ *
+ * Groups companies by sector (ISM) key and calculates median P/E, P/E1, and P/E2 per key.
  * Tries Apps Script API first (fast), falls back to CSV proxy if needed (slower).
- * 
+ *
  * @param forceRefresh - If true, bypasses cache and forces network request (default: false)
  * @param progressCallback - Optional callback for progress updates during fetch/parse/transform
- * @returns Promise resolving to array of P/E Industry data entries, one per industry
+ * @returns Promise resolving to one row per sector key (stored on `industry` field for compatibility)
  * @throws {Error} If data fetch fails or required columns are missing
  */
 export async function fetchPEIndustryData(
@@ -92,7 +91,7 @@ export async function fetchPEIndustryData(
 ): Promise<PEIndustryData[]> {
   return fetchWithFallback<PEIndustryData>({
     sheetName: 'DashBoard',
-    dataTypeName: 'P/E Industry',
+    dataTypeName: 'P/E SECTOR (ISM)',
     transformer: transformPEIndustryData,
     requiredColumns: ['INDUSTRY', 'P/E', 'P/E1', 'P/E2', 'Company Name', 'Ticker'],
     cacheKey: CACHE_KEYS.PE_INDUSTRY,

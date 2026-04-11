@@ -38,7 +38,7 @@ function ScoreBoardViewInner() {
       const entryExitData: EntryExitData[] = data.map((item) => ({
         companyName: item.companyName,
         ticker: item.ticker,
-        currency: 'USD',
+        currency: '',
         entry1: 0,
         entry2: 0,
         exit1: 0,

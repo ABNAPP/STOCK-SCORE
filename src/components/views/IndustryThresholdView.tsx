@@ -23,7 +23,9 @@ export default function IndustryThresholdView() {
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black dark:text-white mb-1 tracking-tight">
                 {t('navigation.industryThreshold')}
               </h1>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Tröskelvärden per bransch</p>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">
+                {t('viewUi.industryThresholdSubtitle')}
+              </p>
             </div>
           </div>
           <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">

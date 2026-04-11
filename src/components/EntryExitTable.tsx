@@ -33,7 +33,7 @@ const ENTRY_EXIT_COLUMNS: ColumnDefinition<BenjaminGrahamData>[] = [
   { key: 'antal', label: 'Row', required: true, sticky: true, sortable: false },
   { key: 'companyName', label: 'Company Name', required: true, sticky: true, sortable: true },
   { key: 'ticker', label: 'Ticker', required: true, sticky: false, sortable: true },
-  { key: 'currency', label: 'Currency', required: true, sticky: false, sortable: true, align: 'center' },
+  { key: 'currency', label: 'Currency', required: false, sticky: false, sortable: true, align: 'center' },
   { key: 'price', label: 'Price', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'entryF1', label: 'ENTRY F1', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'entry1', label: ENTRY_EXIT_COLUMN_LABELS.entry1, defaultVisible: true, sortable: true, align: 'center' },
@@ -62,7 +62,7 @@ const ENTRY_EXIT_FILTERS: FilterConfig[] = [
     key: 'currency',
     label: 'Valuta',
     type: 'select',
-    options: CURRENCIES.map(c => ({ value: c, label: c })),
+    options: [{ value: '', label: '—' }, ...CURRENCIES.map((c) => ({ value: c, label: c }))],
   },
   {
     key: 'entry1',
@@ -139,7 +139,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
     const entryExitData = data.map((item) => ({
       companyName: item.companyName,
       ticker: item.ticker,
-      currency: 'USD',
+      currency: '',
       entry1: 0,
       entry2: 0,
       exit1: 0,
@@ -476,16 +476,20 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         return <span className="font-medium">{item.companyName}</span>;
       case 'ticker':
         return <span className="text-gray-600 dark:text-gray-300">{item.ticker}</span>;
-      case 'currency':
+      case 'currency': {
         if (!isAdmin) {
-          return <span className="text-black dark:text-white">{values.currency || 'USD'}</span>;
+          return (
+            <span className="text-black dark:text-white">
+              {values.currency.trim() !== '' ? values.currency : '—'}
+            </span>
+          );
         }
         const currencyKey = `${item.ticker}-${item.companyName}-currency`;
         const currencyError = validationErrors[currencyKey];
         return (
           <div className="flex flex-col items-center">
             <select
-              value={values.currency || 'USD'}
+              value={values.currency}
               onChange={(e) => {
                 const validation = validateEntryExitValue('currency', e.target.value);
                 if (validation.isValid) {
@@ -513,9 +517,10 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
               onClick={(e) => e.stopPropagation()}
               aria-invalid={!!currencyError}
             >
-              {CURRENCIES.map((currency) => (
-                <option key={currency} value={currency}>
-                  {currency}
+              <option value="">—</option>
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
                 </option>
               ))}
             </select>
@@ -526,6 +531,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
             )}
           </div>
         );
+      }
       case 'entry1':
         return <span className="text-black dark:text-white">{values.entry1 || '-'}</span>;
       case 'entry2':
@@ -616,7 +622,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
     const exit1 = entryExitValues?.exit1 || 0;
     const entry2 = entryExitValues?.entry2 || 0;
     const exit2 = entryExitValues?.exit2 || 0;
-    const currency = entryExitValues?.currency || 'USD';
+    const currency = entryExitValues?.currency ?? '';
     const dateOfUpdate = entryExitValues?.dateOfUpdate || null;
     const rr1 = getRR1Value(entryExitValues ?? undefined);
     const rr2 = getRR2Value(entryExitValues ?? undefined);
@@ -647,12 +653,13 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Currency</span>
               {isAdmin ? (
                 <select
-                  value={currency || 'USD'}
+                  value={currency}
                   onChange={(e) => handleCurrencyChange(item.ticker, item.companyName, e.target.value)}
                   onBlur={() => commitField(item.ticker, item.companyName, 'currency')}
                   className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   onClick={(e) => e.stopPropagation()}
                 >
+                  <option value="">—</option>
                   {CURRENCIES.map((curr) => (
                     <option key={curr} value={curr}>
                       {curr}
@@ -660,7 +667,9 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
                   ))}
                 </select>
               ) : (
-                <span className="text-sm text-black dark:text-white">{currency || 'USD'}</span>
+                <span className="text-sm text-black dark:text-white">
+                  {currency.trim() !== '' ? currency : '—'}
+                </span>
               )}
             </div>
           </div>

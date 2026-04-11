@@ -2,7 +2,7 @@
  * Score Board Service
  * 
  * Fetches and transforms Score Board data from Google Sheets.
- * Combines data from multiple sources (PE Industry and SMA sheets).
+ * Combines data from multiple sources (P/E sector (ISM) sheet and SMA sheets).
  */
 
 import { ScoreBoardData, PEIndustryData } from '../../types/stock';
@@ -14,7 +14,7 @@ import { fetchSMAData } from './smaService';
 import { logger } from '../../utils/logger';
 import type { DataRow, ProgressCallback } from './types';
 
-// Score Board data configuration (uses same Dashboard sheet as P/E Industry)
+// Score Board data configuration (Dashboard + P/E sector (ISM) medians from separate sheet)
 const SCORE_BOARD_SHEET_ID = '1KOOSLJVGdDZHBV1MUmb4D9oVIKUJj5TIgYCerjkWYcE';
 const SCORE_BOARD_GID = '1180885830';
 const SCORE_BOARD_CSV_URL = `https://docs.google.com/spreadsheets/d/${SCORE_BOARD_SHEET_ID}/export?format=csv&gid=${SCORE_BOARD_GID}`;
@@ -53,7 +53,10 @@ export function createScoreBoardTransformer(
         
         const pe1Str = getValueAllowZero(['P/E1', 'P/E 1', 'pe1', 'PE1'], row);
         const pe2Str = getValueAllowZero(['P/E2', 'P/E 2', 'pe2', 'PE2'], row);
-        const industryStr = getValueAllowZero(['INDUSTRY', 'Industry', 'industry'], row);
+        const industryStr = getValueAllowZero(
+          ['SECTOR (ISM)', 'INDUSTRY', 'Industry', 'industry'],
+          row
+        );
         
         // Filter out rows where Company Name or Ticker is N/A (same rule as Benjamin Graham)
         if (!isValidValue(companyName) || !isValidValue(ticker)) {
@@ -68,7 +71,7 @@ export function createScoreBoardTransformer(
         // Om #DIV/0! detekteras, sätt cashSdebt till 0 istället för null
         const finalCashSdebt = isCashSdebtDivZero ? 0 : cashSdebt;
         
-        // Calculate P/E1 INDUSTRY (procentuell skillnad)
+        // Calculate P/E1 SECTOR (ISM) (procentuell skillnad)
         const pe1 = parseNumericValueNullable(pe1Str);
         let pe1Industry: number | null = null;
         
@@ -82,7 +85,7 @@ export function createScoreBoardTransformer(
           }
         }
         
-        // Calculate P/E2 INDUSTRY (procentuell skillnad)
+        // Calculate P/E2 SECTOR (ISM) (procentuell skillnad)
         const pe2 = parseNumericValueNullable(pe2Str);
         let pe2Industry: number | null = null;
         
@@ -129,7 +132,7 @@ export function createScoreBoardTransformer(
  * 
  * Retrieves comprehensive scoring data including Munger Quality Score, Value Creation,
  * Leverage, P/E ratios, Current Ratio, Cash/SDebt, and SMA data.
- * Combines data from multiple sources (PE Industry and SMA sheets).
+ * Combines data from multiple sources (P/E sector (ISM) sheet and SMA sheets).
  * Tries Apps Script API first (fast), falls back to CSV proxy if needed (slower).
  * 
  * @param forceRefresh - If true, bypasses cache and forces network request (default: false)
@@ -142,7 +145,7 @@ export async function fetchScoreBoardData(
   progressCallback?: ProgressCallback
 ): Promise<ScoreBoardData[]> {
   // Fetch PEIndustryData and SMAData in parallel (they are independent)
-  logger.debug('Fetching PE Industry and SMA data in parallel...', { component: 'scoreBoardService', operation: 'fetchScoreBoardData' });
+  logger.debug('Fetching P/E sector (ISM) sheet and SMA data in parallel...', { component: 'scoreBoardService', operation: 'fetchScoreBoardData' });
   
   const [peIndustryResult, smaResult] = await Promise.allSettled([
     fetchPEIndustryData(forceRefresh),
@@ -155,7 +158,7 @@ export async function fetchScoreBoardData(
     peIndustryData = peIndustryResult.value;
   } else {
     logger.warn(
-      'Failed to fetch PE Industry data for P/E1 INDUSTRY calculation',
+      'Failed to fetch P/E sector (ISM) sheet data for P/E1/P/E2 median calculation',
       { component: 'scoreBoardService', operation: 'fetchScoreBoardData', error: peIndustryResult.reason }
     );
   }

@@ -38,8 +38,8 @@ const SCORE_BOARD_COLUMNS: ColumnDefinition[] = [
   { key: 'currentRatio', label: 'Current Ratio', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'cashSdebt', label: 'Cash/SDebt', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'leverageF2', label: 'Leverage F2', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'pe1Industry', label: 'P/E1 Industry', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'pe2Industry', label: 'P/E2 Industry', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'pe1Industry', label: 'P/E1 SECTOR (ISM)', defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'pe2Industry', label: 'P/E2 SECTOR (ISM)', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'theoEntry', label: 'TheoEntry', defaultVisible: true, sortable: false, align: 'center' },
 ];
 
@@ -73,7 +73,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
     },
     {
       key: 'industry',
-      label: 'Industri',
+      label: t('viewUi.filterSectorLabel'),
       type: 'select',
       options: uniqueIndustries,
     },
@@ -97,7 +97,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
       type: 'numberRange',
       step: 0.01,
     },
-  ], [uniqueIndustries]);
+  ], [uniqueIndustries, t]);
 
   // Get Price from BenjaminGrahamData
   const getPriceFromBenjaminGraham = useCallback((ticker: string, companyName: string): number | null => {
@@ -434,7 +434,7 @@ export default function ScoreBoardTable({ data, loading, error, thresholdData = 
       virtualScrollOverscan={10}
       enableMobileExpand={true}
       searchFields={['companyName', 'ticker', 'industry']}
-      searchPlaceholder="Sök efter företag, ticker eller bransch..."
+      searchPlaceholder={t('viewUi.scoreBoardSearchPlaceholder')}
       defaultSortKey="companyName"
       defaultSortDirection="asc"
       stickyColumns={['antal', 'companyName', 'ticker']}

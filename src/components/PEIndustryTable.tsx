@@ -12,20 +12,24 @@ interface PEIndustryTableProps {
   data: PEIndustryData[];
   loading: boolean;
   error: string | null;
+  initialTableState?: ShareableTableState;
 }
-
-const PE_INDUSTRY_COLUMNS: ColumnDefinition<PEIndustryData>[] = [
-  { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
-  { key: 'industry', label: 'Industry', required: true, sticky: true, sortable: true },
-  { key: 'pe', label: 'P/E INDUSTRY', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'pe1', label: 'P/E1 INDUSTRY', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'pe2', label: 'P/E2 INDUSTRY', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'companyCount', label: 'Antal bolag', defaultVisible: true, sortable: true, align: 'center' },
-];
 
 export default function PEIndustryTable({ data, loading, error, initialTableState }: PEIndustryTableProps) {
   const { t } = useTranslation();
-  
+
+  const peIndustryColumns = useMemo(
+    (): ColumnDefinition<PEIndustryData>[] => [
+      { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
+      { key: 'industry', label: t('viewUi.sectorIsmColumn'), required: true, sticky: true, sortable: true },
+      { key: 'pe', label: t('navigation.peIndustry'), defaultVisible: true, sortable: true, align: 'center' },
+      { key: 'pe1', label: t('navigation.pe1Industry'), defaultVisible: true, sortable: true, align: 'center' },
+      { key: 'pe2', label: t('navigation.pe2Industry'), defaultVisible: true, sortable: true, align: 'center' },
+      { key: 'companyCount', label: 'Antal bolag', defaultVisible: true, sortable: true, align: 'center' },
+    ],
+    [t]
+  );
+
   // Get unique industries for filter dropdown
   const uniqueIndustries = useMemo(() => {
     const industries = new Set<string>();
@@ -40,25 +44,25 @@ export default function PEIndustryTable({ data, loading, error, initialTableStat
   const peIndustryFilters: FilterConfig[] = useMemo(() => [
     {
       key: 'industry',
-      label: 'Industri',
+      label: t('viewUi.filterSectorLabel'),
       type: 'select',
       options: uniqueIndustries,
     },
     {
       key: 'pe',
-      label: 'P/E INDUSTRY',
+      label: t('navigation.peIndustry'),
       type: 'numberRange',
       step: 0.1,
     },
     {
       key: 'pe1',
-      label: 'P/E1 INDUSTRY',
+      label: t('navigation.pe1Industry'),
       type: 'numberRange',
       step: 0.1,
     },
     {
       key: 'pe2',
-      label: 'P/E2 INDUSTRY',
+      label: t('navigation.pe2Industry'),
       type: 'numberRange',
       step: 0.1,
     },
@@ -69,7 +73,7 @@ export default function PEIndustryTable({ data, loading, error, initialTableStat
       min: 0,
       step: 1,
     },
-  ], [uniqueIndustries]);
+  ], [uniqueIndustries, t]);
 
   // Custom header renderer with ColumnTooltip
   const renderHeader = useCallback((props: HeaderRenderProps<PEIndustryData>) => {
@@ -282,7 +286,9 @@ export default function PEIndustryTable({ data, loading, error, initialTableStat
               <span className="text-sm font-medium text-black dark:text-white">{globalIndex + 1}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Industry</span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                {t('viewUi.sectorIsmColumn')}
+              </span>
               <span className="text-sm font-medium text-black dark:text-white text-right">{item.industry}</span>
             </div>
           </div>
@@ -313,19 +319,25 @@ export default function PEIndustryTable({ data, loading, error, initialTableStat
         {isExpanded && (
           <div className="border-t border-gray-300 dark:border-gray-600 p-4 space-y-3 animate-fade-in">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">P/E INDUSTRY</span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                {t('navigation.peIndustry')}
+              </span>
               <span className="text-sm text-black dark:text-white">
                 {item.pe !== null ? item.pe.toFixed(2) : 'N/A'}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">P/E1 INDUSTRY</span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                {t('navigation.pe1Industry')}
+              </span>
               <span className="text-sm text-black dark:text-white">
                 {item.pe1 !== null ? item.pe1.toFixed(2) : 'N/A'}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">P/E2 INDUSTRY</span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                {t('navigation.pe2Industry')}
+              </span>
               <span className="text-sm text-black dark:text-white">
                 {item.pe2 !== null ? item.pe2.toFixed(2) : 'N/A'}
               </span>
@@ -340,14 +352,14 @@ export default function PEIndustryTable({ data, loading, error, initialTableStat
         )}
       </div>
     );
-  }, []);
+  }, [t]);
 
   return (
     <BaseTable<PEIndustryData>
       data={data}
       loading={loading}
       error={error}
-      columns={PE_INDUSTRY_COLUMNS}
+      columns={peIndustryColumns}
       filters={peIndustryFilters}
       tableId="pe-industry"
       renderCell={renderCell}
@@ -358,13 +370,13 @@ export default function PEIndustryTable({ data, loading, error, initialTableStat
       virtualScrollOverscan={10}
       enableMobileExpand={true}
       searchFields={['industry']}
-      searchPlaceholder="Sök efter bransch..."
+      searchPlaceholder={t('viewUi.fundamentalPeSearchPlaceholder')}
       defaultSortKey="companyCount"
       defaultSortDirection="desc"
       stickyColumns={['antal', 'industry']}
       headerCellPaddingClass="px-2 py-2"
       cellPaddingClass="px-2 py-2"
-      ariaLabel="P/E Industry"
+      ariaLabel={t('navigation.peIndustry')}
       minTableWidth="100%"
       getRowKey={(item) => item.industry}
       initialFilterState={initialTableState?.filterState}

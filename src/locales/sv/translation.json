@@ -15,9 +15,9 @@
     "exit2": "EXIT T2",
     "irr1": "RR T1",
     "ivFcf": "IV (FCF)",
-    "peIndustry": "P/E INDUSTRY",
-    "pe1Industry": "P/E1 INDUSTRY",
-    "pe2Industry": "P/E2 INDUSTRY",
+    "peIndustry": "P/E SECTOR (ISM)",
+    "pe1Industry": "P/E1 SECTOR (ISM)",
+    "pe2Industry": "P/E2 SECTOR (ISM)",
     "currentRatio": "Current Ratio",
     "cashSdebt": "Cash/SDebt",
     "tachart": "TAChart",
@@ -26,10 +26,20 @@
     "sma": "SMA",
     "conditions": "Villkor",
     "condition": "Villkor",
-    "industryThreshold": " Industry threshold",
+    "industryThreshold": "Tröskelvärden sektor (ISM)",
     "managementMonitoring": "MANAGEMENT MONITORING",
     "personalPortfolio": "Personlig portfölj",
     "userManagement": "Användarhantering"
+  },
+  "viewUi": {
+    "fundamentalPeSubtitle": "Fundamentala analyser per sektor (ISM).",
+    "fundamentalPeSearchPlaceholder": "Sök efter sektor (ISM)...",
+    "industryThresholdSubtitle": "Tröskelvärden per sektor (ISM).",
+    "industryThresholdSearchPlaceholder": "Sök efter sektor (ISM)...",
+    "scoreBoardSearchPlaceholder": "Sök efter företag, ticker eller sektor (ISM)...",
+    "sectorIsmColumn": "SECTOR (ISM)",
+    "filterSectorLabel": "Sektor (ISM)",
+    "editSectorIsmThresholdsTitle": "Redigera tröskelvärden sektor (ISM)"
   },
   "admin": {
     "title": "Användarhantering",
@@ -286,10 +296,10 @@
   },
   "helpThisView": {
     "score": "Vy för sammanfattad poäng och översikt.",
-    "score-board": "Detaljerad tabell med alla nyckeltal och branschjämförelser.",
+    "score-board": "Detaljerad tabell med alla nyckeltal och sektor (ISM)-jämförelser.",
     "entry-exit-benjamin-graham": "Entry/Exit-värden och aktuella priser från dashboard.",
-    "fundamental-pe-industry": "P/E-jämförelser per bransch.",
-    "industry-threshold": "Tröskelvärden per bransch.",
+    "fundamental-pe-industry": "P/E-jämförelser per sektor (ISM).",
+    "industry-threshold": "Tröskelvärden per sektor (ISM).",
     "personal-portfolio": "Din personliga aktieportfölj.",
     "default": "Tabellvy med sökning, filter och sortering."
   },

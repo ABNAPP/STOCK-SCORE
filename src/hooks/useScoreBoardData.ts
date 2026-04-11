@@ -53,7 +53,7 @@ const CACHE_KEY = CACHE_KEYS.SCORE_BOARD;
  * - Only polls when page is visible (saves resources)
  * - Falls back to regular fetch if delta sync fails
  * - Uses version numbers to track changes efficiently
- * - Fetches PE Industry and SMA data separately for calculations
+ * - Fetches P/E sector (ISM) sheet and SMA data separately for calculations
  * 
  * **Cache Strategy:**
  * - Delta cache: Version-based with lastUpdated timestamp
@@ -90,7 +90,7 @@ export function useScoreBoardData() {
   const previousDataRef = useRef<ScoreBoardData[]>([]);
   const cacheLoadedRef = useRef<boolean>(false);
 
-  // Helper function to fetch PE Industry and SMA data and create maps
+  // Helper function to fetch P/E sector (ISM) sheet and SMA data and create maps
   const fetchDependenciesAndCreateTransformer = useCallback(async (forceRefresh: boolean = false) => {
     // Fetch PEIndustryData and SMAData in parallel (they are independent)
     const [peIndustryResult, smaResult] = await Promise.allSettled([
@@ -104,7 +104,7 @@ export function useScoreBoardData() {
       peIndustryData = peIndustryResult.value;
     } else {
       logger.warn(
-        'Failed to fetch PE Industry data for P/E1 INDUSTRY calculation',
+        'Failed to fetch P/E sector (ISM) sheet data for P/E1/P/E2 median calculation',
         { component: 'useScoreBoardData', operation: 'fetchDependenciesAndCreateTransformer', error: peIndustryResult.reason }
       );
     }
@@ -206,7 +206,7 @@ export function useScoreBoardData() {
       // Try delta-sync if enabled
       if (isDeltaSyncEnabled() && APPS_SCRIPT_URL && !forceRefresh) {
         try {
-          // Fetch dependencies first (PE Industry, SMA) for transformer and worker additionalData
+          // Fetch dependencies first (P/E sector (ISM) sheet, SMA) for transformer and worker additionalData
           const { transformer, additionalData } = await fetchDependenciesAndCreateTransformer(forceRefresh);
 
           const config: DeltaSyncConfig = {

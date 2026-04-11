@@ -44,8 +44,8 @@ const METRICS: Metric[] = [
   { name: 'LEVERAGE F2', weight: 7, method: '3Band' },
   { name: 'Cash/SDebt', weight: 7, method: '3Band' },
   { name: 'Current Ratio', weight: 5, method: '3Band' },
-  { name: 'P/E1 INDUSTRY', weight: 5, method: '3Band' },
-  { name: 'P/E2 INDUSTRY', weight: 5, method: '3Band' },
+  { name: 'P/E1 SECTOR (ISM)', weight: 5, method: '3Band' },
+  { name: 'P/E2 SECTOR (ISM)', weight: 5, method: '3Band' },
   // Technical (50p)
   { name: 'THEOENTRY', weight: 45, method: 'GreenOnly' },
   { name: 'SMA(9)', weight: 2.5, method: 'GreenOnly' },
@@ -58,8 +58,8 @@ const FUNDAMENTAL_METRIC_NAMES = new Set<string>([
   'LEVERAGE F2',
   'Cash/SDebt',
   'Current Ratio',
-  'P/E1 INDUSTRY',
-  'P/E2 INDUSTRY',
+  'P/E1 SECTOR (ISM)',
+  'P/E2 SECTOR (ISM)',
 ]);
 
 export const FUNDAMENTAL_MAX_SCORE_POINTS = METRICS.filter((m) =>
@@ -225,10 +225,10 @@ export function calculateDetailedScoreBreakdown(
       case 'Current Ratio':
         color = getCurrentRatioColor(scoreBoardData.currentRatio, scoreBoardData.industry, thresholdData);
         break;
-      case 'P/E1 INDUSTRY':
+      case 'P/E1 SECTOR (ISM)':
         color = getPEPercentageColor(scoreBoardData.pe1Industry);
         break;
-      case 'P/E2 INDUSTRY':
+      case 'P/E2 SECTOR (ISM)':
         color = getPEPercentageColor(scoreBoardData.pe2Industry);
         break;
       case 'THEOENTRY':
@@ -360,10 +360,10 @@ export function calculateDetailedScore(
       case 'Current Ratio':
         color = getCurrentRatioColor(scoreBoardData.currentRatio, scoreBoardData.industry, thresholdData);
         break;
-      case 'P/E1 INDUSTRY':
+      case 'P/E1 SECTOR (ISM)':
         color = getPEPercentageColor(scoreBoardData.pe1Industry);
         break;
-      case 'P/E2 INDUSTRY':
+      case 'P/E2 SECTOR (ISM)':
         color = getPEPercentageColor(scoreBoardData.pe2Industry);
         break;
       case 'THEOENTRY':

@@ -49,7 +49,7 @@ function ScoreViewInner() {
       const entryExitData: EntryExitData[] = scoreBoardData.map((item) => ({
         companyName: item.companyName,
         ticker: item.ticker,
-        currency: 'USD',
+        currency: '',
         entry1: 0,
         entry2: 0,
         exit1: 0,
@@ -91,7 +91,7 @@ function ScoreViewInner() {
 
       // Get currency and entry/exit values from entryExitValues
       const entryExitValue = entryExitValues.get(item.companyName);
-      const currency = entryExitValue?.currency || 'USD';
+      const currency = entryExitValue?.currency ?? '';
       const entry1 = entryExitValue?.entry1 || 0;
       const entry2 = entryExitValue?.entry2 || 0;
       const exit1 = entryExitValue?.exit1 || 0;

@@ -17,20 +17,23 @@ interface IndustryThresholdTableProps {
   initialTableState?: ShareableTableState;
 }
 
-const THRESHOLD_INDUSTRY_COLUMNS: ColumnDefinition<IndustryThresholdData>[] = [
-  { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
-  { key: 'industry', label: 'INDUSTRY', required: true, sticky: true, sortable: true },
-  { key: 'leverageF2Min', label: 'LEVERAGE F2 MIN', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'leverageF2Max', label: 'LEVERAGE F2 MAX', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'cashSdebtMin', label: 'Cash/SDebt MIN', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'cashSdebtMax', label: 'Cash/SDebt MAX', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'currentRatioMin', label: 'Current Ratio MIN', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'currentRatioMax', label: 'Current Ratio MAX', defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'actions', label: 'Actions', defaultVisible: true, sortable: false, align: 'center' },
-];
-
 export default function IndustryThresholdTable({ data, loading, error, initialTableState }: IndustryThresholdTableProps) {
   const { t } = useTranslation();
+
+  const thresholdColumns = useMemo(
+    (): ColumnDefinition<IndustryThresholdData>[] => [
+      { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
+      { key: 'industry', label: t('viewUi.sectorIsmColumn'), required: true, sticky: true, sortable: true },
+      { key: 'leverageF2Min', label: 'LEVERAGE F2 MIN', defaultVisible: true, sortable: true, align: 'center' },
+      { key: 'leverageF2Max', label: 'LEVERAGE F2 MAX', defaultVisible: true, sortable: true, align: 'center' },
+      { key: 'cashSdebtMin', label: 'Cash/SDebt MIN', defaultVisible: true, sortable: true, align: 'center' },
+      { key: 'cashSdebtMax', label: 'Cash/SDebt MAX', defaultVisible: true, sortable: true, align: 'center' },
+      { key: 'currentRatioMin', label: 'Current Ratio MIN', defaultVisible: true, sortable: true, align: 'center' },
+      { key: 'currentRatioMax', label: 'Current Ratio MAX', defaultVisible: true, sortable: true, align: 'center' },
+      { key: 'actions', label: 'Actions', defaultVisible: true, sortable: false, align: 'center' },
+    ],
+    [t]
+  );
   const { userRole } = useAuth();
   const { getFieldValue, setFieldValue } = useThresholdValues();
   const isReadOnly = userRole !== 'admin';
@@ -58,7 +61,7 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
   const thresholdFilters: FilterConfig[] = useMemo(() => [
     {
       key: 'industry',
-      label: 'Industri',
+      label: t('viewUi.filterSectorLabel'),
       type: 'select',
       options: uniqueIndustries,
     },
@@ -74,7 +77,7 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
       type: 'numberRange',
       step: 0.01,
     },
-  ], [uniqueIndustries]);
+  ], [uniqueIndustries, t]);
 
   const openEditModal = useCallback((item: IndustryThresholdData) => {
     setModalValues({
@@ -372,7 +375,9 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
               <span className="text-sm font-medium text-black dark:text-white">{globalIndex + 1}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">INDUSTRY</span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                {t('viewUi.sectorIsmColumn')}
+              </span>
               <span className="text-sm font-medium text-black dark:text-white text-right">{item.industry}</span>
             </div>
           </div>
@@ -433,7 +438,7 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
         )}
       </div>
     );
-  }, [getFieldValue, isReadOnly, openEditModal]);
+  }, [getFieldValue, isReadOnly, openEditModal, t]);
 
   return (
     <>
@@ -441,7 +446,7 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
         data={data}
         loading={loading}
         error={error}
-        columns={THRESHOLD_INDUSTRY_COLUMNS}
+        columns={thresholdColumns}
         filters={thresholdFilters}
         tableId="industry-threshold"
         renderCell={renderCell}
@@ -452,13 +457,13 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
         virtualScrollOverscan={10}
         enableMobileExpand={true}
         searchFields={['industry']}
-        searchPlaceholder="Sök efter bransch..."
+        searchPlaceholder={t('viewUi.industryThresholdSearchPlaceholder')}
       defaultSortKey="industry"
       defaultSortDirection="asc"
       stickyColumns={['antal', 'industry']}
       headerCellPaddingClass="px-2 py-2"
       cellPaddingClass="px-2 py-2"
-      ariaLabel="Industry Threshold"
+        ariaLabel={t('navigation.industryThreshold')}
         minTableWidth="100%"
         getRowKey={(item) => item.industryKey}
         initialFilterState={initialTableState?.filterState}
@@ -478,7 +483,7 @@ export default function IndustryThresholdTable({ data, loading, error, initialTa
             <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
               <div>
                 <h2 id="industry-threshold-modal-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Edit Industry Thresholds
+                  {t('viewUi.editSectorIsmThresholdsTitle')}
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-300">{editingRow.industry}</p>
               </div>

@@ -11,14 +11,17 @@ export default function EnhancedLoadingState({ dataSourceNames }: EnhancedLoadin
   const { t } = useTranslation();
   const { dataSources, totalProgress, estimatedTimeRemaining, isAnyLoading } = useLoadingProgress();
 
-  const defaultNames: Record<string, string> = {
-    'score-board': 'Score Board',
-    'benjamin-graham': 'Benjamin Graham',
-    'sma': 'SMA',
-    'pe-industry': 'P/E Industry',
-    'industry-threshold': 'Industry Threshold',
-    ...dataSourceNames,
-  };
+  const defaultNames = useMemo(
+    (): Record<string, string> => ({
+      'score-board': 'Score Board',
+      'benjamin-graham': 'Benjamin Graham',
+      'sma': 'SMA',
+      'pe-industry': t('navigation.peIndustry'),
+      'industry-threshold': t('navigation.industryThreshold'),
+      ...dataSourceNames,
+    }),
+    [t, dataSourceNames]
+  );
 
   const formatTime = (ms: number): string => {
     if (ms < 1000) {

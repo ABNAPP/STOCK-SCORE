@@ -232,7 +232,7 @@ function transformPEIndustryData(results: { data: DataRow[]; meta: { fields: str
   results.data.forEach((row: DataRow) => {
     const companyName = getValue(['Company Name', 'Company', 'company'], row);
     const ticker = getValue(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
-    const industry = getValue(['INDUSTRY', 'Industry', 'industry'], row);
+    const industry = getValue(['SECTOR (ISM)', 'INDUSTRY', 'Industry', 'industry'], row);
     
     // Filter out rows where Company Name, Ticker, or Industry is N/A
     if (!isValidValue(companyName) || !isValidValue(ticker) || !isValidValue(industry)) {
@@ -338,7 +338,10 @@ function transformScoreBoardData(
       
       const pe1Str = getValueAllowZero(['P/E1', 'P/E 1', 'pe1', 'PE1'], row);
       const pe2Str = getValueAllowZero(['P/E2', 'P/E 2', 'pe2', 'PE2'], row);
-      const industryStr = getValueAllowZero(['INDUSTRY', 'Industry', 'industry'], row);
+      const industryStr = getValueAllowZero(
+        ['SECTOR (ISM)', 'INDUSTRY', 'Industry', 'industry'],
+        row
+      );
       
       // Filter out rows where Company Name or Ticker is N/A
       if (!isValidValue(companyName) || !isValidValue(ticker)) {
@@ -353,7 +356,7 @@ function transformScoreBoardData(
       // Om #DIV/0! detekteras, sätt cashSdebt till 0 istället för null
       const finalCashSdebt = isCashSdebtDivZero ? 0 : cashSdebt;
       
-      // Calculate P/E1 INDUSTRY (procentuell skillnad)
+      // Calculate P/E1 SECTOR (ISM) (procentuell skillnad)
       const pe1 = parseNumericValueNullable(pe1Str);
       let pe1Industry: number | null = null;
       
@@ -367,7 +370,7 @@ function transformScoreBoardData(
         }
       }
       
-      // Calculate P/E2 INDUSTRY (procentuell skillnad)
+      // Calculate P/E2 SECTOR (ISM) (procentuell skillnad)
       const pe2 = parseNumericValueNullable(pe2Str);
       let pe2Industry: number | null = null;
       

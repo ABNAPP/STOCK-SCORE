@@ -27,7 +27,7 @@ function ManagementMonitoringPageInner() {
       const entryExitData: EntryExitData[] = scoreData.map((item) => ({
         companyName: item.companyName,
         ticker: item.ticker,
-        currency: 'USD',
+        currency: '',
         entry1: 0,
         entry2: 0,
         exit1: 0,
@@ -57,7 +57,7 @@ function ManagementMonitoringPageInner() {
       const entryValues = getEntryExitValue(item.ticker, item.companyName);
       const entry1 = entryValues?.entry1 ?? 0;
       const entry2 = entryValues?.entry2 ?? 0;
-      const currency = entryValues?.currency ?? 'USD';
+      const currency = entryValues?.currency ?? '';
 
       const entry1Green = isEntry1GreenForCell(price, entry1);
       const entry2Green = isEntry2GreenForCell(price, entry2);

@@ -57,7 +57,7 @@ function PersonalPortfolioViewInner() {
       const entryExitData = benjaminGrahamData.map((item) => ({
         companyName: item.companyName,
         ticker: item.ticker,
-        currency: 'USD',
+        currency: '',
         entry1: 0,
         entry2: 0,
         exit1: 0,

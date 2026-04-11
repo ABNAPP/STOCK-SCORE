@@ -134,7 +134,7 @@ function transformPEIndustry(data: DataRow[]): Array<Record<string, unknown>> {
   for (const row of data) {
     const companyName = getValue(['Company Name', 'Company', 'company'], row);
     const ticker = getValue(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
-    const industry = getValue(['INDUSTRY', 'Industry', 'industry'], row);
+    const industry = getValue(['SECTOR (ISM)', 'INDUSTRY', 'Industry', 'industry'], row);
     if (!isValidValue(companyName) || !isValidValue(ticker) || !isValidValue(industry)) continue;
     let d = industryMap.get(industry);
     if (!d) {
@@ -163,7 +163,7 @@ function transformPEIndustry(data: DataRow[]): Array<Record<string, unknown>> {
 function transformIndustryThreshold(data: DataRow[]): Array<Record<string, unknown>> {
   return data
     .map((row) => {
-      const industry = getValue(['Industry', 'INDUSTRY', 'industry'], row);
+      const industry = getValue(['SECTOR (ISM)', 'Industry', 'INDUSTRY', 'industry'], row);
       if (!isValidValue(industry)) return null;
       const leverageF2Min = parseNum(getValue(['Leverage F2 Min', 'Leverage F2 min', 'leverageF2Min', 'leverageF2Min'], row));
       const leverageF2Max = parseNum(getValue(['Leverage F2 Max', 'Leverage F2 max', 'leverageF2Max', 'leverageF2Max'], row));
@@ -212,7 +212,10 @@ function transformScoreBoard(
     .map((row) => {
       const companyName = getValueAllowZero(['Company Name', 'Company', 'company'], row);
       const ticker = getValueAllowZero(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
-      const industryStr = getValueAllowZero(['INDUSTRY', 'Industry', 'industry'], row);
+      const industryStr = getValueAllowZero(
+        ['SECTOR (ISM)', 'INDUSTRY', 'Industry', 'industry'],
+        row
+      );
       if (!isValidValue(companyName) || !isValidValue(ticker)) return null;
       const cashSdebtStr = getValueAllowZero(['Cash/SDebt', 'Cash/SDebt', 'cash/sdebt', 'CASH/SDEBT'], row);
       const isDiv0 =

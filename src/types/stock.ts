@@ -18,12 +18,12 @@ export interface PEIndustryData extends Record<string, unknown> {
 export interface ScoreBoardData extends Record<string, unknown> {
   companyName: string;
   ticker: string;
-  industry: string; // Added: Industry from Dashboard sheet for threshold matching
+  industry: string; // Added: SECTOR (ISM) from Dashboard (column alias); field name kept for compatibility
   mungerQualityScore: number | null;
   valueCreation: number | null; // procent-värde
   leverageF2: number | null;
-  pe1Industry: number | null; // Added: procentuell skillnad mellan P/E1 från Dashboard och P/E1 INDUSTRY (median)
-  pe2Industry: number | null; // Added: procentuell skillnad mellan P/E2 från Dashboard och P/E2 INDUSTRY (median)
+  pe1Industry: number | null; // Added: procentuell skillnad mellan P/E1 från Dashboard och P/E1 SECTOR (ISM) (median)
+  pe2Industry: number | null; // Added: procentuell skillnad mellan P/E2 från Dashboard och P/E2 SECTOR (ISM) (median)
   currentRatio: number | null; // Added: Current Ratio from Dashboard sheet
   cashSdebt: number | null; // Added: Cash/SDebt from Dashboard sheet
   isCashSdebtDivZero: boolean; // Added: Flag to track division-by-zero for Cash/SDebt (should be green)

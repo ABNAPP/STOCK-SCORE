@@ -35,7 +35,9 @@ export default function FundamentalView({ viewId }: FundamentalViewProps) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 flex-shrink-0 gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black dark:text-white mb-1 tracking-tight">{getViewTitle()}</h1>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Fundamentala analyser per bransch</p>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">
+                {t('viewUi.fundamentalPeSubtitle')}
+              </p>
             </div>
           </div>
           <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">

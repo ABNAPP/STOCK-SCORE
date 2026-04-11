@@ -36,7 +36,7 @@ const SHEET_NAME = 'DashBoard';
 const CACHE_KEY = CACHE_KEYS.PE_INDUSTRY;
 
 /**
- * Custom hook for fetching and managing P/E Industry data with delta sync
+ * Custom hook for fetching and managing P/E sector (ISM) sheet data with delta sync
  * 
  * Implements delta sync for efficient data updates:
  * - **Delta Sync (enabled)**: Uses version-based incremental updates
@@ -93,7 +93,7 @@ export function usePEIndustryData() {
           const config: DeltaSyncConfig = {
             sheetName: SHEET_NAME,
             apiBaseUrl: getApiBaseUrlForDeltaSync(),
-            dataTypeName: 'PE Industry',
+            dataTypeName: 'P/E SECTOR (ISM)',
           };
 
           // Load initial snapshot or use cached data
@@ -123,7 +123,7 @@ export function usePEIndustryData() {
             const changeMessage = formatChangeSummary(changes);
             createNotification(
               'data-update',
-              'P/E Industry Data Updated',
+              'P/E SECTOR (ISM) Data Updated',
               `Total: ${changes.total} items. ${changeMessage}`,
               {
                 showDesktop: true,
@@ -177,7 +177,7 @@ export function usePEIndustryData() {
         }
       };
       
-      logger.debug('Fetching PE Industry data', { 
+      logger.debug('Fetching P/E sector (ISM) sheet data', { 
         component: 'usePEIndustryData', 
         operation: 'loadData',
         forceRefresh,
@@ -186,7 +186,7 @@ export function usePEIndustryData() {
       
       const fetchedData = await fetchPEIndustryData(forceRefresh, progressCallback);
       
-      logger.info('PE Industry data fetched successfully', { 
+      logger.info('P/E sector (ISM) sheet data fetched successfully', { 
         component: 'usePEIndustryData', 
         operation: 'loadData',
         entryCount: fetchedData.length,
@@ -201,7 +201,7 @@ export function usePEIndustryData() {
         0.05 // 5% threshold
       );
       
-      logger.debug('Updating PE Industry state with new data', { 
+      logger.debug('Updating P/E sector (ISM) state with new data', { 
         component: 'usePEIndustryData', 
         operation: 'loadData',
         entryCount: fetchedData.length,
@@ -214,7 +214,7 @@ export function usePEIndustryData() {
       setViewData('fundamental-pe-industry', { peIndustry: fetchedData }, { source: 'client-refresh' }).catch((e) =>
         logger.warn('Failed to write viewData', { component: 'usePEIndustryData', error: e })
       );
-      logger.info('PE Industry state updated successfully', { 
+      logger.info('P/E sector (ISM) state updated successfully', { 
         component: 'usePEIndustryData', 
         operation: 'loadData',
         entryCount: fetchedData.length 
@@ -225,7 +225,7 @@ export function usePEIndustryData() {
         const changeMessage = formatChangeSummary(changes);
         createNotification(
           'data-update',
-          'P/E Industry Data Updated',
+          'P/E SECTOR (ISM) Data Updated',
           `Total: ${changes.total} items. ${changeMessage}`,
           {
             showDesktop: true,
@@ -242,7 +242,7 @@ export function usePEIndustryData() {
       }
     } catch (err: unknown) {
       const errorHandler = createErrorHandler({
-        operation: 'fetch P/E Industry data',
+        operation: 'fetch P/E sector (ISM) sheet data',
         component: 'usePEIndustryData',
         additionalInfo: { forceRefresh, isBackground },
       });
@@ -277,7 +277,7 @@ export function usePEIndustryData() {
       const config: DeltaSyncConfig = {
         sheetName: SHEET_NAME,
         apiBaseUrl: getApiBaseUrlForDeltaSync(),
-        dataTypeName: 'PE Industry',
+        dataTypeName: 'P/E SECTOR (ISM)',
       };
 
       const changesResponse = await pollChanges(config, currentVersionRef.current);
@@ -313,7 +313,7 @@ export function usePEIndustryData() {
           const changeMessage = formatChangeSummary(dataChanges);
           createNotification(
             'data-update',
-            'P/E Industry Data Updated',
+            'P/E SECTOR (ISM) Data Updated',
             `Total: ${dataChanges.total} items. ${changeMessage}`,
             {
               showDesktop: true,

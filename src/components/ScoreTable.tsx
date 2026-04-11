@@ -133,7 +133,11 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
       case 'ticker':
         return <span className="text-gray-500 dark:text-gray-300">{item.ticker}</span>;
       case 'currency':
-        return <span className="text-black dark:text-white">{item.currency || 'USD'}</span>;
+        return (
+          <span className="text-black dark:text-white">
+            {(item.currency ?? '').trim() !== '' ? item.currency : '—'}
+          </span>
+        );
       case 'price':
         return <span className="text-black dark:text-white">{item.price !== null ? item.price.toLocaleString() : 'N/A'}</span>;
       case 'entry1': {
@@ -191,7 +195,9 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Currency</span>
-            <span className="text-sm text-black dark:text-white">{item.currency || 'USD'}</span>
+            <span className="text-sm text-black dark:text-white">
+              {(item.currency ?? '').trim() !== '' ? item.currency : '—'}
+            </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</span>

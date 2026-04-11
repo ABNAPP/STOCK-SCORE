@@ -286,7 +286,7 @@ export function sanitizeSearchQuery(query: string, maxLength: number = 200): str
  * 
  * Validates different field types:
  * - entry1, entry2, exit1, exit2: Numeric values (0-1,000,000, max 2 decimals)
- * - currency: Must be one of allowed currency codes (USD, EUR, SEK, etc.)
+ * - currency: Empty string or one of allowed currency codes (USD, EUR, SEK, etc.)
  * - dateOfUpdate: Must be valid date string in YYYY-MM-DD format
  * 
  * @param field - Field name to validate
@@ -313,7 +313,7 @@ export function validateEntryExitValue(
       return { isValid: true }; // dateOfUpdate can be null
     }
     if (field === 'currency') {
-      return { isValid: true }; // Will default to USD
+      return { isValid: true }; // Empty / unset is allowed (no default currency)
     }
     return { isValid: true }; // Entry/exit can be 0 (empty)
   }
