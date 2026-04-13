@@ -197,6 +197,69 @@ service cloud.firestore {
       allow read: if request.auth != null && isAdmin();
       allow create, update, delete: if false; // Only server (Admin SDK) can write
     }
+
+    // ISM weekly sector rebalance snapshots
+    match /sector_rebalances/{sectorId}/snapshots/{rebalanceDate} {
+      allow read: if request.auth != null && hasRole() && (
+        isAdmin() ||
+        canView('ism-posture-positioning') ||
+        canView('score-board')
+      );
+      allow create, update: if request.auth != null && hasRole() &&
+        (isAdmin() || canView('ism-posture-positioning')) &&
+        request.resource.data.size() <= 2097152 &&
+        request.resource.data.ism_sector_rebalance_schema_version == 1 &&
+        request.resource.data.sector_id == sectorId;
+      allow delete: if request.auth != null && isAdmin();
+    }
+
+    // ISM symbol registry — readiness / inclusion (ISM-owned via ism_symbol_schema_version)
+    match /symbols/{symbolId} {
+      allow read: if request.auth != null && hasRole() && (
+        isAdmin() ||
+        canView('ism-posture-positioning') ||
+        canView('score-board')
+      );
+      allow create, update: if request.auth != null && hasRole() &&
+        (isAdmin() || canView('ism-posture-positioning')) &&
+        request.resource.data.size() <= 524288 &&
+        request.resource.data.ism_symbol_schema_version == 1 &&
+        request.resource.data.symbol_id == symbolId;
+      allow delete: if request.auth != null && isAdmin();
+    }
+
+    // ISM daily official sector index (composite doc id: sectorId_tradeDate)
+    match /sector_index_daily/{docId} {
+      allow read: if request.auth != null && hasRole() && (
+        isAdmin() ||
+        canView('ism-posture-positioning') ||
+        canView('score-board')
+      );
+      allow create, update: if request.auth != null && hasRole() &&
+        (isAdmin() || canView('ism-posture-positioning')) &&
+        request.resource.data.size() <= 1048576 &&
+        request.resource.data.ism_sector_daily_schema_version == 1 &&
+        request.resource.data.sector_id is string &&
+        request.resource.data.trade_date is string &&
+        docId == (request.resource.data.sector_id + '_' + request.resource.data.trade_date);
+      allow delete: if request.auth != null && isAdmin();
+    }
+
+    // ISM fetch motor — shared progress/bootstrap/daily state (official persistence for ISM module)
+    match /ismFetchEngine/{docId} {
+      allow read: if request.auth != null && hasRole() && (
+        isAdmin() ||
+        canView('ism-posture-positioning') ||
+        canView('score-board')
+      );
+      allow create, update: if request.auth != null && hasRole() &&
+        (isAdmin() || canView('ism-posture-positioning')) &&
+        request.resource.data.size() <= 1048576 &&
+        request.resource.data.engineState is map &&
+        request.resource.data.engineState.schemaVersion is int &&
+        request.resource.data.engineState.schemaVersion == 1;
+      allow delete: if request.auth != null && isAdmin();
+    }
     
     // Deny all other access by default
     match /{document=**} {

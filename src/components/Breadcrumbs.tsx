@@ -18,6 +18,7 @@ function getViewLabel(viewId: ViewId, t: (key: string) => string): string {
     'score': t('navigation.score'),
     'score-board': t('navigation.scoreBoard'),
     'ism-posture-positioning': t('navigation.ismPosturePositioning'),
+    'toolbox': t('navigation.toolbox'),
     'sma': t('navigation.sma'),
     'entry-exit-benjamin-graham': t('navigation.benjaminGraham'),
     'entry-exit-entry2': t('navigation.entry2'),

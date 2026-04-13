@@ -16,6 +16,7 @@ import {
   UserIcon,
   ArrowTrendingUpIcon,
   PresentationChartLineIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -73,6 +74,12 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
     collapsible: false,
   },
   {
+    id: 'toolbox',
+    label: t('navigation.toolbox'),
+    items: [{ id: 'toolbox', label: t('navigation.toolbox') }],
+    collapsible: false,
+  },
+  {
     id: 'management-monitoring',
     label: t('navigation.managementMonitoring'),
     items: [{ id: 'management-monitoring', label: t('navigation.managementMonitoring') }],
@@ -89,6 +96,8 @@ const getViewIcon = (viewId: ViewId) => {
       return ChartBarIcon;
     case 'ism-posture-positioning':
       return PresentationChartLineIcon;
+    case 'toolbox':
+      return WrenchScrewdriverIcon;
     case 'sma':
       return ArrowTrendingUpIcon;
     case 'entry-exit-benjamin-graham':

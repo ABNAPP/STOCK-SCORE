@@ -216,6 +216,14 @@ function transformScoreBoard(
         ['SECTOR (ISM)', 'INDUSTRY', 'Industry', 'industry'],
         row
       );
+      const marketCapStr = getValueAllowZero(
+        ['Market Cap', 'Market cap', 'MARKET CAP', 'MarketCap', 'marketcap', 'MARKET_CAP'],
+        row
+      );
+      const dashboardDateOfUpdateStr = getValueAllowZero(
+        ['Date of Update', 'date of update', 'DATE OF UPDATE', 'Date of update', 'DATE_OF_UPDATE'],
+        row
+      );
       if (!isValidValue(companyName) || !isValidValue(ticker)) return null;
       const cashSdebtStr = getValueAllowZero(['Cash/SDebt', 'Cash/SDebt', 'cash/sdebt', 'CASH/SDEBT'], row);
       const isDiv0 =
@@ -239,10 +247,16 @@ function transformScoreBoard(
       }
       const tickerKey = ticker.toLowerCase().trim();
       const smaMatch = smaDataMap.get(tickerKey);
+      const marketCap = parseNum(marketCapStr);
+      const dashboardDateOfUpdate = isValidValue(dashboardDateOfUpdateStr)
+        ? dashboardDateOfUpdateStr.trim()
+        : null;
       return {
         companyName,
         ticker,
         industry: industryStr || '',
+        marketCap,
+        dashboardDateOfUpdate,
         mungerQualityScore: parseNum(getValueAllowZero(['Munger Quality Score', 'Munger Quality Score', 'munger quality score', 'MUNGER QUALITY SCORE'], row)),
         valueCreation: parsePct(getValueAllowZero(['VALUE CREATION', 'Value Creation', 'value creation', 'VALUE_CREATION'], row)),
         leverageF2: parseNum(getValueAllowZero(['Leverage F2', 'Leverage F2', 'leverage f2', 'LEVERAGE F2'], row)),

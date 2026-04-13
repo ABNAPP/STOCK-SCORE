@@ -19,6 +19,10 @@ export interface ScoreBoardData extends Record<string, unknown> {
   companyName: string;
   ticker: string;
   industry: string; // Added: SECTOR (ISM) from Dashboard (column alias); field name kept for compatibility
+  /** DashBoard Market Cap (parsed numeric; null if missing/invalid). */
+  marketCap: number | null;
+  /** DashBoard "Date of Update" string — diagnostics only, not official freshness. */
+  dashboardDateOfUpdate: string | null;
   mungerQualityScore: number | null;
   valueCreation: number | null; // procent-värde
   leverageF2: number | null;

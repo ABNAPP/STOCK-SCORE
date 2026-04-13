@@ -2,6 +2,7 @@ export type ViewId =
   | 'score'
   | 'score-board'
   | 'ism-posture-positioning'
+  | 'toolbox'
   | 'sma'
   | 'entry-exit-benjamin-graham'
   | 'entry-exit-entry2'

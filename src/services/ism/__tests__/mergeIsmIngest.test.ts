@@ -1,0 +1,87 @@
+import { describe, it, expect } from 'vitest';
+import type { ScoreBoardData } from '../../../types/stock';
+import { mergeIsmIngestRows, summarizeIsmIngest } from '../mergeIsmIngest';
+import { ISM_READINESS_HINTS } from '../../../types/ismIngest';
+
+function mockRow(partial: Partial<ScoreBoardData> & Pick<ScoreBoardData, 'companyName' | 'ticker' | 'industry'>): ScoreBoardData {
+  return {
+    companyName: partial.companyName,
+    ticker: partial.ticker,
+    industry: partial.industry,
+    marketCap: partial.marketCap !== undefined ? partial.marketCap : 1e9,
+    dashboardDateOfUpdate:
+      partial.dashboardDateOfUpdate !== undefined ? partial.dashboardDateOfUpdate : '2024-01-01',
+    mungerQualityScore: partial.mungerQualityScore ?? 50,
+    valueCreation: partial.valueCreation ?? 10,
+    leverageF2: partial.leverageF2 ?? 1,
+    pe1Industry: partial.pe1Industry ?? null,
+    pe2Industry: partial.pe2Industry ?? null,
+    currentRatio: partial.currentRatio ?? 1,
+    cashSdebt: partial.cashSdebt ?? 1,
+    isCashSdebtDivZero: partial.isCashSdebtDivZero ?? false,
+    sma9: partial.sma9 ?? null,
+    sma21: partial.sma21 ?? null,
+    sma55: partial.sma55 ?? null,
+    sma200: partial.sma200 ?? null,
+  };
+}
+
+describe('mergeIsmIngestRows', () => {
+  it('builds symbolId from DashBoard ticker and attaches currency from getter', () => {
+    const rows = [
+      mockRow({
+        companyName: 'TestCo',
+        ticker: 'NYSE:BAX',
+        industry: 'Health Care',
+      }),
+    ];
+    const out = mergeIsmIngestRows(rows, (_t, company) => (company === 'TestCo' ? 'USD' : ''));
+    expect(out[0].symbolId).toBe('nyse_bax');
+    expect(out[0].currency).toBe('USD');
+    expect(out[0].quality.missingCurrency).toBe(false);
+  });
+
+  it('flags missing currency when getter returns empty', () => {
+    const rows = [mockRow({ companyName: 'A', ticker: 'MMM', industry: 'Industrials' })];
+    const out = mergeIsmIngestRows(rows, () => '');
+    expect(out[0].symbolId).toBe('unknown_mmm');
+    expect(out[0].quality.missingCurrency).toBe(true);
+    expect(out[0].readinessHints).toContain(ISM_READINESS_HINTS.MISSING_CURRENCY);
+  });
+
+  it('flags missing market cap', () => {
+    const rows = [mockRow({ companyName: 'A', ticker: 'LULU', industry: 'X', marketCap: null })];
+    const out = mergeIsmIngestRows(rows, () => 'CAD');
+    expect(out[0].quality.missingMarketCap).toBe(true);
+    expect(out[0].readinessHints).toContain(ISM_READINESS_HINTS.MISSING_MARKET_CAP);
+  });
+
+  it('flags missing sector', () => {
+    const rows = [mockRow({ companyName: 'A', ticker: 'LULU', industry: '' })];
+    const out = mergeIsmIngestRows(rows, () => 'USD');
+    expect(out[0].quality.missingSector).toBe(true);
+  });
+
+  it('flags ticker parse review from ISM parser', () => {
+    const rows = [mockRow({ companyName: 'A', ticker: 'NYSE:BRK:B', industry: 'Finans' })];
+    const out = mergeIsmIngestRows(rows, () => 'USD');
+    expect(out[0].quality.tickerNeedsReview).toBe(true);
+    expect(out[0].readinessHints).toContain(ISM_READINESS_HINTS.TICKER_PARSE_REVIEW);
+  });
+});
+
+describe('summarizeIsmIngest', () => {
+  it('aggregates counts', () => {
+    const rows = mergeIsmIngestRows(
+      [
+        mockRow({ companyName: 'A', ticker: 'A', industry: 'S1', marketCap: null }),
+        mockRow({ companyName: 'B', ticker: 'B', industry: 'S2' }),
+      ],
+      (t, c) => (c === 'A' ? '' : 'SEK')
+    );
+    const s = summarizeIsmIngest(rows);
+    expect(s.rowCount).toBe(2);
+    expect(s.withMissingCurrency).toBe(1);
+    expect(s.withMissingMarketCap).toBe(1);
+  });
+});

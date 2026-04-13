@@ -31,6 +31,7 @@ const FundamentalView = lazyWithRetry<typeof import('./components/views/Fundamen
 const IndustryThresholdView = lazyWithRetry<typeof import('./components/views/IndustryThresholdView').default>(() => import('./components/views/IndustryThresholdView'), 'IndustryThresholdView');
 const PersonalPortfolioView = lazyWithRetry<typeof import('./components/views/PersonalPortfolioView').default>(() => import('./components/views/PersonalPortfolioView'), 'PersonalPortfolioView');
 const ISMPostureView = lazyWithRetry<typeof import('./components/views/ISMPostureView').default>(() => import('./components/views/ISMPostureView'), 'ISMPostureView');
+const ToolBoxView = lazyWithRetry<typeof import('./components/views/ToolBoxView').default>(() => import('./components/views/ToolBoxView'), 'ToolBoxView');
 const SMAView = lazyWithRetry<typeof import('./components/views/SMAView').default>(() => import('./components/views/SMAView'), 'SMAView');
 const ManagementMonitoringPage = lazyWithRetry<typeof import('./pages/ManagementMonitoringPage').default>(() => import('./pages/ManagementMonitoringPage'), 'ManagementMonitoringPage');
 
@@ -47,6 +48,7 @@ const MAIN_VIEW_IDS: ViewId[] = [
   'entry-exit-benjamin-graham',
   'fundamental-pe-industry',
   'industry-threshold',
+  'toolbox',
   'management-monitoring',
   'personal-portfolio',
 ];
@@ -165,6 +167,7 @@ function App() {
     const names: Partial<Record<ViewId, string>> = {
       'score-board': t('navigation.scoreBoard'),
       'ism-posture-positioning': t('navigation.ismPosturePositioning'),
+      'toolbox': t('navigation.toolbox'),
       'sma': t('navigation.sma'),
       'score': t('navigation.score'),
       'entry-exit-benjamin-graham': t('navigation.benjaminGraham'),
@@ -205,6 +208,14 @@ function App() {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <SMAView />
+        </Suspense>
+      );
+    }
+
+    if (activeView === 'toolbox') {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <ToolBoxView />
         </Suspense>
       );
     }

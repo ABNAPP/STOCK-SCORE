@@ -72,13 +72,44 @@ export function isValidValue(value: string): boolean {
 export function parseNumericValueNullable(valueStr: string): number | null {
   if (!isString(valueStr) || !isValidValue(valueStr)) return null;
   
-  // Remove common prefixes and clean the string
-  let cleaned = String(valueStr)
-    .replace(/,/g, '.')
+  // Normalize separators:
+  // - 9,071,967,235 -> 9071967235 (thousand commas)
+  // - 123,45 -> 123.45 (decimal comma)
+  // - 1.234.567 -> 1234567 (thousand dots)
+  const raw = String(valueStr)
     .replace(/\s/g, '')
     .replace(/#/g, '')
     .replace(/%/g, '')
     .replace(/\$/g, '');
+
+  const commaCount = (raw.match(/,/g) ?? []).length;
+  const dotCount = (raw.match(/\./g) ?? []).length;
+  let cleaned = raw;
+
+  if (commaCount > 0 && dotCount === 0) {
+    if (commaCount > 1) {
+      cleaned = raw.replace(/,/g, '');
+    } else {
+      const [left, right = ''] = raw.split(',');
+      cleaned = right.length > 0 && right.length <= 2 ? `${left}.${right}` : `${left}${right}`;
+    }
+  } else if (dotCount > 0 && commaCount === 0) {
+    if (dotCount > 1) {
+      cleaned = raw.replace(/\./g, '');
+    } else {
+      const [left, right = ''] = raw.split('.');
+      cleaned = right.length === 3 ? `${left}${right}` : raw;
+    }
+  } else if (dotCount > 0 && commaCount > 0) {
+    const lastComma = raw.lastIndexOf(',');
+    const lastDot = raw.lastIndexOf('.');
+    const decimalSep = lastComma > lastDot ? ',' : '.';
+    if (decimalSep === ',') {
+      cleaned = raw.replace(/\./g, '').replace(/,/g, '.');
+    } else {
+      cleaned = raw.replace(/,/g, '');
+    }
+  }
   
   const parsed = parseFloat(cleaned);
   if (!isNumber(parsed) || isNaN(parsed) || !isFinite(parsed)) return null;

@@ -126,13 +126,41 @@ function isValidValue(value: string): boolean {
 function parseNumericValueNullable(valueStr: string): number | null {
   if (typeof valueStr !== 'string' || !isValidValue(valueStr)) return null;
   
-  // Remove common prefixes and clean the string
-  let cleaned = String(valueStr)
-    .replace(/,/g, '.')
+  // Keep worker parser behavior in sync with dataTransformers.ts
+  const raw = String(valueStr)
     .replace(/\s/g, '')
     .replace(/#/g, '')
     .replace(/%/g, '')
     .replace(/\$/g, '');
+
+  const commaCount = (raw.match(/,/g) ?? []).length;
+  const dotCount = (raw.match(/\./g) ?? []).length;
+  let cleaned = raw;
+
+  if (commaCount > 0 && dotCount === 0) {
+    if (commaCount > 1) {
+      cleaned = raw.replace(/,/g, '');
+    } else {
+      const [left, right = ''] = raw.split(',');
+      cleaned = right.length > 0 && right.length <= 2 ? `${left}.${right}` : `${left}${right}`;
+    }
+  } else if (dotCount > 0 && commaCount === 0) {
+    if (dotCount > 1) {
+      cleaned = raw.replace(/\./g, '');
+    } else {
+      const [left, right = ''] = raw.split('.');
+      cleaned = right.length === 3 ? `${left}${right}` : raw;
+    }
+  } else if (dotCount > 0 && commaCount > 0) {
+    const lastComma = raw.lastIndexOf(',');
+    const lastDot = raw.lastIndexOf('.');
+    const decimalSep = lastComma > lastDot ? ',' : '.';
+    if (decimalSep === ',') {
+      cleaned = raw.replace(/\./g, '').replace(/,/g, '.');
+    } else {
+      cleaned = raw.replace(/,/g, '');
+    }
+  }
   
   const parsed = parseFloat(cleaned);
   if (typeof parsed !== 'number' || isNaN(parsed) || !isFinite(parsed)) return null;
@@ -342,6 +370,14 @@ function transformScoreBoardData(
         ['SECTOR (ISM)', 'INDUSTRY', 'Industry', 'industry'],
         row
       );
+      const marketCapStr = getValueAllowZero(
+        ['Market Cap', 'Market cap', 'MARKET CAP', 'MarketCap', 'marketcap', 'MARKET_CAP', 'MarketCap.'],
+        row
+      );
+      const dashboardDateOfUpdateStr = getValueAllowZero(
+        ['Date of Update', 'date of update', 'DATE OF UPDATE', 'Date of update', 'DATE_OF_UPDATE'],
+        row
+      );
       
       // Filter out rows where Company Name or Ticker is N/A
       if (!isValidValue(companyName) || !isValidValue(ticker)) {
@@ -355,6 +391,10 @@ function transformScoreBoardData(
       const cashSdebt = parseNumericValueNullable(cashSdebtStr);
       // Om #DIV/0! detekteras, sätt cashSdebt till 0 istället för null
       const finalCashSdebt = isCashSdebtDivZero ? 0 : cashSdebt;
+      const marketCap = parseNumericValueNullable(marketCapStr);
+      const dashboardDateOfUpdate = isValidValue(dashboardDateOfUpdateStr)
+        ? dashboardDateOfUpdateStr.trim()
+        : null;
       
       // Calculate P/E1 SECTOR (ISM) (procentuell skillnad)
       const pe1 = parseNumericValueNullable(pe1Str);
@@ -392,6 +432,8 @@ function transformScoreBoardData(
         companyName: companyName,
         ticker: ticker,
         industry: industryStr || '',
+        marketCap,
+        dashboardDateOfUpdate,
         mungerQualityScore: mungerQualityScore,
         valueCreation: valueCreation,
         leverageF2: leverageF2,

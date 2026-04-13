@@ -57,6 +57,14 @@ export function createScoreBoardTransformer(
           ['SECTOR (ISM)', 'INDUSTRY', 'Industry', 'industry'],
           row
         );
+        const marketCapStr = getValueAllowZero(
+          ['Market Cap', 'Market cap', 'MARKET CAP', 'MarketCap', 'marketcap', 'MARKET_CAP', 'MarketCap.'],
+          row
+        );
+        const dashboardDateOfUpdateStr = getValueAllowZero(
+          ['Date of Update', 'date of update', 'DATE OF UPDATE', 'Date of update', 'DATE_OF_UPDATE'],
+          row
+        );
         
         // Filter out rows where Company Name or Ticker is N/A (same rule as Benjamin Graham)
         if (!isValidValue(companyName) || !isValidValue(ticker)) {
@@ -70,6 +78,10 @@ export function createScoreBoardTransformer(
         const cashSdebt = parseNumericValueNullable(cashSdebtStr);
         // Om #DIV/0! detekteras, sätt cashSdebt till 0 istället för null
         const finalCashSdebt = isCashSdebtDivZero ? 0 : cashSdebt;
+        const marketCap = parseNumericValueNullable(marketCapStr);
+        const dashboardDateOfUpdate = isValidValue(dashboardDateOfUpdateStr)
+          ? dashboardDateOfUpdateStr.trim()
+          : null;
         
         // Calculate P/E1 SECTOR (ISM) (procentuell skillnad)
         const pe1 = parseNumericValueNullable(pe1Str);
@@ -107,6 +119,8 @@ export function createScoreBoardTransformer(
           companyName: companyName,
           ticker: ticker,
           industry: industryStr || '',
+          marketCap,
+          dashboardDateOfUpdate,
           mungerQualityScore: mungerQualityScore,
           valueCreation: valueCreation,
           leverageF2: leverageF2,

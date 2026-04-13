@@ -118,6 +118,9 @@ export interface BaseTableProps<T> {
   
   // Custom row key generator
   getRowKey?: (item: T, index: number) => string;
+
+  /** Optional extra `tr` classes (e.g. selected row). Must not change sort/filter behavior. */
+  getRowClassName?: (item: T, globalIndex: number) => string | undefined;
   
   // Column resizing
   enableColumnResize?: boolean;
@@ -178,6 +181,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
   initialSearchValue,
   initialSortConfig,
   onRetry,
+  getRowClassName,
 }: BaseTableProps<T>) {
   const { t } = useTranslation();
   const [filterValues, setFilterValues] = useState<FilterValues>(initialFilterState ?? {});
@@ -808,6 +812,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                   const rowBgClass = globalIndex % 2 === 0 
                     ? 'bg-white dark:bg-gray-800' 
                     : 'bg-gray-50 dark:bg-gray-800';
+                  const extraRowClass = getRowClassName?.(item, globalIndex);
                   
                   const isFocused = focusedRowIndex === index;
                   const isExpanded = expandedRows[rowId] || false;
@@ -818,7 +823,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                       <tr 
                         data-row-index={index}
                         data-rowkey={rowId}
-                        className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''}`}
+                        className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''} ${extraRowClass ?? ''}`}
                         onClick={() => handleRowClick(index)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -907,6 +912,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                     const rowBgClass = globalIndex % 2 === 0 
                       ? 'bg-white dark:bg-gray-800' 
                       : 'bg-gray-50 dark:bg-gray-800';
+                    const extraRowClass = getRowClassName?.(item, globalIndex);
                     
                     const isFocused = focusedRowIndex === index;
                     const isExpanded = expandedRows[rowKey] || false;
@@ -917,7 +923,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
                         <tr 
                           data-row-index={index}
                           data-rowkey={rowKey}
-                          className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base animate-fade-in ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''}`}
+                          className={`group transition-all duration-normal ease-in-out hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md cursor-pointer transition-colors duration-base animate-fade-in ${rowBgClass} ${isFocused ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''} ${extraRowClass ?? ''}`}
                           style={{ animationDelay: `${index * 10}ms` }}
                           onClick={() => handleRowClick(index)}
                           onKeyDown={(e) => {
