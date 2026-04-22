@@ -24,7 +24,7 @@ import { ViewId } from '../types/navigation';
  * @returns refreshUserRole - Function to refresh user role and permissions from server
  */
 export function useUserRole() {
-  const { userRole, viewerPermissions, refreshUserRole } = useAuth();
+  const { userRole, viewerPermissions, refreshUserRole, currentUser } = useAuth();
 
   const isAdmin = userRole === 'admin';
   const hasRole = userRole !== null;
@@ -59,6 +59,8 @@ export function useUserRole() {
     'entry-exit-benjamin-graham',
     'fundamental-pe-industry',
     'industry-threshold',
+    'stock-analyses',
+    'stock-monitor',
     'toolbox',
     'management-monitoring',
     'personal-portfolio',
@@ -92,6 +94,11 @@ export function useUserRole() {
     // Personal Portfolio is available to all authenticated users
     if (viewId === 'personal-portfolio') {
       return hasRole; // Any authenticated user (admin or viewer)
+    }
+    // TODO(DEV): Temporary — Toolbox (incl. PMI) is open to any signed-in user while the area is in early development.
+    // Restore claim-based gating via allowedViews.toolbox (or equivalent) before broader release / multi-tenant hardening.
+    if (viewId === 'toolbox') {
+      return currentUser != null;
     }
     if (isAdmin) {
       return true; // Admin can view everything

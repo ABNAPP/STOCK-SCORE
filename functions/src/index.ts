@@ -1,5 +1,6 @@
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
+export { pmiFredProxy } from './pmiFredProxy';
 
 admin.initializeApp();
 
@@ -26,8 +27,11 @@ export const claimViewerRole = functions.https.onCall(async (_data, context) => 
   const uid = context.auth.uid;
 
   try {
-    // Default allowedViews for new viewers: score only
-    await admin.auth().setCustomUserClaims(uid, { role: 'viewer', allowedViews: { score: true } });
+    // Default allowedViews for new viewers: score + toolbox
+    await admin.auth().setCustomUserClaims(uid, {
+      role: 'viewer',
+      allowedViews: { score: true, toolbox: true },
+    });
 
     const userRecord = await admin.auth().getUser(uid);
     const email = userRecord.email ?? '';

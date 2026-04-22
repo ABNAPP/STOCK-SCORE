@@ -15,6 +15,8 @@ export type ViewId =
   | 'fundamental-cash-sdebt'
   | 'teknikal-tachart'
   | 'industry-threshold'
+  | 'stock-analyses'
+  | 'stock-monitor'
   | 'management-monitoring'
   | 'personal-portfolio';
 

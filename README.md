@@ -95,6 +95,16 @@ Om `VITE_APPS_SCRIPT_URL` inte är konfigurerad, använder appen automatiskt CSV
 
 Appen använder Firebase Authentication för användarautentisering och rollbaserad åtkomstkontroll. Se `SET_ADMIN_ROLE.md` för instruktioner om att sätta admin-roll.
 
+### PMI/FRED nyckel (server-side only)
+
+PMI hämtas via callable function `pmiFredProxy` och FRED-nyckeln måste sättas i Firebase Functions runtime (server-side).
+
+- Använd **inte** `VITE_*` för FRED-nyckeln (client-exponerat).
+- `VITE_EODHD_API_KEY` är för annan tjänst och används inte av PMI/FRED-flödet.
+- `pmiFredProxy` läser FRED från:
+  - `process.env.FRED_API_KEY`
+  - fallback `functions.config().fred.api_key`
+
 ### Dokumentation
 
 - `env.template` - Mall för environment variables (kopiera till `.env.local`)

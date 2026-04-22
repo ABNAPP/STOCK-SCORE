@@ -34,6 +34,8 @@ const ISMPostureView = lazyWithRetry<typeof import('./components/views/ISMPostur
 const ToolBoxView = lazyWithRetry<typeof import('./components/views/ToolBoxView').default>(() => import('./components/views/ToolBoxView'), 'ToolBoxView');
 const SMAView = lazyWithRetry<typeof import('./components/views/SMAView').default>(() => import('./components/views/SMAView'), 'SMAView');
 const ManagementMonitoringPage = lazyWithRetry<typeof import('./pages/ManagementMonitoringPage').default>(() => import('./pages/ManagementMonitoringPage'), 'ManagementMonitoringPage');
+const StockAnalysesView = lazyWithRetry<typeof import('./components/views/StockAnalysesView').default>(() => import('./components/views/StockAnalysesView'), 'StockAnalysesView');
+const StockMonitorView = lazyWithRetry<typeof import('./components/views/StockMonitorView').default>(() => import('./components/views/StockMonitorView'), 'StockMonitorView');
 
 // Lazy load modal components
 const ConditionsModal = lazyWithRetry<typeof import('./components/ConditionsModal').default>(() => import('./components/ConditionsModal'), 'ConditionsModal');
@@ -48,6 +50,8 @@ const MAIN_VIEW_IDS: ViewId[] = [
   'entry-exit-benjamin-graham',
   'fundamental-pe-industry',
   'industry-threshold',
+  'stock-analyses',
+  'stock-monitor',
   'toolbox',
   'management-monitoring',
   'personal-portfolio',
@@ -173,6 +177,8 @@ function App() {
       'entry-exit-benjamin-graham': t('navigation.benjaminGraham'),
       'fundamental-pe-industry': t('navigation.peIndustry'),
       'industry-threshold': t('navigation.industryThreshold'),
+      'stock-analyses': t('navigation.stockAnalyses'),
+      'stock-monitor': t('navigation.stockMonitor'),
       'management-monitoring': t('navigation.managementMonitoring'),
       'personal-portfolio': t('navigation.personalPortfolio'),
     };
@@ -208,6 +214,22 @@ function App() {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <SMAView />
+        </Suspense>
+      );
+    }
+
+    if (activeView === 'stock-analyses') {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <StockAnalysesView />
+        </Suspense>
+      );
+    }
+
+    if (activeView === 'stock-monitor') {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <StockMonitorView />
         </Suspense>
       );
     }

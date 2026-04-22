@@ -27,10 +27,59 @@
     "conditions": "Conditions",
     "condition": "Condition",
     "industryThreshold": "Sector (ISM) threshold",
+    "stockAnalyses": "Stock Analyses",
+    "stockMonitor": "Stock Monitor",
     "managementMonitoring": "MANAGEMENT MONITORING",
     "personalPortfolio": "Personal Portfolio",
     "toolbox": "ToolBox",
     "userManagement": "User Management"
+  },
+  "stockAnalysesView": {
+    "price": "Price",
+    "entryPrice": "Entry price",
+    "fiveYearBeta": "5Y Beta",
+    "noRows": "No companies to display.",
+    "totalStocks": "Total stocks: {{count}}",
+    "backToList": "Back to list",
+    "detailTitle": "Stock details",
+    "analysisSetup": "Analysis setup",
+    "caseType": "Case type",
+    "caseTypeOperating": "Operating",
+    "caseTypeRealEstate": "Real Estate",
+    "caseTypeFinancial": "Financial",
+    "financialSubcase": "Financial subcase",
+    "financialSubcaseBank": "Bank",
+    "financialSubcaseInsurance": "Insurance",
+    "financialSubcaseOther": "Other Financial",
+    "manualInputs": "Manual inputs",
+    "sectionHistoricalData": "Historical data",
+    "sectionForecastData": "Forecast data",
+    "historical": "Historical",
+    "forecast": "Forecast",
+    "inputRevenue": "Revenue",
+    "inputNavPerShare": "NAV / Share",
+    "inputRoeRatio": "ROE (Ratio)",
+    "inputTotalDeposits": "Total Deposits",
+    "inputLossRatio": "Loss Ratio",
+    "inputTaxRate": "Tax Rate",
+    "fyMinus4": "FY-4",
+    "fyMinus3": "FY-3",
+    "fyMinus2": "FY-2",
+    "fyMinus1": "FY-1",
+    "ltm": "LTM",
+    "fyPlus1": "FY+1",
+    "fyPlus2": "FY+2",
+    "fyPlus3": "FY+3",
+    "periodColumnHeader": "Period"
+  },
+  "stockMonitorView": {
+    "tableAriaLabel": "Stock monitor overview",
+    "columnIndex": "No.",
+    "columnCompany": "Company name",
+    "columnTicker": "Ticker",
+    "columnPrice": "Price",
+    "noRows": "No companies to display.",
+    "totalRows": "Total: {{count}}"
   },
   "viewUi": {
     "fundamentalPeSubtitle": "Fundamental analysis by sector (ISM).",
@@ -57,6 +106,150 @@
       "title": "Smart Allocation",
       "placeholder": "The Smart Allocation tool will be added here.",
       "openAriaLabel": "Open Smart Allocation tool"
+    },
+    "pmi": {
+      "title": "PMI",
+      "placeholder": "The PMI tool will be added here.",
+      "openAriaLabel": "Open PMI tool",
+      "heatmap": {
+        "title": "PMI Heatmap",
+        "subtitle": "Track recent PMI changes across countries and spot momentum shifts quickly.",
+        "controls": {
+          "pmiType": "PMI Type",
+          "sortBy": "Sort By",
+          "searchCountry": "Search Country",
+          "searchPlaceholder": "Search country or alias (SWE, UK, US, USA)...",
+          "resultCount": "Showing {{filtered}} of {{total}} countries"
+        },
+        "type": {
+          "composite": "Composite",
+          "manufacturing": "Manufacturing",
+          "services": "Services"
+        },
+        "sort": {
+          "highestPmi": "Highest PMI",
+          "lowestPmi": "Lowest PMI",
+          "biggestImprovement": "Biggest Improvement",
+          "biggestDeterioration": "Biggest Deterioration",
+          "alphabetical": "Alphabetical"
+        },
+        "table": {
+          "country": "Country",
+          "countryClickHint": "Open country detail",
+          "ariaLabel": "PMI heatmap table",
+          "caption": "PMI heatmap values by country and month",
+          "countryAriaLabel": "Open country detail for {{country}}"
+        },
+        "legend": {
+          "darkGreen": "Dark green: +1.0 or more",
+          "lightGreen": "Light green: +0.3 to +0.9",
+          "neutral": "Neutral: -0.2 to +0.2",
+          "lightRed": "Light red: -0.3 to -0.9",
+          "darkRed": "Dark red: -1.0 or less",
+          "noData": "Gray: no data available"
+        },
+        "legendTitle": "Color legend (change vs previous month)",
+        "legendHelp": "Color indicates month-over-month change, not absolute PMI level.",
+        "tooltip": {
+          "openDetails": "Open heatmap cell details",
+          "country": "Country",
+          "pmiType": "PMI Type",
+          "month": "Month",
+          "latestPmi": "Latest PMI",
+          "previousPmi": "Previous PMI",
+          "change": "Change",
+          "statusVs50": "Status vs 50",
+          "lastUpdated": "Last updated"
+        },
+        "common": {
+          "noData": "No data",
+          "above50": "Expansion (>=50)",
+          "below50": "Contraction (<50)"
+        },
+        "metadata": {
+          "title": "Data notes",
+          "coverage": "Coverage: {{covered}}/{{total}} countries",
+          "source": "Source: {{source}}",
+          "releaseTiming": "Release timing may vary by country.",
+          "updateCadence": "Data updates as countries release new PMI data.",
+          "latestRelease": "Latest available release: {{value}}",
+          "lastRefresh": "Last refresh: {{value}}"
+        },
+        "states": {
+          "errorTitle": "Unable to load PMI heatmap",
+          "seriesMapPending": "PMI data sources are not fully configured yet. Please add verified FRED series IDs to continue.",
+          "compositeUnavailableTitle": "Composite is currently unavailable",
+          "compositeUnavailableDescription": "Composite is currently unavailable in the FRED-based setup for recent monthly data.",
+          "compositeUnavailableHint": "Manufacturing and Services remain available where verified data exists.",
+          "genericError": "We could not load PMI data right now. Please try again shortly.",
+          "retry": "Try again",
+          "emptyTitle": "No PMI data available",
+          "emptyDescription": "No countries match your current search or available PMI data."
+        }
+      },
+      "detail": {
+        "backToHeatmap": "Back to PMI Heatmap",
+        "controls": {
+          "typeLabel": "PMI Type"
+        },
+        "common": {
+          "unavailable": "Unavailable",
+          "noData": "No data",
+          "above50": "Expansion (>=50)",
+          "below50": "Contraction (<50)"
+        },
+        "kpi": {
+          "ariaLabel": "PMI detail key metrics",
+          "latestPmi": "Latest PMI",
+          "change": "Change",
+          "previousPmi": "Previous PMI",
+          "status": "Status",
+          "lastUpdate": "Last Update"
+        },
+        "chart": {
+          "title": "Historical PMI",
+          "ariaLabel": "Historical PMI chart",
+          "rangeLabel": "Time range"
+        },
+        "comparison": {
+          "title": "Comparison",
+          "latest": "Latest PMI",
+          "change": "Change vs previous",
+          "status": "Status"
+        },
+        "insight": {
+          "title": "Insight",
+          "direction": {
+            "stable": "stable",
+            "improving": "improving",
+            "softening": "softening"
+          },
+          "territory": {
+            "expansion": "expansion territory",
+            "contraction": "contraction territory"
+          },
+          "templates": {
+            "primary": "{{typeLabel}} PMI is {{latest}} and remains in {{territory}}, with momentum currently {{direction}}.",
+            "momentum": "The latest month-over-month move is {{change}} points.",
+            "comparison": "{{bestType}} currently leads at {{bestValue}}, while {{worstType}} is weakest at {{worstValue}}."
+          }
+        },
+        "metadata": {
+          "title": "Data notes",
+          "source": "Source: {{source}}",
+          "latestRelease": "Latest available release: {{value}}",
+          "lastRefresh": "Last refresh: {{value}}",
+          "releaseTiming": "Release timing may vary by country."
+        },
+        "states": {
+          "loading": "Loading country detail...",
+          "loadingShort": "Loading...",
+          "seriesMapPending": "Country detail is unavailable until verified FRED PMI series IDs are configured.",
+          "unavailableType": "Data for this PMI type is currently unavailable for the selected country.",
+          "emptyHistory": "No historical PMI data is available for this time range.",
+          "emptyInsight": "Insight is unavailable because there is not enough data yet."
+        }
+      }
     }
   },
   "admin": {

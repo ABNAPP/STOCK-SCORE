@@ -74,7 +74,7 @@ function ScoreViewInner() {
 
     return scoreBoardData.map(item => {
       const tickerKey = item.ticker.toLowerCase().trim();
-      const price = priceMap.get(tickerKey) ?? null;
+      const price = priceMap.get(tickerKey) ?? item.price ?? null;
       const sma9Color = (() => { const c = getSMAColor(price, item.sma9); return c === 'GREEN' || c === 'RED' ? c : null; })();
       const sma21Color = (() => { const c = getSMAColor(price, item.sma21); return c === 'GREEN' || c === 'RED' ? c : null; })();
       const sma55Color = (() => { const c = getSMAColor(price, item.sma55); return c === 'GREEN' || c === 'RED' ? c : null; })();

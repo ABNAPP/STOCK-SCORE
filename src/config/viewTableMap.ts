@@ -13,6 +13,8 @@ export function getTableId(viewId: ViewId): string | null {
   if (viewId === 'entry-exit-benjamin-graham') return 'benjamin-graham';
   if (viewId === 'fundamental-pe-industry') return 'pe-industry';
   if (viewId === 'industry-threshold') return 'industry-threshold';
+  if (viewId === 'stock-analyses') return null;
+  if (viewId === 'stock-monitor') return null;
   if (viewId === 'management-monitoring') return null;
   if (viewId === 'personal-portfolio') return 'personal-portfolio';
   return null;

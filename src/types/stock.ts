@@ -40,7 +40,10 @@ export interface ScoreBoardData extends Record<string, unknown> {
   sma21Color?: 'GREEN' | 'RED' | null;
   sma55Color?: 'GREEN' | 'RED' | null;
   sma200Color?: 'GREEN' | 'RED' | null;
-  price?: number | null; // From ENTRY/EXIT (Benjamin Graham) for SMA color comparison
+  /** Dashboard column "Price" in score board transformer. Score / score-board may override with Benjamin Graham for SMA color comparison. */
+  price?: number | null;
+  /** Dashboard column "5Y Beta" (parsed numeric; null if missing/invalid). */
+  fiveYearBeta: number | null;
 }
 
 export interface IndustryThresholdData extends Record<string, unknown> {

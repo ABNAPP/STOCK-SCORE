@@ -36,7 +36,7 @@ export function createScoreBoardTransformer(
 ) {
   return (results: { data: DataRow[]; meta: { fields: string[] | null } }): ScoreBoardData[] => {
     const scoreBoardData = results.data
-      .map((row: DataRow) => {
+      .map((row: DataRow): ScoreBoardData | null => {
         const companyName = getValueAllowZero(['Company Name', 'Company', 'company'], row);
         const ticker = getValueAllowZero(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
         const mungerQualityScoreStr = getValueAllowZero(['Munger Quality Score', 'Munger Quality Score', 'munger quality score', 'MUNGER QUALITY SCORE'], row);
@@ -65,7 +65,15 @@ export function createScoreBoardTransformer(
           ['Date of Update', 'date of update', 'DATE OF UPDATE', 'Date of update', 'DATE_OF_UPDATE'],
           row
         );
-        
+        const priceStr = getValueAllowZero(
+          ['Price', 'price', 'PRICE'],
+          row
+        );
+        const fiveYearBetaStr = getValueAllowZero(
+          ['5Y Beta', '5y beta', '5Y BETA', '5Y beta'],
+          row
+        );
+
         // Filter out rows where Company Name or Ticker is N/A (same rule as Benjamin Graham)
         if (!isValidValue(companyName) || !isValidValue(ticker)) {
           return null;
@@ -79,6 +87,8 @@ export function createScoreBoardTransformer(
         // Om #DIV/0! detekteras, sätt cashSdebt till 0 istället för null
         const finalCashSdebt = isCashSdebtDivZero ? 0 : cashSdebt;
         const marketCap = parseNumericValueNullable(marketCapStr);
+        const price = parseNumericValueNullable(priceStr);
+        const fiveYearBeta = parseNumericValueNullable(fiveYearBetaStr);
         const dashboardDateOfUpdate = isValidValue(dashboardDateOfUpdateStr)
           ? dashboardDateOfUpdateStr.trim()
           : null;
@@ -120,6 +130,8 @@ export function createScoreBoardTransformer(
           ticker: ticker,
           industry: industryStr || '',
           marketCap,
+          price,
+          fiveYearBeta,
           dashboardDateOfUpdate,
           mungerQualityScore: mungerQualityScore,
           valueCreation: valueCreation,

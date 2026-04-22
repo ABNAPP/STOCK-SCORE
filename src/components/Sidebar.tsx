@@ -17,6 +17,8 @@ import {
   ArrowTrendingUpIcon,
   PresentationChartLineIcon,
   WrenchScrewdriverIcon,
+  DocumentTextIcon,
+  ViewColumnsIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -74,6 +76,18 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
     collapsible: false,
   },
   {
+    id: 'stock-analyses',
+    label: t('navigation.stockAnalyses'),
+    items: [{ id: 'stock-analyses', label: t('navigation.stockAnalyses') }],
+    collapsible: false,
+  },
+  {
+    id: 'stock-monitor',
+    label: t('navigation.stockMonitor'),
+    items: [{ id: 'stock-monitor', label: t('navigation.stockMonitor') }],
+    collapsible: false,
+  },
+  {
     id: 'toolbox',
     label: t('navigation.toolbox'),
     items: [{ id: 'toolbox', label: t('navigation.toolbox') }],
@@ -106,6 +120,10 @@ const getViewIcon = (viewId: ViewId) => {
       return ChartPieIcon;
     case 'industry-threshold':
       return BuildingOfficeIcon;
+    case 'stock-analyses':
+      return DocumentTextIcon;
+    case 'stock-monitor':
+      return ViewColumnsIcon;
     case 'management-monitoring':
       return UserGroupIcon;
     default:

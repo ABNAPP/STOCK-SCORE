@@ -30,6 +30,8 @@ function getViewLabel(viewId: ViewId, t: (key: string) => string): string {
     'fundamental-current-ratio': t('navigation.currentRatio'),
     'fundamental-cash-sdebt': t('navigation.cashSdebt'),
     'industry-threshold': t('navigation.industryThreshold'),
+    'stock-analyses': t('navigation.stockAnalyses'),
+    'stock-monitor': t('navigation.stockMonitor'),
     'management-monitoring': t('navigation.managementMonitoring'),
     'personal-portfolio': t('navigation.personalPortfolio'),
     'teknikal-tachart': t('navigation.tachart'),

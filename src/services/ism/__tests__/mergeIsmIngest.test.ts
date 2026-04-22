@@ -23,6 +23,8 @@ function mockRow(partial: Partial<ScoreBoardData> & Pick<ScoreBoardData, 'compan
     sma21: partial.sma21 ?? null,
     sma55: partial.sma55 ?? null,
     sma200: partial.sma200 ?? null,
+    price: partial.price ?? null,
+    fiveYearBeta: partial.fiveYearBeta ?? null,
   };
 }
 
