@@ -2,6 +2,7 @@
  * Benjamin Graham Service
  * 
  * Fetches and transforms Benjamin Graham valuation data from Google Sheets.
+ * NOTE: Legacy/fallback service path. UI hooks should prefer sheetSnapshotService.
  */
 
 import { BenjaminGrahamData } from '../../types/stock';

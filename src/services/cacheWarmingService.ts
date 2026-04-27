@@ -3,6 +3,9 @@
  * 
  * Preloads cache data in the background when the app starts
  * to improve performance and reduce loading times
+ * 
+ * NOTE: Legacy/admin/background path.
+ * Primary UI dataflow should use central sheet snapshots via sheetSnapshotService.
  */
 
 import { CACHE_KEYS, getCachedData, getCacheAge } from './firestoreCacheService';

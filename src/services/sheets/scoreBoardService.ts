@@ -3,6 +3,7 @@
  * 
  * Fetches and transforms Score Board data from Google Sheets.
  * Combines data from multiple sources (P/E sector (ISM) sheet and SMA sheets).
+ * NOTE: Legacy/fallback service path. UI hooks should prefer sheetSnapshotService.
  */
 
 import { ScoreBoardData, PEIndustryData } from '../../types/stock';

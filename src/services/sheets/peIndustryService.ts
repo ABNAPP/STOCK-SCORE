@@ -3,6 +3,7 @@
  *
  * Fetches and transforms the separate P/E sheet from Google Sheets.
  * Groups rows by sector (ISM) column (aliases include INDUSTRY) and calculates median P/E ratios.
+ * NOTE: Legacy/fallback service path. UI hooks should prefer sheetSnapshotService.
  */
 
 import { PEIndustryData } from '../../types/stock';

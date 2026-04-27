@@ -1,9 +1,13 @@
-import { useMemo } from 'react';
-import { useScoreBoardData } from './useScoreBoardData';
-import { useBenjaminGrahamData } from './useBenjaminGrahamData';
-import { usePEIndustryData } from './usePEIndustryData';
+import { useEffect, useMemo, useState } from 'react';
+import { createScoreBoardTransformer, type SMADataMapEntry } from '../services/sheets/scoreBoardService';
+import { transformBenjaminGrahamData } from '../services/sheets/benjaminGrahamService';
+import { transformPEIndustryData } from '../services/sheets/peIndustryService';
+import { transformSMAData } from '../services/sheets/smaService';
+import { getSheetSnapshot } from '../services/sheets/sheetSnapshotService';
+import type { ScoreBoardData, BenjaminGrahamData, PEIndustryData } from '../types/stock';
 import { useIndustryThresholdData } from './useIndustryThresholdData';
 import { ViewId } from '../types/navigation';
+import { logger } from '../utils/logger';
 
 export interface SearchResult {
   id: string;
@@ -17,10 +21,81 @@ export interface SearchResult {
 }
 
 export function useGlobalSearch() {
-  const { data: scoreBoardData } = useScoreBoardData();
-  const { data: benjaminGrahamData } = useBenjaminGrahamData();
-  const { data: peIndustryData } = usePEIndustryData();
+  const [scoreBoardData, setScoreBoardData] = useState<ScoreBoardData[]>([]);
+  const [benjaminGrahamData, setBenjaminGrahamData] = useState<BenjaminGrahamData[]>([]);
+  const [peIndustryData, setPeIndustryData] = useState<PEIndustryData[]>([]);
   const { data: industryThresholdData } = useIndustryThresholdData();
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadSearchData = async () => {
+      try {
+        const [dashboardSnapshot, smaSnapshot] = await Promise.all([
+          getSheetSnapshot('DashBoard'),
+          getSheetSnapshot('SMA'),
+        ]);
+
+        const peData = transformPEIndustryData({
+          data: dashboardSnapshot.data.rows,
+          meta: { fields: dashboardSnapshot.data.headers },
+        });
+
+        const industryPe1Map = new Map<string, number>();
+        const industryPe2Map = new Map<string, number>();
+        peData.forEach((pe) => {
+          if (pe.pe1 !== null) industryPe1Map.set(pe.industry.toLowerCase(), pe.pe1);
+          if (pe.pe2 !== null) industryPe2Map.set(pe.industry.toLowerCase(), pe.pe2);
+        });
+
+        const smaData = transformSMAData({
+          data: smaSnapshot.data.rows,
+          meta: { fields: smaSnapshot.data.headers },
+        });
+        const smaDataMap = new Map<string, SMADataMapEntry>();
+        smaData.forEach((sma) => {
+          smaDataMap.set(sma.ticker.toLowerCase().trim(), {
+            sma9: sma.sma9,
+            sma21: sma.sma21,
+            sma55: sma.sma55,
+            sma200: sma.sma200,
+          });
+        });
+
+        const scoreBoardTransformer = createScoreBoardTransformer(
+          industryPe1Map,
+          industryPe2Map,
+          smaDataMap
+        );
+        const scoreData = scoreBoardTransformer({
+          data: dashboardSnapshot.data.rows,
+          meta: { fields: dashboardSnapshot.data.headers },
+        });
+
+        const bgData = transformBenjaminGrahamData({
+          data: dashboardSnapshot.data.rows,
+          meta: { fields: dashboardSnapshot.data.headers },
+        });
+
+        if (!mounted) return;
+        setScoreBoardData(scoreData);
+        setBenjaminGrahamData(bgData);
+        setPeIndustryData(peData);
+      } catch (error) {
+        logger.warn('Failed to load global search data from snapshots', {
+          component: 'useGlobalSearch',
+          operation: 'loadSearchData',
+          error,
+        });
+      }
+    };
+
+    loadSearchData();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const search = useMemo(() => {
     return (query: string): SearchResult[] => {

@@ -1,23 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchBenjaminGrahamData, ProgressCallback } from '../services/sheets';
 import type { DataRow } from '../services/sheets';
 import { transformBenjaminGrahamData as transformBenjaminGrahamFromSheet } from '../services/sheets/benjaminGrahamService';
 import { 
-  initSync, 
-  pollChanges, 
-  loadSnapshot, 
-  applyChangesToCache,
   isDeltaSyncEnabled,
   getPollIntervalMs,
-  snapshotToTransformerFormat,
-  getApiBaseUrlForDeltaSync,
-  type DeltaSyncConfig
 } from '../services/deltaSyncService';
 import {
-  setDeltaCacheEntry,
   getDeltaCacheEntry,
   getCachedData,
-  VIEWDATA_MIGRATION_MODE,
   setViewData,
   getViewDataWithFallback,
   CACHE_KEYS,
@@ -31,9 +21,9 @@ import { isDataRowArray } from '../utils/typeGuards';
 import { logger } from '../utils/logger';
 import { useNotifications } from '../contexts/NotificationContext';
 import { detectDataChanges, formatChangeSummary } from '../utils/dataChangeDetector';
+import { getSheetSnapshot } from '../services/sheets/sheetSnapshotService';
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
-const SHEET_NAME = 'DashBoard';
 const CACHE_KEY = CACHE_KEYS.BENJAMIN_GRAHAM;
 
 function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields: string[] | null } }): BenjaminGrahamData[] {
@@ -109,110 +99,28 @@ export function useBenjaminGrahamData() {
         });
       }
 
-      // Try delta-sync if enabled
-      if (isDeltaSyncEnabled() && APPS_SCRIPT_URL && !forceRefresh) {
-        try {
-          const config: DeltaSyncConfig = {
-            sheetName: SHEET_NAME,
-            apiBaseUrl: getApiBaseUrlForDeltaSync(),
-            dataTypeName: 'Benjamin Graham',
-          };
-
-          // Load initial snapshot or use cached data
-          const result = await initSync<BenjaminGrahamData>(
-            config,
-            CACHE_KEY,
-            transformBenjaminGrahamData
-          );
-
-          // Detect data changes
-          const changes = detectDataChanges(
-            previousDataRef.current,
-            result.data,
-            (item) => `${item.ticker}-${item.companyName}`,
-            0.05 // 5% threshold
-          );
-          
-          setData(result.data);
-          previousDataRef.current = result.data;
-          currentVersionRef.current = result.version;
-          setLastUpdated(new Date());
-          setViewData('entry-exit-benjamin-graham', { benjaminGraham: result.data }, { source: 'client-refresh' }).catch((e) =>
-            logger.warn('Failed to write viewData', { component: 'useBenjaminGrahamData', error: e })
-          );
-          // Show notification if significant changes detected
-          if (changes.hasSignificantChanges && !isBackground) {
-            const changeMessage = formatChangeSummary(changes);
-            createNotification(
-              'data-update',
-              'Benjamin Graham Data Updated',
-              `Total: ${changes.total} items. ${changeMessage}`,
-              {
-                showDesktop: true,
-                data: { changes, dataType: 'benjamin-graham' },
-              }
-            );
-          }
-          
-          if (!isBackground) {
-            updateProgress('benjamin-graham', {
-              status: 'complete',
-              progress: 100,
-              message: 'Data loaded',
-            });
-          }
-          
-          if (!isBackground) {
-            setLoading(false);
-          }
-          return;
-        } catch (deltaSyncError) {
-          // Delta sync failed, fallback to regular fetch
-          const errorMessage = deltaSyncError instanceof Error ? deltaSyncError.message : String(deltaSyncError);
-          
-          // Only log warning if it's not a timeout (timeouts are expected and will fallback)
-          if (!errorMessage.includes('timeout') && !errorMessage.includes('Request timeout')) {
-            logger.warn(
-              `Delta sync failed for ${SHEET_NAME}, falling back to regular fetch: ${errorMessage}`,
-              { component: 'useBenjaminGrahamData', operation: 'initialize delta sync', sheetName: SHEET_NAME, error: deltaSyncError }
-            );
-          } else {
-            logger.debug(
-              `Delta sync timed out for ${SHEET_NAME}, using regular fetch instead`,
-              { component: 'useBenjaminGrahamData', operation: 'initialize delta sync', sheetName: SHEET_NAME }
-            );
-          }
-          // Don't throw - fallback to regular fetch
-        }
-      }
-
-      // Fallback to regular fetch
-      const progressCallback: ProgressCallback = (progress) => {
-        if (!isBackground) {
-          updateProgress('benjamin-graham', {
-            progress: progress.percentage,
-            status: progress.stage === 'complete' ? 'complete' : 'loading',
-            message: progress.message,
-            rowsLoaded: progress.rowsProcessed,
-            totalRows: progress.totalRows,
-          });
-        }
-      };
-      
-      logger.debug('Fetching Benjamin Graham data', { 
+      logger.debug('Fetching Benjamin Graham snapshot', { 
         component: 'useBenjaminGrahamData', 
         operation: 'loadData',
         forceRefresh,
         isBackground 
       });
-      
-      const fetchedData = await fetchBenjaminGrahamData(forceRefresh, progressCallback);
-      
-      logger.info('Benjamin Graham data fetched successfully', { 
+
+      const snapshotResult = await getSheetSnapshot('DashBoard', {
+        forceRefresh,
+        preferCache: !forceRefresh,
+      });
+      const fetchedData = transformBenjaminGrahamData({
+        data: snapshotResult.data.rows,
+        meta: { fields: snapshotResult.data.headers },
+      });
+
+      logger.info('Benjamin Graham data transformed from snapshot successfully', { 
         component: 'useBenjaminGrahamData', 
         operation: 'loadData',
         entryCount: fetchedData.length,
-        forceRefresh 
+        forceRefresh,
+        source: snapshotResult.source,
       });
       
       // Detect data changes
@@ -233,6 +141,7 @@ export function useBenjaminGrahamData() {
       setData(fetchedData);
       previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
+      currentVersionRef.current = snapshotResult.data.version ?? currentVersionRef.current;
       setViewData('entry-exit-benjamin-graham', { benjaminGraham: fetchedData }, { source: 'client-refresh' }).catch((e) =>
         logger.warn('Failed to write viewData', { component: 'useBenjaminGrahamData', error: e })
       );
@@ -296,57 +205,40 @@ export function useBenjaminGrahamData() {
     }
 
     try {
-      const config: DeltaSyncConfig = {
-        sheetName: SHEET_NAME,
-        apiBaseUrl: getApiBaseUrlForDeltaSync(),
-        dataTypeName: 'Benjamin Graham',
-      };
+      const snapshotResult = await getSheetSnapshot('DashBoard', {
+        forceRefresh: true,
+        preferCache: false,
+      });
+      const transformedData = transformBenjaminGrahamData({
+        data: snapshotResult.data.rows,
+        meta: { fields: snapshotResult.data.headers },
+      });
+      setViewData('entry-exit-benjamin-graham', { benjaminGraham: transformedData }, { source: 'client-refresh' }).catch((e) =>
+        logger.warn('Failed to write viewData', { component: 'useBenjaminGrahamData', error: e })
+      );
+      const changes = detectDataChanges(
+        previousDataRef.current,
+        transformedData,
+        (item) => `${item.ticker}-${item.companyName}`,
+        0.05 // 5% threshold
+      );
 
-      const changes = await pollChanges(config, currentVersionRef.current);
-      const cacheResult = await applyChangesToCache<BenjaminGrahamData>(changes, CACHE_KEY);
+      setData(transformedData);
+      previousDataRef.current = transformedData;
+      currentVersionRef.current = snapshotResult.data.version ?? currentVersionRef.current;
+      setLastUpdated(new Date());
 
-      if (cacheResult.needsReload) {
-        // Changes detected, reload snapshot
-        const snapshot = await loadSnapshot(config);
-        const transformerFormat = snapshotToTransformerFormat(snapshot);
-        const transformedData = transformBenjaminGrahamData(transformerFormat);
-        // cutover: no appCache writes for view-docs
-        if (VIEWDATA_MIGRATION_MODE !== 'cutover') {
-          setDeltaCacheEntry(CACHE_KEY, transformedData, snapshot.version, true);
-        }
-        setViewData('entry-exit-benjamin-graham', { benjaminGraham: transformedData }, { source: 'client-refresh' }).catch((e) =>
-          logger.warn('Failed to write viewData', { component: 'useBenjaminGrahamData', error: e })
+      if (changes.hasSignificantChanges) {
+        const changeMessage = formatChangeSummary(changes);
+        createNotification(
+          'data-update',
+          'Benjamin Graham Data Updated',
+          `Total: ${changes.total} items. ${changeMessage}`,
+          {
+            showDesktop: true,
+            data: { changes, dataType: 'benjamin-graham' },
+          }
         );
-        // Detect data changes
-        const changes = detectDataChanges(
-          previousDataRef.current,
-          transformedData,
-          (item) => `${item.ticker}-${item.companyName}`,
-          0.05 // 5% threshold
-        );
-        
-        setData(transformedData);
-        previousDataRef.current = transformedData;
-        currentVersionRef.current = snapshot.version;
-        setLastUpdated(new Date());
-        
-        // Show notification if significant changes detected
-        if (changes.hasSignificantChanges) {
-          const changeMessage = formatChangeSummary(changes);
-          createNotification(
-            'data-update',
-            'Benjamin Graham Data Updated',
-            `Total: ${changes.total} items. ${changeMessage}`,
-            {
-              showDesktop: true,
-              data: { changes, dataType: 'benjamin-graham' },
-            }
-          );
-        }
-      } else if (cacheResult.data) {
-        // No changes, use cached data
-        setData(cacheResult.data);
-        currentVersionRef.current = cacheResult.version;
       }
     } catch (pollError) {
       // Silently fail polling - don't show errors to user

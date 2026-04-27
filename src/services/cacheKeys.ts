@@ -9,6 +9,8 @@
 export const CACHE_KEYS = {
   BENJAMIN_GRAHAM: 'cache:benjaminGraham',
   SMA: 'cache:sma',
+  DASHBOARD_SNAPSHOT: 'cache:dashboardSnapshot',
+  SMA_SNAPSHOT: 'cache:smaSnapshot',
   PE_INDUSTRY: 'cache:peIndustry',
   SCORE_BOARD: 'cache:scoreBoard',
   THRESHOLD_INDUSTRY: 'cache:industryThreshold',

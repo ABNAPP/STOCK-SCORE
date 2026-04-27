@@ -1,41 +1,30 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchScoreBoardData, ProgressCallback } from '../services/sheets';
 import { createScoreBoardTransformer, type SMADataMapEntry } from '../services/sheets/scoreBoardService';
-import { fetchPEIndustryData } from '../services/sheets/peIndustryService';
-import { fetchSMAData } from '../services/sheets/smaService';
-import type { DataRow } from '../services/sheets';
+import { transformPEIndustryData } from '../services/sheets/peIndustryService';
+import { transformSMAData } from '../services/sheets/smaService';
 import { ScoreBoardData, PEIndustryData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
 import { useRefreshOptional } from '../contexts/RefreshContext';
 import {
   getCachedData,
   getDeltaCacheEntry,
-  setDeltaCacheEntry,
   setViewData,
   getViewDataWithFallback,
   CACHE_KEYS,
-  VIEWDATA_MIGRATION_MODE,
 } from '../services/firestoreCacheService';
 import { createErrorHandler, logError, formatError, isErrorType } from '../utils/errorHandler';
 import { useNotifications } from '../contexts/NotificationContext';
 import { detectDataChanges, formatChangeSummary } from '../utils/dataChangeDetector';
 import { logger } from '../utils/logger';
 import { 
-  initSync, 
-  pollChanges, 
-  loadSnapshot, 
-  applyChangesToCache,
   isDeltaSyncEnabled,
   getPollIntervalMs,
-  snapshotToTransformerFormat,
-  getApiBaseUrlForDeltaSync,
-  type DeltaSyncConfig
 } from '../services/deltaSyncService';
 import { usePageVisibility } from './usePageVisibility';
 import { useTranslation } from 'react-i18next';
+import { getSheetSnapshot } from '../services/sheets/sheetSnapshotService';
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
-const SHEET_NAME = 'DashBoard';
 const CACHE_KEY = CACHE_KEYS.SCORE_BOARD;
 
 /**
@@ -92,20 +81,29 @@ export function useScoreBoardData() {
 
   // Helper function to fetch P/E sector (ISM) sheet and SMA data and create maps
   const fetchDependenciesAndCreateTransformer = useCallback(async (forceRefresh: boolean = false) => {
-    // Fetch PEIndustryData and SMAData in parallel (they are independent)
-    const [peIndustryResult, smaResult] = await Promise.allSettled([
-      fetchPEIndustryData(forceRefresh),
-      fetchSMAData(forceRefresh),
+    // Fetch DashBoard and SMA snapshots in parallel (they are independent)
+    const [dashboardSnapshotResult, smaSnapshotResult] = await Promise.allSettled([
+      getSheetSnapshot('DashBoard', {
+        forceRefresh,
+        preferCache: !forceRefresh,
+      }),
+      getSheetSnapshot('SMA', {
+        forceRefresh,
+        preferCache: !forceRefresh,
+      }),
     ]);
 
-    // Process PEIndustryData results
+    // Process PEIndustryData from DashBoard snapshot
     let peIndustryData: PEIndustryData[] = [];
-    if (peIndustryResult.status === 'fulfilled') {
-      peIndustryData = peIndustryResult.value;
+    if (dashboardSnapshotResult.status === 'fulfilled') {
+      peIndustryData = transformPEIndustryData({
+        data: dashboardSnapshotResult.value.data.rows,
+        meta: { fields: dashboardSnapshotResult.value.data.headers },
+      });
     } else {
       logger.warn(
-        'Failed to fetch P/E sector (ISM) sheet data for P/E1/P/E2 median calculation',
-        { component: 'useScoreBoardData', operation: 'fetchDependenciesAndCreateTransformer', error: peIndustryResult.reason }
+        'Failed to load DashBoard snapshot for P/E1/P/E2 median calculation',
+        { component: 'useScoreBoardData', operation: 'fetchDependenciesAndCreateTransformer', error: dashboardSnapshotResult.reason }
       );
     }
 
@@ -121,18 +119,21 @@ export function useScoreBoardData() {
       }
     });
 
-    // Process SMAData results from SMA table (SMA colors computed in view from price vs SMA values)
+    // Process SMAData results from SMA snapshot (SMA colors computed in view from price vs SMA values)
     let smaDataMap = new Map<string, SMADataMapEntry>();
-    if (smaResult.status === 'fulfilled') {
-      const smaData = smaResult.value;
+    if (smaSnapshotResult.status === 'fulfilled') {
+      const smaData = transformSMAData({
+        data: smaSnapshotResult.value.data.rows,
+        meta: { fields: smaSnapshotResult.value.data.headers },
+      });
       smaData.forEach((sma) => {
         const tickerKey = sma.ticker.toLowerCase().trim();
         smaDataMap.set(tickerKey, { sma9: sma.sma9, sma21: sma.sma21, sma55: sma.sma55, sma200: sma.sma200 });
       });
     } else {
       logger.warn(
-        'Failed to fetch SMA data for Score Board',
-        { component: 'useScoreBoardData', operation: 'fetchDependenciesAndCreateTransformer', error: smaResult.reason }
+        'Failed to load SMA snapshot for Score Board',
+        { component: 'useScoreBoardData', operation: 'fetchDependenciesAndCreateTransformer', error: smaSnapshotResult.reason }
       );
     }
 
@@ -163,7 +164,7 @@ export function useScoreBoardData() {
     };
   }, []);
 
-  // Load data using delta-sync or fallback to regular fetch
+  // Load data from central snapshots and transform into Score Board rows
   const loadData = useCallback(async (forceRefresh: boolean = false, isBackground: boolean = false) => {
     try {
       if (!isBackground) {
@@ -203,118 +204,31 @@ export function useScoreBoardData() {
         });
       }
 
-      // Try delta-sync if enabled
-      if (isDeltaSyncEnabled() && APPS_SCRIPT_URL && !forceRefresh) {
-        try {
-          // Fetch dependencies first (P/E sector (ISM) sheet, SMA) for transformer and worker additionalData
-          const { transformer, additionalData } = await fetchDependenciesAndCreateTransformer(forceRefresh);
-
-          const config: DeltaSyncConfig = {
-            sheetName: SHEET_NAME,
-            apiBaseUrl: getApiBaseUrlForDeltaSync(),
-            dataTypeName: 'Score Board',
-            additionalData,
-          };
-
-          // Load initial snapshot or use cached data
-          const result = await initSync<ScoreBoardData>(
-            config,
-            CACHE_KEY,
-            transformer
-          );
-
-          // Detect data changes
-          const changes = detectDataChanges(
-            previousDataRef.current,
-            result.data,
-            (item) => `${item.ticker}-${item.companyName}`,
-            0.05 // 5% threshold
-          );
-          
-          setData(result.data);
-          previousDataRef.current = result.data;
-          currentVersionRef.current = result.version;
-          setLastUpdated(new Date());
-          setDataSource('network');
-          setViewData('score-board', { scoreBoard: result.data }, { source: 'client-refresh' }).catch((e) =>
-            logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
-          );
-          setViewData('score', { scoreBoard: result.data }, { source: 'client-refresh' }).catch((e) =>
-            logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
-          );
-          // Show notification if significant changes detected
-          if (changes.hasSignificantChanges && !isBackground) {
-            const changeMessage = formatChangeSummary(changes);
-            createNotification(
-              'data-update',
-              'Score Board Data Updated',
-              `Total: ${changes.total} items. ${changeMessage}`,
-              {
-                showDesktop: true,
-                data: { changes, dataType: 'score-board' },
-              }
-            );
-          }
-          
-          if (!isBackground) {
-            updateProgress('score-board', {
-              status: 'complete',
-              progress: 100,
-              message: 'Data loaded',
-            });
-          }
-          
-          if (!isBackground) {
-            setLoading(false);
-          }
-          return;
-        } catch (deltaSyncError) {
-          // Delta sync failed, fallback to regular fetch
-          const errorMessage = deltaSyncError instanceof Error ? deltaSyncError.message : String(deltaSyncError);
-          
-          // Only log warning if it's not a timeout (timeouts are expected and will fallback)
-          if (!errorMessage.includes('timeout') && !errorMessage.includes('Request timeout')) {
-            logger.warn(
-              `Delta sync failed for ${SHEET_NAME}, falling back to regular fetch: ${errorMessage}`,
-              { component: 'useScoreBoardData', operation: 'initialize delta sync', sheetName: SHEET_NAME, error: deltaSyncError }
-            );
-          } else {
-            logger.debug(
-              `Delta sync timed out for ${SHEET_NAME}, using regular fetch instead`,
-              { component: 'useScoreBoardData', operation: 'initialize delta sync', sheetName: SHEET_NAME }
-            );
-          }
-          // Don't throw - fallback to regular fetch
-        }
-      }
-
-      // Fallback to regular fetch
-      const progressCallback: ProgressCallback = (progress) => {
-        if (!isBackground) {
-          updateProgress('score-board', {
-            progress: progress.percentage,
-            status: progress.stage === 'complete' ? 'complete' : 'loading',
-            message: progress.message,
-            rowsLoaded: progress.rowsProcessed,
-            totalRows: progress.totalRows,
-          });
-        }
-      };
-      
-      logger.debug('Fetching Score Board data', { 
+      logger.debug('Fetching Score Board snapshots', { 
         component: 'useScoreBoardData', 
         operation: 'loadData',
         forceRefresh,
         isBackground 
       });
-      
-      const fetchedData = await fetchScoreBoardData(forceRefresh, progressCallback);
-      
-      logger.info('Score Board data fetched successfully', { 
+
+      // Build transformer from snapshot-derived dependencies
+      const { transformer } = await fetchDependenciesAndCreateTransformer(forceRefresh);
+      // Use DashBoard snapshot as base dataset for Score Board transformation
+      const dashboardSnapshot = await getSheetSnapshot('DashBoard', {
+        forceRefresh,
+        preferCache: !forceRefresh,
+      });
+      const fetchedData = transformer({
+        data: dashboardSnapshot.data.rows,
+        meta: { fields: dashboardSnapshot.data.headers },
+      });
+
+      logger.info('Score Board data transformed from snapshots successfully', { 
         component: 'useScoreBoardData', 
         operation: 'loadData',
         entryCount: fetchedData.length,
-        forceRefresh 
+        forceRefresh,
+        source: dashboardSnapshot.source,
       });
       
       // Detect data changes
@@ -337,6 +251,7 @@ export function useScoreBoardData() {
       previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
       setDataSource('network');
+      currentVersionRef.current = dashboardSnapshot.data.version ?? currentVersionRef.current;
       setViewData('score-board', { scoreBoard: fetchedData }, { source: 'client-refresh' }).catch((e) =>
         logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
       );
@@ -411,64 +326,45 @@ export function useScoreBoardData() {
     }
 
     try {
-      const config: DeltaSyncConfig = {
-        sheetName: SHEET_NAME,
-        apiBaseUrl: getApiBaseUrlForDeltaSync(),
-        dataTypeName: 'Score Board',
-      };
+      // Minimal-risk polling update: force-refresh central snapshots and re-transform
+      const { transformer } = await fetchDependenciesAndCreateTransformer(true);
+      const dashboardSnapshot = await getSheetSnapshot('DashBoard', {
+        forceRefresh: true,
+        preferCache: false,
+      });
+      const transformedData = transformer({
+        data: dashboardSnapshot.data.rows,
+        meta: { fields: dashboardSnapshot.data.headers },
+      });
+      setViewData('score-board', { scoreBoard: transformedData }, { source: 'client-refresh' }).catch((e) =>
+        logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
+      );
+      setViewData('score', { scoreBoard: transformedData }, { source: 'client-refresh' }).catch((e) =>
+        logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
+      );
+      const dataChanges = detectDataChanges(
+        previousDataRef.current,
+        transformedData,
+        (item) => `${item.ticker}-${item.companyName}`,
+        0.05 // 5% threshold
+      );
 
-      const changesResponse = await pollChanges(config, currentVersionRef.current);
-      const cacheResult = await applyChangesToCache<ScoreBoardData>(changesResponse, CACHE_KEY);
+      setData(transformedData);
+      previousDataRef.current = transformedData;
+      currentVersionRef.current = dashboardSnapshot.data.version ?? currentVersionRef.current;
+      setLastUpdated(new Date());
 
-      if (cacheResult.needsReload) {
-        // Changes detected, reload snapshot
-        // First fetch dependencies (transformer has maps closed over)
-        const { transformer } = await fetchDependenciesAndCreateTransformer(false);
-
-        // Load snapshot
-        const snapshot = await loadSnapshot(config);
-        const transformerFormat = snapshotToTransformerFormat(snapshot);
-        const transformedData = transformer(transformerFormat);
-        // cutover: no appCache writes for view-docs
-        if (VIEWDATA_MIGRATION_MODE !== 'cutover') {
-          setDeltaCacheEntry(CACHE_KEY, transformedData, snapshot.version, true);
-        }
-        setViewData('score-board', { scoreBoard: transformedData }, { source: 'client-refresh' }).catch((e) =>
-          logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
+      if (dataChanges.hasSignificantChanges) {
+        const changeMessage = formatChangeSummary(dataChanges);
+        createNotification(
+          'data-update',
+          'Score Board Data Updated',
+          `Total: ${dataChanges.total} items. ${changeMessage}`,
+          {
+            showDesktop: true,
+            data: { changes: dataChanges, dataType: 'score-board' },
+          }
         );
-        setViewData('score', { scoreBoard: transformedData }, { source: 'client-refresh' }).catch((e) =>
-          logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
-        );
-        // Detect data changes
-        const dataChanges = detectDataChanges(
-          previousDataRef.current,
-          transformedData,
-          (item) => `${item.ticker}-${item.companyName}`,
-          0.05 // 5% threshold
-        );
-        
-        setData(transformedData);
-        previousDataRef.current = transformedData;
-        currentVersionRef.current = snapshot.version;
-        setLastUpdated(new Date());
-        
-        // Show notification if significant changes detected
-        if (dataChanges.hasSignificantChanges) {
-          const changeMessage = formatChangeSummary(dataChanges);
-          createNotification(
-            'data-update',
-            'Score Board Data Updated',
-            `Total: ${dataChanges.total} items. ${changeMessage}`,
-            {
-              showDesktop: true,
-              data: { changes: dataChanges, dataType: 'score-board' },
-            }
-          );
-        }
-      } else if (cacheResult.data) {
-        // No changes, use cached data
-        setData(cacheResult.data);
-        currentVersionRef.current = cacheResult.version;
       }
     } catch (pollError) {
       // Silently fail polling - don't show errors to user

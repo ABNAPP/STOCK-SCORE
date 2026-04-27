@@ -1,38 +1,27 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchPEIndustryData, ProgressCallback } from '../services/sheets';
 import { transformPEIndustryData } from '../services/sheets/peIndustryService';
-import type { DataRow } from '../services/sheets';
 import { PEIndustryData } from '../types/stock';
 import { useLoadingProgress } from '../contexts/LoadingProgressContext';
 import { useRefreshOptional } from '../contexts/RefreshContext';
 import {
   getCachedData,
   getDeltaCacheEntry,
-  setDeltaCacheEntry,
   setViewData,
   getViewDataWithFallback,
   CACHE_KEYS,
-  VIEWDATA_MIGRATION_MODE,
 } from '../services/firestoreCacheService';
 import { createErrorHandler, logError, formatError, isErrorType } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
 import { useNotifications } from '../contexts/NotificationContext';
 import { detectDataChanges, formatChangeSummary } from '../utils/dataChangeDetector';
 import { 
-  initSync, 
-  pollChanges, 
-  loadSnapshot, 
-  applyChangesToCache,
   isDeltaSyncEnabled,
   getPollIntervalMs,
-  snapshotToTransformerFormat,
-  getApiBaseUrlForDeltaSync,
-  type DeltaSyncConfig
 } from '../services/deltaSyncService';
 import { usePageVisibility } from './usePageVisibility';
+import { getSheetSnapshot } from '../services/sheets/sheetSnapshotService';
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
-const SHEET_NAME = 'DashBoard';
 const CACHE_KEY = CACHE_KEYS.PE_INDUSTRY;
 
 /**
@@ -87,110 +76,28 @@ export function usePEIndustryData() {
         });
       }
 
-      // Try delta-sync if enabled
-      if (isDeltaSyncEnabled() && APPS_SCRIPT_URL && !forceRefresh) {
-        try {
-          const config: DeltaSyncConfig = {
-            sheetName: SHEET_NAME,
-            apiBaseUrl: getApiBaseUrlForDeltaSync(),
-            dataTypeName: 'P/E SECTOR (ISM)',
-          };
-
-          // Load initial snapshot or use cached data
-          const result = await initSync<PEIndustryData>(
-            config,
-            CACHE_KEY,
-            transformPEIndustryData
-          );
-
-          // Detect data changes
-          const changes = detectDataChanges(
-            previousDataRef.current,
-            result.data,
-            (item) => item.industry,
-            0.05 // 5% threshold
-          );
-          
-          setData(result.data);
-          previousDataRef.current = result.data;
-          currentVersionRef.current = result.version;
-          setLastUpdated(new Date());
-          setViewData('fundamental-pe-industry', { peIndustry: result.data }, { source: 'client-refresh' }).catch((e) =>
-            logger.warn('Failed to write viewData', { component: 'usePEIndustryData', error: e })
-          );
-          // Show notification if significant changes detected
-          if (changes.hasSignificantChanges && !isBackground) {
-            const changeMessage = formatChangeSummary(changes);
-            createNotification(
-              'data-update',
-              'P/E SECTOR (ISM) Data Updated',
-              `Total: ${changes.total} items. ${changeMessage}`,
-              {
-                showDesktop: true,
-                data: { changes, dataType: 'pe-industry' },
-              }
-            );
-          }
-          
-          if (!isBackground) {
-            updateProgress('pe-industry', {
-              status: 'complete',
-              progress: 100,
-              message: 'Data loaded',
-            });
-          }
-          
-          if (!isBackground) {
-            setLoading(false);
-          }
-          return;
-        } catch (deltaSyncError) {
-          // Delta sync failed, fallback to regular fetch
-          const errorMessage = deltaSyncError instanceof Error ? deltaSyncError.message : String(deltaSyncError);
-          
-          // Only log warning if it's not a timeout (timeouts are expected and will fallback)
-          if (!errorMessage.includes('timeout') && !errorMessage.includes('Request timeout')) {
-            logger.warn(
-              `Delta sync failed for ${SHEET_NAME}, falling back to regular fetch: ${errorMessage}`,
-              { component: 'usePEIndustryData', operation: 'initialize delta sync', sheetName: SHEET_NAME, error: deltaSyncError }
-            );
-          } else {
-            logger.debug(
-              `Delta sync timed out for ${SHEET_NAME}, using regular fetch instead`,
-              { component: 'usePEIndustryData', operation: 'initialize delta sync', sheetName: SHEET_NAME }
-            );
-          }
-          // Don't throw - fallback to regular fetch
-        }
-      }
-
-      // Fallback to regular fetch
-      const progressCallback: ProgressCallback = (progress) => {
-        if (!isBackground) {
-          updateProgress('pe-industry', {
-            progress: progress.percentage,
-            status: progress.stage === 'complete' ? 'complete' : 'loading',
-            message: progress.message,
-            rowsLoaded: progress.rowsProcessed,
-            totalRows: progress.totalRows,
-          });
-        }
-      };
-      
-      logger.debug('Fetching P/E sector (ISM) sheet data', { 
+      logger.debug('Fetching P/E sector (ISM) snapshot', { 
         component: 'usePEIndustryData', 
         operation: 'loadData',
         forceRefresh,
         isBackground 
       });
-      
-      const fetchedData = await fetchPEIndustryData(forceRefresh, progressCallback);
-      
-      logger.info('P/E sector (ISM) sheet data fetched successfully', { 
+
+      const snapshotResult = await getSheetSnapshot('DashBoard', {
+        forceRefresh,
+        preferCache: !forceRefresh,
+      });
+      const fetchedData = transformPEIndustryData({
+        data: snapshotResult.data.rows,
+        meta: { fields: snapshotResult.data.headers },
+      });
+
+      logger.info('P/E sector (ISM) data transformed from snapshot successfully', { 
         component: 'usePEIndustryData', 
         operation: 'loadData',
         entryCount: fetchedData.length,
-        forceRefresh 
+        forceRefresh,
+        source: snapshotResult.source,
       });
       
       // Detect data changes
@@ -211,6 +118,7 @@ export function usePEIndustryData() {
       setData(fetchedData);
       previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
+      currentVersionRef.current = snapshotResult.data.version ?? currentVersionRef.current;
       setViewData('fundamental-pe-industry', { peIndustry: fetchedData }, { source: 'client-refresh' }).catch((e) =>
         logger.warn('Failed to write viewData', { component: 'usePEIndustryData', error: e })
       );
@@ -274,57 +182,40 @@ export function usePEIndustryData() {
     }
 
     try {
-      const config: DeltaSyncConfig = {
-        sheetName: SHEET_NAME,
-        apiBaseUrl: getApiBaseUrlForDeltaSync(),
-        dataTypeName: 'P/E SECTOR (ISM)',
-      };
+      const snapshotResult = await getSheetSnapshot('DashBoard', {
+        forceRefresh: true,
+        preferCache: false,
+      });
+      const transformedData = transformPEIndustryData({
+        data: snapshotResult.data.rows,
+        meta: { fields: snapshotResult.data.headers },
+      });
+      setViewData('fundamental-pe-industry', { peIndustry: transformedData }, { source: 'client-refresh' }).catch((e) =>
+        logger.warn('Failed to write viewData', { component: 'usePEIndustryData', error: e })
+      );
+      const dataChanges = detectDataChanges(
+        previousDataRef.current,
+        transformedData,
+        (item) => item.industry,
+        0.05 // 5% threshold
+      );
 
-      const changesResponse = await pollChanges(config, currentVersionRef.current);
-      const cacheResult = await applyChangesToCache<PEIndustryData>(changesResponse, CACHE_KEY);
+      setData(transformedData);
+      previousDataRef.current = transformedData;
+      currentVersionRef.current = snapshotResult.data.version ?? currentVersionRef.current;
+      setLastUpdated(new Date());
 
-      if (cacheResult.needsReload) {
-        // Changes detected, reload snapshot
-        const snapshot = await loadSnapshot(config);
-        const transformerFormat = snapshotToTransformerFormat(snapshot);
-        const transformedData = transformPEIndustryData(transformerFormat);
-        // cutover: no appCache writes for view-docs
-        if (VIEWDATA_MIGRATION_MODE !== 'cutover') {
-          setDeltaCacheEntry(CACHE_KEY, transformedData, snapshot.version, true);
-        }
-        setViewData('fundamental-pe-industry', { peIndustry: transformedData }, { source: 'client-refresh' }).catch((e) =>
-          logger.warn('Failed to write viewData', { component: 'usePEIndustryData', error: e })
+      if (dataChanges.hasSignificantChanges) {
+        const changeMessage = formatChangeSummary(dataChanges);
+        createNotification(
+          'data-update',
+          'P/E SECTOR (ISM) Data Updated',
+          `Total: ${dataChanges.total} items. ${changeMessage}`,
+          {
+            showDesktop: true,
+            data: { changes: dataChanges, dataType: 'pe-industry' },
+          }
         );
-        // Detect data changes
-        const dataChanges = detectDataChanges(
-          previousDataRef.current,
-          transformedData,
-          (item) => item.industry,
-          0.05 // 5% threshold
-        );
-        
-        setData(transformedData);
-        previousDataRef.current = transformedData;
-        currentVersionRef.current = snapshot.version;
-        setLastUpdated(new Date());
-        
-        // Show notification if significant changes detected
-        if (dataChanges.hasSignificantChanges) {
-          const changeMessage = formatChangeSummary(dataChanges);
-          createNotification(
-            'data-update',
-            'P/E SECTOR (ISM) Data Updated',
-            `Total: ${dataChanges.total} items. ${changeMessage}`,
-            {
-              showDesktop: true,
-              data: { changes: dataChanges, dataType: 'pe-industry' },
-            }
-          );
-        }
-      } else if (cacheResult.data) {
-        // No changes, use cached data
-        setData(cacheResult.data);
-        currentVersionRef.current = cacheResult.version;
       }
     } catch (pollError) {
       // Silently fail polling - don't show errors to user

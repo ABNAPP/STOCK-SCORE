@@ -4,93 +4,18 @@ import { ENTRY_EXIT_COLUMN_LABELS } from '../constants/entryExitColumnLabels';
 export const managementMonitoringConfig: ManagementMonitoringConfig = {
   pageTitle: 'MANAGEMENT MONITORING',
   pageSubtitle:
-    'Overview of goals, workflows, tools, memory, context and reporting',
+    'Overview of central data service status and monitoring tables',
 
   cards: [
     {
-      id: 'goals',
+      id: 'central-data-service',
       number: 1,
-      title: 'Goals',
-      theme: 'blue',
-      icon: 'FlagIcon',
-      items: [
-        'Strategic objectives alignment',
-        'KPIs and targets',
-        'Progress tracking',
-      ],
-      gridSpan: 1,
-    },
-    {
-      id: 'workflows',
-      number: 2,
-      title: 'Workflows',
-      theme: 'red',
-      icon: 'ArrowsRightLeftIcon',
-      items: [
-        'Process documentation',
-        'Approval chains',
-        'Automation triggers',
-      ],
-      gridSpan: 1,
-    },
-    {
-      id: 'tools',
-      number: 3,
-      title: 'Tools',
+      title: 'Central Data Service',
       theme: 'amber',
-      icon: 'WrenchScrewdriverIcon',
-      description:
-        'Integrated systems, dashboards and tooling used for daily operations and reporting.',
-      gridSpan: 2,
-    },
-    {
-      id: 'memory',
-      number: 4,
-      title: 'Memory',
-      theme: 'green',
       icon: 'CircleStackIcon',
-      items: [
-        'Historical decisions',
-        'Context retention',
-        'Knowledge base',
-      ],
-      gridSpan: 1,
-    },
-    {
-      id: 'context',
-      number: 5,
-      title: 'Context',
-      theme: 'blue',
-      icon: 'DocumentTextIcon',
-      items: [
-        'Current priorities',
-        'Stakeholder view',
-        'Environmental factors',
-      ],
-      gridSpan: 1,
-    },
-    {
-      id: 'reporting',
-      number: 6,
-      title: 'Reporting',
-      theme: 'red',
-      icon: 'ChartBarIcon',
       description:
-        'Regular reports, status updates and dashboards for stakeholders and leadership.',
-      gridSpan: 1,
-    },
-    {
-      id: 'review',
-      number: 7,
-      title: 'Review & Feedback',
-      theme: 'green',
-      icon: 'ArrowPathIcon',
-      items: [
-        'Retrospectives',
-        'Feedback loops',
-        'Continuous improvement',
-      ],
-      gridSpan: 1,
+        'Shows the status of the shared Google Sheets snapshot layer used by the app.',
+      gridSpan: 2,
     },
   ],
 

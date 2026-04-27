@@ -1,16 +1,42 @@
 /** Theme for monitoring cards – maps to pastell Tailwind backgrounds/borders */
 export type CardTheme = 'blue' | 'red' | 'amber' | 'green';
 
+export type MonitoringStatusBadge = 'ready' | 'loading' | 'stale' | 'error' | 'idle';
+
+export interface MonitoringStatusRow {
+  label: string;
+  value: string;
+}
+
+export interface MonitoringStatusSection {
+  title: string;
+  rows: MonitoringStatusRow[];
+}
+
+export interface MonitoringStatusCardContent {
+  summaryTitle?: string;
+  overallStatus: MonitoringStatusBadge;
+  dashboardStatus: MonitoringStatusBadge;
+  smaStatus: MonitoringStatusBadge;
+  lastSuccessfulSync: string;
+  subtitle?: string;
+  sections: MonitoringStatusSection[];
+}
+
 export interface MonitoringCardConfig {
   id: string;
   number: number;
   title: string;
   theme: CardTheme;
   icon?: string;
+  onClick?: () => void;
+  interactive?: boolean;
   /** Bullet list items; if set, description is ignored */
   items?: string[];
   /** Plain text description when items are not used */
   description?: string;
+  /** Optional compact status-card presentation block */
+  statusCard?: MonitoringStatusCardContent;
   /** Grid span on desktop (1 = one column, 2 = two columns) */
   gridSpan?: 1 | 2;
 }

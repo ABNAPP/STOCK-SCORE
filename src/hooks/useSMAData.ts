@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SMAData } from '../types/stock';
-import { fetchSMAData } from '../services/sheets/smaService';
+import { transformSMAData } from '../services/sheets/smaService';
+import { getSheetSnapshot } from '../services/sheets/sheetSnapshotService';
 
 /**
  * Hook to load SMA (Simple Moving Average) data from Google Sheets.
@@ -17,7 +18,14 @@ export function useSMAData() {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchSMAData(forceRefresh);
+      const snapshotResult = await getSheetSnapshot('SMA', {
+        forceRefresh,
+        preferCache: !forceRefresh,
+      });
+      const result = transformSMAData({
+        data: snapshotResult.data.rows,
+        meta: { fields: snapshotResult.data.headers },
+      });
       setData(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load SMA data';

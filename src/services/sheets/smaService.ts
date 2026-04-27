@@ -2,6 +2,7 @@
  * SMA Service
  * 
  * Fetches and transforms SMA (Simple Moving Average) data from Google Sheets.
+ * NOTE: Legacy/fallback service path. UI hooks should prefer sheetSnapshotService.
  */
 
 import { SMAData } from '../../types/stock';

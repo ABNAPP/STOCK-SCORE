@@ -34,6 +34,7 @@ const ISMPostureView = lazyWithRetry<typeof import('./components/views/ISMPostur
 const ToolBoxView = lazyWithRetry<typeof import('./components/views/ToolBoxView').default>(() => import('./components/views/ToolBoxView'), 'ToolBoxView');
 const SMAView = lazyWithRetry<typeof import('./components/views/SMAView').default>(() => import('./components/views/SMAView'), 'SMAView');
 const ManagementMonitoringPage = lazyWithRetry<typeof import('./pages/ManagementMonitoringPage').default>(() => import('./pages/ManagementMonitoringPage'), 'ManagementMonitoringPage');
+const CentralDataServicePage = lazyWithRetry<typeof import('./pages/CentralDataServicePage').default>(() => import('./pages/CentralDataServicePage'), 'CentralDataServicePage');
 const StockAnalysesView = lazyWithRetry<typeof import('./components/views/StockAnalysesView').default>(() => import('./components/views/StockAnalysesView'), 'StockAnalysesView');
 const StockMonitorView = lazyWithRetry<typeof import('./components/views/StockMonitorView').default>(() => import('./components/views/StockMonitorView'), 'StockMonitorView');
 
@@ -91,6 +92,18 @@ function App() {
     const rawPath = location.pathname.replace(/^\//, '');
     const path = rawPath || 'score';
     const defaultView = getDefaultLandingView();
+    const isCentralDataServicePath = path === 'management-monitoring/central-data-service';
+
+    if (isCentralDataServicePath) {
+      if (canView('management-monitoring')) {
+        setActiveView('management-monitoring');
+      } else {
+        navigate(`/${defaultView}`, { replace: true });
+        setActiveView(defaultView);
+        showToast(t('common.unauthorizedView') || 'Du har inte tillgång till denna vy', 'warning');
+      }
+      return;
+    }
 
     if (isValidViewPath(path)) {
       if (canView(path)) {
@@ -267,6 +280,13 @@ function App() {
     }
 
     if (activeView === 'management-monitoring') {
+      if (location.pathname === '/management-monitoring/central-data-service') {
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <CentralDataServicePage />
+          </Suspense>
+        );
+      }
       return (
         <Suspense fallback={<LoadingFallback />}>
           <ManagementMonitoringPage />
