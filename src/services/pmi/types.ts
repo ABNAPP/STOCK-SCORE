@@ -45,16 +45,25 @@ export interface PmiMonthDataPoint {
   changeVsPrevious: number | null;
 }
 
+export interface PmiYearDataPoint {
+  year: string;
+  value: number | null;
+  previousValue: number | null;
+  changeVsPrevious: number | null;
+}
+
 export interface PmiHeatmapRow {
   countryCode: PmiCountryCode;
   countryName: string;
-  months: PmiMonthDataPoint[];
+  recentMonths: PmiMonthDataPoint[];
+  yearly: PmiYearDataPoint[];
 }
 
 export interface PmiHeatmapData {
   type: PmiType;
   rows: PmiHeatmapRow[];
-  months: string[];
+  recentMonths: string[];
+  years: string[];
   metadata: PmiMetadata;
 }
 

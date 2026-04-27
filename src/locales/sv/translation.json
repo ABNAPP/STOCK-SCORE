@@ -116,6 +116,7 @@
         "subtitle": "Track recent PMI changes across countries and spot momentum shifts quickly.",
         "controls": {
           "pmiType": "PMI Type",
+          "timeRange": "Time Range",
           "sortBy": "Sort By",
           "searchCountry": "Search Country",
           "searchPlaceholder": "Search country or alias (SWE, UK, US, USA)...",
@@ -132,6 +133,11 @@
           "biggestImprovement": "Biggest Improvement",
           "biggestDeterioration": "Biggest Deterioration",
           "alphabetical": "Alphabetical"
+        },
+        "range": {
+          "oneYearPlusThreeMonths": "1Y + 3M",
+          "threeYearsPlusThreeMonths": "3Y + 3M",
+          "fiveYearsPlusThreeMonths": "5Y + 3M"
         },
         "table": {
           "country": "Country",

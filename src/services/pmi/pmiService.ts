@@ -14,6 +14,7 @@ import type {
   PmiHeatmapData,
   PmiHistoryPoint,
   PmiMonthDataPoint,
+  PmiYearDataPoint,
   PmiType,
 } from './types';
 
@@ -72,6 +73,41 @@ function buildLatestMonths(observations: FredObservationRaw[], monthCount: numbe
   });
 }
 
+function buildYearlyAnchors(observations: FredObservationRaw[]): PmiYearDataPoint[] {
+  const parsed = sortByDateAsc(observations)
+    .map((item) => ({ date: item.date, value: parseFredNumber(item.value) }))
+    .filter((item) => item.value !== null);
+
+  if (parsed.length === 0) {
+    return [];
+  }
+
+  const latestByYear = new Map<string, { date: string; value: number }>();
+  parsed.forEach((item) => {
+    const year = item.date.slice(0, 4);
+    if (!year) {
+      return;
+    }
+    // Later dates replace earlier ones, giving the latest available observation in each calendar year.
+    latestByYear.set(year, { date: item.date, value: item.value as number });
+  });
+
+  const orderedYears = Array.from(latestByYear.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+  return orderedYears.map(([year, current], index, list) => {
+    const previous = index > 0 ? list[index - 1][1] : null;
+    return {
+      year,
+      value: current.value,
+      previousValue: previous?.value ?? null,
+      changeVsPrevious:
+        previous && current.value !== null && previous.value !== null
+          ? current.value - previous.value
+          : null,
+    };
+  });
+}
+
 function buildHistory(observations: FredObservationRaw[]): PmiHistoryPoint[] {
   const parsed = sortByDateAsc(observations)
     .map((item) => ({ date: item.date, value: parseFredNumber(item.value) }))
@@ -124,29 +160,39 @@ export async function fetchPmiHeatmapData(type: PmiType): Promise<PmiHeatmapData
   const rows = descriptors.map((descriptor) => ({
     countryCode: descriptor.countryCode,
     countryName: descriptor.countryName,
-    months: descriptor.seriesId
+    recentMonths: descriptor.seriesId
       ? buildLatestMonths(seriesById.get(descriptor.seriesId) ?? [], 3)
       : [],
+    yearly: descriptor.seriesId ? buildYearlyAnchors(seriesById.get(descriptor.seriesId) ?? []) : [],
   }));
 
   const monthSet = new Set<string>();
   rows.forEach((row) => {
-    row.months.forEach((point) => {
+    row.recentMonths.forEach((point) => {
       monthSet.add(point.month);
     });
   });
-  const months = Array.from(monthSet).sort();
+  const recentMonths = Array.from(monthSet).sort();
+
+  const yearSet = new Set<string>();
+  rows.forEach((row) => {
+    row.yearly.forEach((point) => {
+      yearSet.add(point.year);
+    });
+  });
+  const years = Array.from(yearSet).sort();
 
   return {
     type,
     rows,
-    months,
+    recentMonths,
+    years,
     metadata: {
       source: payload.source,
       fetchedAt: payload.fetchedAt,
       latestAvailableRelease: (() => {
         const sortedMonths = rows
-          .flatMap((row) => row.months)
+          .flatMap((row) => row.recentMonths)
           .sort((a, b) => a.month.localeCompare(b.month));
         return sortedMonths.length > 0 ? sortedMonths[sortedMonths.length - 1].month : null;
       })(),

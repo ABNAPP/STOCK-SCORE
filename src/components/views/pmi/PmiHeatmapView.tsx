@@ -7,14 +7,18 @@ import Select from '../../ui/Select';
 import PmiHeatmapLegend from './PmiHeatmapLegend';
 import PmiHeatmapCellTooltip from './PmiHeatmapCellTooltip';
 import {
+  buildHeatmapColumns,
   filterAndSortHeatmapRows,
   formatChange,
   formatMonthLabel,
   formatPmiValue,
+  formatYearLabel,
+  getMonthColumnKey,
+  getPointForColumn,
   getHeatmapTone,
   getHeatmapToneClasses,
   getStatusVs50,
-  hasVisiblePmiData,
+  type PmiHeatmapRange,
   type PmiSortOption,
 } from './pmiHeatmapUtils';
 import { isPlaceholderSeriesError } from './pmiCountryDetailUtils';
@@ -43,6 +47,12 @@ const SORT_OPTIONS: Array<{ value: PmiSortOption; key: string }> = [
   { value: 'biggest-improvement', key: 'biggestImprovement' },
   { value: 'biggest-deterioration', key: 'biggestDeterioration' },
   { value: 'alphabetical', key: 'alphabetical' },
+];
+
+const RANGE_OPTIONS: Array<{ value: PmiHeatmapRange; key: string }> = [
+  { value: '1y', key: 'oneYearPlusThreeMonths' },
+  { value: '3y', key: 'threeYearsPlusThreeMonths' },
+  { value: '5y', key: 'fiveYearsPlusThreeMonths' },
 ];
 
 function formatLastUpdated(lastUpdated: Date | null, locale: string, noDataLabel: string): string {
@@ -74,25 +84,34 @@ export default function PmiHeatmapView({
   const locale = i18n.language === 'sv' ? 'sv-SE' : 'en-US';
   const [sortBy, setSortBy] = useState<PmiSortOption>('biggest-improvement');
   const [searchValue, setSearchValue] = useState('');
+  const [timeRange, setTimeRange] = useState<PmiHeatmapRange>('5y');
 
   const rows = useMemo(() => {
     if (!data) return [];
-    return filterAndSortHeatmapRows(data, sortBy, searchValue);
-  }, [data, sortBy, searchValue]);
+    return filterAndSortHeatmapRows(data, sortBy, searchValue, timeRange);
+  }, [data, sortBy, searchValue, timeRange]);
 
-  const monthColumns = useMemo(() => {
+  const columns = useMemo(() => {
     if (!data) return [];
-    return data.months.slice(-3);
+    return buildHeatmapColumns(data, timeRange);
+  }, [data, timeRange]);
+
+  const recentMonthColumnKeys = useMemo(() => {
+    if (!data) return new Set<string>();
+    return new Set(data.recentMonths.slice(-3).map((month) => getMonthColumnKey(month)));
   }, [data]);
 
   const coverage = useMemo(() => {
     if (!data) {
       return { covered: 0, total: 0 };
     }
-    const visibleMonths = new Set(monthColumns);
-    const covered = data.rows.filter((row) => hasVisiblePmiData(row, visibleMonths)).length;
+    const covered = data.rows.filter((row) =>
+      row.recentMonths.some(
+        (point) => recentMonthColumnKeys.has(getMonthColumnKey(point.month)) && point.value !== null
+      )
+    ).length;
     return { covered, total: data.rows.length };
-  }, [data, monthColumns]);
+  }, [data, recentMonthColumnKeys]);
 
   const compositeUnavailable = useMemo(() => {
     return type === 'composite' && isPlaceholderSeriesError(error);
@@ -152,7 +171,17 @@ export default function PmiHeatmapView({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Select
+              label={t('toolbox.pmi.heatmap.controls.timeRange')}
+              value={timeRange}
+              onChange={(event) => setTimeRange(event.target.value as PmiHeatmapRange)}
+              options={RANGE_OPTIONS.map((item) => ({
+                value: item.value,
+                label: t(`toolbox.pmi.heatmap.range.${item.key}`),
+              }))}
+              fullWidth
+            />
             <Select
               label={t('toolbox.pmi.heatmap.controls.sortBy')}
               value={sortBy}
@@ -249,7 +278,7 @@ export default function PmiHeatmapView({
         </div>
       )}
 
-      {!loading && !professionalError && rows.length === 0 && (
+      {!loading && !compositeUnavailable && !professionalError && rows.length === 0 && (
         <div className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-6 text-center" role="status" aria-live="polite">
           <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
             {t('toolbox.pmi.heatmap.states.emptyTitle')}
@@ -260,7 +289,7 @@ export default function PmiHeatmapView({
         </div>
       )}
 
-      {!loading && !professionalError && rows.length > 0 && (
+      {!loading && !compositeUnavailable && !professionalError && rows.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto overflow-y-visible">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" aria-label={t('toolbox.pmi.heatmap.table.ariaLabel')}>
             <caption className="sr-only">{t('toolbox.pmi.heatmap.table.caption')}</caption>
@@ -269,13 +298,15 @@ export default function PmiHeatmapView({
                 <th scope="col" className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200">
                   {t('toolbox.pmi.heatmap.table.country')}
                 </th>
-                {monthColumns.map((month) => (
+                {columns.map((column) => (
                   <th
-                    key={month}
+                    key={column.key}
                     scope="col"
                     className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200"
                   >
-                    {formatMonthLabel(month, locale)}
+                    {column.kind === 'year'
+                      ? formatYearLabel(column.value)
+                      : formatMonthLabel(column.value, locale)}
                   </th>
                 ))}
               </tr>
@@ -293,17 +324,21 @@ export default function PmiHeatmapView({
                       {row.countryName}
                     </button>
                   </td>
-                  {monthColumns.map((month) => {
-                    const point = row.months.find((item) => item.month === month) ?? null;
+                  {columns.map((column) => {
+                    const point = getPointForColumn(row, column.key);
                     const tone = getHeatmapTone(point?.changeVsPrevious ?? null);
                     const cellClass = getHeatmapToneClasses(tone);
+                    const columnLabel =
+                      column.kind === 'year'
+                        ? formatYearLabel(column.value)
+                        : formatMonthLabel(column.value, locale);
 
                     return (
-                      <td key={`${row.countryCode}-${month}`} className="px-4 py-3 text-center">
+                      <td key={`${row.countryCode}-${column.key}`} className="px-4 py-3 text-center">
                         <PmiHeatmapCellTooltip
                           country={row.countryName}
                           pmiType={t(`toolbox.pmi.heatmap.type.${type}`)}
-                          month={formatMonthLabel(month, locale)}
+                          month={columnLabel}
                           latestPmi={formatPmiValue(point?.value ?? null, t('toolbox.pmi.heatmap.common.noData'))}
                           previousPmi={formatPmiValue(point?.previousValue ?? null, t('toolbox.pmi.heatmap.common.noData'))}
                           change={formatChange(point?.changeVsPrevious ?? null, t('toolbox.pmi.heatmap.common.noData'))}

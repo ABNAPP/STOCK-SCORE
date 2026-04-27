@@ -1,5 +1,10 @@
 import { getPmiCountrySearchTokens } from '../../../services/pmi/countryAliases';
-import type { PmiHeatmapData, PmiHeatmapRow, PmiMonthDataPoint } from '../../../services/pmi/types';
+import type {
+  PmiHeatmapData,
+  PmiHeatmapRow,
+  PmiMonthDataPoint,
+  PmiYearDataPoint,
+} from '../../../services/pmi/types';
 
 export type PmiSortOption =
   | 'highest-pmi'
@@ -16,14 +21,31 @@ export type PmiHeatmapTone =
   | 'dark-red'
   | 'no-data';
 
+export type PmiHeatmapRange = '1y' | '3y' | '5y';
+export type PmiHeatmapColumnKind = 'year' | 'month';
+
+export interface PmiHeatmapColumn {
+  key: string;
+  kind: PmiHeatmapColumnKind;
+  value: string;
+}
+
+export interface PmiHeatmapCellPoint {
+  value: number | null;
+  previousValue: number | null;
+  changeVsPrevious: number | null;
+}
+
 export interface PmiHeatmapDisplayRow {
   countryCode: string;
   countryName: string;
-  months: PmiMonthDataPoint[];
+  recentMonths: PmiMonthDataPoint[];
+  yearly: PmiYearDataPoint[];
   latestPoint: PmiMonthDataPoint | null;
   latestValue: number | null;
   latestChange: number | null;
   searchText: string;
+  pointsByColumnKey: Map<string, PmiHeatmapCellPoint>;
 }
 
 function toSearchText(row: PmiHeatmapRow): string {
@@ -39,10 +61,16 @@ function compareNullableNumber(a: number | null, b: number | null, direction: 'a
 }
 
 export function hasVisiblePmiData(
-  row: Pick<PmiHeatmapDisplayRow, 'months'>,
-  visibleMonths: ReadonlySet<string>
+  row: Pick<PmiHeatmapDisplayRow, 'pointsByColumnKey'>,
+  visibleColumnKeys: ReadonlySet<string>
 ): boolean {
-  return row.months.some((point) => visibleMonths.has(point.month) && point.value !== null);
+  for (const columnKey of visibleColumnKeys) {
+    const point = row.pointsByColumnKey.get(columnKey);
+    if (point && point.value !== null) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function compareRowsWithinGroup(a: PmiHeatmapDisplayRow, b: PmiHeatmapDisplayRow, sortBy: PmiSortOption): number {
@@ -64,12 +92,12 @@ function compareRowsWithinGroup(a: PmiHeatmapDisplayRow, b: PmiHeatmapDisplayRow
 function sortRows(
   rows: PmiHeatmapDisplayRow[],
   sortBy: PmiSortOption,
-  visibleMonths: ReadonlySet<string>
+  visibleColumnKeys: ReadonlySet<string>
 ): PmiHeatmapDisplayRow[] {
   const sorted = [...rows];
   sorted.sort((a, b) => {
-    const aHasData = hasVisiblePmiData(a, visibleMonths);
-    const bHasData = hasVisiblePmiData(b, visibleMonths);
+    const aHasData = hasVisiblePmiData(a, visibleColumnKeys);
+    const bHasData = hasVisiblePmiData(b, visibleColumnKeys);
 
     if (aHasData !== bHasData) {
       return aHasData ? -1 : 1;
@@ -89,22 +117,78 @@ function sortRows(
   return sorted;
 }
 
+function monthColumnKey(month: string): string {
+  return `month:${month}`;
+}
+
+function yearColumnKey(year: string): string {
+  return `year:${year}`;
+}
+
+export function getMonthColumnKey(month: string): string {
+  return monthColumnKey(month);
+}
+
+export function getYearColumnKey(year: string): string {
+  return yearColumnKey(year);
+}
+
+export function buildHeatmapColumns(data: PmiHeatmapData, range: PmiHeatmapRange): PmiHeatmapColumn[] {
+  const yearCount = range === '1y' ? 1 : range === '3y' ? 3 : 5;
+  const yearColumns = data.years.slice(-yearCount).map((year) => ({
+    key: yearColumnKey(year),
+    kind: 'year' as const,
+    value: year,
+  }));
+  const monthColumns = data.recentMonths.slice(-3).map((month) => ({
+    key: monthColumnKey(month),
+    kind: 'month' as const,
+    value: month,
+  }));
+  return [...yearColumns, ...monthColumns];
+}
+
+export function getPointForColumn(
+  row: Pick<PmiHeatmapDisplayRow, 'pointsByColumnKey'>,
+  columnKey: string
+): PmiHeatmapCellPoint | null {
+  return row.pointsByColumnKey.get(columnKey) ?? null;
+}
+
 export function filterAndSortHeatmapRows(
   data: PmiHeatmapData,
   sortBy: PmiSortOption,
-  searchValue: string
+  searchValue: string,
+  range: PmiHeatmapRange
 ): PmiHeatmapDisplayRow[] {
-  const visibleMonths = new Set(data.months.slice(-3));
+  const visibleColumnKeys = new Set(buildHeatmapColumns(data, range).map((column) => column.key));
   const mapped = data.rows.map((row) => {
-    const latestPoint = row.months[row.months.length - 1] ?? null;
+    const latestPoint = row.recentMonths[row.recentMonths.length - 1] ?? null;
+    const pointsByColumnKey = new Map<string, PmiHeatmapCellPoint>();
+    row.yearly.forEach((point) => {
+      pointsByColumnKey.set(yearColumnKey(point.year), {
+        value: point.value,
+        previousValue: point.previousValue,
+        changeVsPrevious: point.changeVsPrevious,
+      });
+    });
+    row.recentMonths.forEach((point) => {
+      pointsByColumnKey.set(monthColumnKey(point.month), {
+        value: point.value,
+        previousValue: point.previousValue,
+        changeVsPrevious: point.changeVsPrevious,
+      });
+    });
     return {
       countryCode: row.countryCode,
       countryName: row.countryName,
-      months: row.months,
+      recentMonths: row.recentMonths,
+      yearly: row.yearly,
       latestPoint,
       latestValue: latestPoint?.value ?? null,
       latestChange: latestPoint?.changeVsPrevious ?? null,
       searchText: toSearchText(row),
+      pointsByColumnKey,
     };
   });
 
@@ -113,7 +197,7 @@ export function filterAndSortHeatmapRows(
     ? mapped.filter((row) => row.searchText.includes(normalizedSearch))
     : mapped;
 
-  return sortRows(filtered, sortBy, visibleMonths);
+  return sortRows(filtered, sortBy, visibleColumnKeys);
 }
 
 export function getHeatmapTone(change: number | null): PmiHeatmapTone {
@@ -141,6 +225,10 @@ export function formatMonthLabel(month: string, locale: string = 'en-US'): strin
   }
   const date = new Date(`${year}-${monthPart}-01T00:00:00Z`);
   return date.toLocaleDateString(locale, { month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+export function formatYearLabel(year: string): string {
+  return year;
 }
 
 export function formatPmiValue(value: number | null, noDataLabel: string): string {

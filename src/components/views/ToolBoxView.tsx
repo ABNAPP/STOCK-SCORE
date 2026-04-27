@@ -15,7 +15,7 @@ export default function ToolBoxView() {
     const params = new URLSearchParams(location.search);
     params.set('tool', 'pmi');
     if (!params.get('type')) {
-      params.set('type', 'composite');
+      params.set('type', 'manufacturing');
     }
     navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
     setActiveTool('pmi');

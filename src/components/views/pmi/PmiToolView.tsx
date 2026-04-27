@@ -12,7 +12,7 @@ function parsePmiType(value: string | null): PmiType {
   if (value && PMI_TYPES.includes(value as PmiType)) {
     return value as PmiType;
   }
-  return 'composite';
+  return 'manufacturing';
 }
 
 export default function PmiToolView() {
@@ -33,7 +33,7 @@ export default function PmiToolView() {
     }
     const rawType = nextParams.get('type');
     if (!rawType) {
-      nextParams.set('type', 'composite');
+      nextParams.set('type', 'manufacturing');
       changed = true;
     } else {
       const normalizedType = parsePmiType(rawType);
