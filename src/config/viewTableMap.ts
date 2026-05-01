@@ -5,7 +5,6 @@ import type { ViewId } from '../types/navigation';
  * Single source of truth for viewId → tableId used by App, Header, and ConditionsSidebar.
  */
 export function getTableId(viewId: ViewId): string | null {
-  if (viewId === 'score-board') return 'score-board';
   if (viewId === 'ism-posture-positioning') return null;
   if (viewId === 'toolbox') return null;
   if (viewId === 'sma') return 'sma-100';
@@ -14,6 +13,7 @@ export function getTableId(viewId: ViewId): string | null {
   if (viewId === 'fundamental-pe-industry') return 'pe-industry';
   if (viewId === 'industry-threshold') return 'industry-threshold';
   if (viewId === 'stock-analyses') return null;
+  if (viewId === 'under-development') return null;
   if (viewId === 'stock-monitor') return null;
   if (viewId === 'management-monitoring') return null;
   if (viewId === 'personal-portfolio') return 'personal-portfolio';

@@ -66,12 +66,81 @@ export function createScoreBoardTransformer(
           ['Date of Update', 'date of update', 'DATE OF UPDATE', 'Date of update', 'DATE_OF_UPDATE'],
           row
         );
+        const dateOfValuationStr = getValueAllowZero(
+          [
+            'Date of Valuation',
+            'DATE OF VALUATION',
+            'date of valuation',
+            'Date_of_Valuation',
+            'DateOfValuation',
+          ],
+          row
+        );
         const priceStr = getValueAllowZero(
           ['Price', 'price', 'PRICE'],
           row
         );
         const fiveYearBetaStr = getValueAllowZero(
           ['5Y Beta', '5y beta', '5Y BETA', '5Y beta'],
+          row
+        );
+        const finalStatusStr = getValueAllowZero(
+          [
+            'Final Status',
+            'FINAL STATUS',
+            'final status',
+            'Final_Status',
+            'FinalStatus',
+          ],
+          row
+        );
+        const riskFlagStr = getValueAllowZero(
+          ['Risk Flag', 'RISK FLAG', 'risk flag', 'Risk_Flag', 'RiskFlag'],
+          row
+        );
+        const valuationScoreStr = getValueAllowZero(
+          [
+            'Valuation Score',
+            'VALUATION SCORE',
+            'valuation score',
+            'Valuation_Score',
+            'ValuationScore',
+          ],
+          row
+        );
+        const forecastConfidenceStr = getValueAllowZero(
+          [
+            'Forecast Confidence Verdict',
+            'FORECAST CONFIDENCE VERDICT',
+            'forecast confidence verdict',
+            'Forecast Confidence',
+            'FORECAST CONFIDENCE',
+            'Forecast_Confidence_Verdict',
+            'ForecastConfidenceVerdict',
+          ],
+          row
+        );
+        const sanitySummaryStr = getValueAllowZero(
+          [
+            'Sanity Summary',
+            'SANITY SUMMARY',
+            'sanity summary',
+            'Sanity_Summary',
+            'SanitySummary',
+          ],
+          row
+        );
+        const statusNoteStr = getValueAllowZero(
+          [
+            'Status Note',
+            'STATUS NOTE',
+            'status note',
+            'Short note',
+            'SHORT NOTE',
+            'short note',
+            'Status_Note',
+            'StatusNote',
+          ],
           row
         );
 
@@ -90,9 +159,18 @@ export function createScoreBoardTransformer(
         const marketCap = parseNumericValueNullable(marketCapStr);
         const price = parseNumericValueNullable(priceStr);
         const fiveYearBeta = parseNumericValueNullable(fiveYearBetaStr);
+        const valuationScore = parseNumericValueNullable(valuationScoreStr);
+        const finalStatus = isValidValue(finalStatusStr) ? finalStatusStr.trim() : null;
+        const riskFlag = isValidValue(riskFlagStr) ? riskFlagStr.trim() : null;
+        const forecastConfidenceVerdict = isValidValue(forecastConfidenceStr)
+          ? forecastConfidenceStr.trim()
+          : null;
+        const sanitySummary = isValidValue(sanitySummaryStr) ? sanitySummaryStr.trim() : null;
+        const statusNote = isValidValue(statusNoteStr) ? statusNoteStr.trim() : null;
         const dashboardDateOfUpdate = isValidValue(dashboardDateOfUpdateStr)
           ? dashboardDateOfUpdateStr.trim()
           : null;
+        const dateOfValuation = isValidValue(dateOfValuationStr) ? dateOfValuationStr.trim() : null;
         
         // Calculate P/E1 SECTOR (ISM) (procentuell skillnad)
         const pe1 = parseNumericValueNullable(pe1Str);
@@ -134,6 +212,7 @@ export function createScoreBoardTransformer(
           price,
           fiveYearBeta,
           dashboardDateOfUpdate,
+          dateOfValuation,
           mungerQualityScore: mungerQualityScore,
           valueCreation: valueCreation,
           leverageF2: leverageF2,
@@ -146,6 +225,12 @@ export function createScoreBoardTransformer(
           sma21: smaMatch ? smaMatch.sma21 : null,
           sma55: smaMatch ? smaMatch.sma55 : null,
           sma200: smaMatch ? smaMatch.sma200 : null,
+          finalStatus,
+          riskFlag,
+          valuationScore,
+          forecastConfidenceVerdict,
+          sanitySummary,
+          statusNote,
         };
       })
       .filter((data): data is ScoreBoardData => data !== null);

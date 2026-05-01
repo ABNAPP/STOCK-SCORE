@@ -2,7 +2,6 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { BenjaminGrahamData } from '../types/stock';
 import BaseTable, { ColumnDefinition, HeaderRenderProps } from './BaseTable';
 import ColumnTooltip from './ColumnTooltip';
-import ColumnFilterMenu from './ColumnFilterMenu';
 import { getColumnMetadata } from '../config/tableMetadata';
 import { FilterConfig } from './AdvancedFilters';
 import { ShareableTableState } from '../types/filters';
@@ -30,7 +29,7 @@ interface EntryExitTableProps {
 const CURRENCIES = ['USD', 'EUR', 'SEK', 'DKK', 'NOK', 'GBP', 'AUD', 'CAD', 'NZD'];
 
 const ENTRY_EXIT_COLUMNS: ColumnDefinition<BenjaminGrahamData>[] = [
-  { key: 'antal', label: 'Row', required: true, sticky: true, sortable: false },
+  { key: 'antal', label: 'NO.', required: true, sticky: true, sortable: false },
   { key: 'companyName', label: 'Company Name', required: true, sticky: true, sortable: true },
   { key: 'ticker', label: 'Ticker', required: true, sticky: false, sortable: true },
   { key: 'currency', label: 'Currency', required: false, sticky: false, sortable: true, align: 'center' },
@@ -280,78 +279,35 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
     return null;
   }, []);
 
-  // Custom header renderer with ColumnTooltip
+  // Header: tooltips + click-to-sort only (no advanced column filter menu)
   const renderHeader = useCallback((props: HeaderRenderProps<BenjaminGrahamData>) => {
-    const { 
-      column, 
-      sortConfig, 
-      handleSort, 
-      getSortIcon, 
-      getStickyPosition, 
-      openFilterMenuColumn,
-      setOpenFilterMenuColumn,
-      hasActiveColumnFilter,
-      getColumnUniqueValues,
-      columnFilters,
-      setColumnFilter,
-      handleColumnSort,
-      headerRefs,
-    } = props;
+    const { column, handleSort, getSortIcon, getStickyPosition, headerRefs } = props;
     const metadata = getColumnMetadata('benjamin-graham', column.key);
     const isSticky = column.sticky;
     const sortIcon = getSortIcon(column.key);
     const stickyClass = isSticky ? `sm:sticky sm:top-0 ${getStickyPosition(column.key)} z-50` : '';
-    const isFilterMenuOpen = openFilterMenuColumn === column.key;
-    const hasActiveFilter = hasActiveColumnFilter(column.key);
-    const headerRef = headerRefs.current[column.key] || null;
 
-    const handleFilterIconClick = (e: React.MouseEvent) => {
+    const handleSortClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (isFilterMenuOpen) {
-        setOpenFilterMenuColumn(null);
-      } else {
-        setOpenFilterMenuColumn(column.key);
-      }
+      handleSort(column.key);
     };
 
-    const handleSortClick = (e?: React.MouseEvent) => {
-      if (e) {
-        e.stopPropagation();
-      }
-      if (!isFilterMenuOpen) {
-        handleSort(column.key);
-      }
-    };
-
-    const filterIcon = (
-      <button
-        onClick={handleFilterIconClick}
-        className={`ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${
-          hasActiveFilter ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
-        }`}
-        aria-label={`Filter ${column.label}`}
-        aria-expanded={isFilterMenuOpen}
-        title="Filter och sortering"
-        type="button"
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 6h16M4 12h16M4 18h16"
-          />
-        </svg>
-      </button>
+    const labelBlock = metadata ? (
+      <ColumnTooltip metadata={metadata}>
+        <div className="flex items-center space-x-1">
+          <span>{column.label}</span>
+          {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
+        </div>
+      </ColumnTooltip>
+    ) : (
+      <div className="flex items-center space-x-1">
+        <span>{column.label}</span>
+        {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
+      </div>
     );
-    
+
     if (!column.sortable) {
-      const headerContent = (
+      return (
         <th
           ref={(el) => {
             headerRefs.current[column.key] = el;
@@ -360,46 +316,12 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
           scope="col"
           role="columnheader"
         >
-          <div className="flex items-center justify-between relative w-full">
-            <div className="flex items-center flex-1">
-              {metadata ? (
-                <ColumnTooltip metadata={metadata}>
-                  <div className="flex items-center space-x-1">
-                    <span>{column.label}</span>
-                  </div>
-                </ColumnTooltip>
-              ) : (
-                <div className="flex items-center space-x-1">
-                  <span>{column.label}</span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center relative" style={{ minWidth: '40px' }}>
-              <div className="relative">
-                {filterIcon}
-                {isFilterMenuOpen && headerRef && (
-                  <ColumnFilterMenu
-                    columnKey={column.key}
-                    columnLabel={column.label}
-                    isOpen={isFilterMenuOpen}
-                    onClose={() => setOpenFilterMenuColumn(null)}
-                    filter={columnFilters[column.key]}
-                    onFilterChange={(filter) => setColumnFilter(column.key, filter)}
-                    sortConfig={sortConfig}
-                    onSort={handleColumnSort}
-                    uniqueValues={getColumnUniqueValues(column.key)}
-                    triggerRef={{ current: headerRef }}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
+          <div className="flex items-center w-full">{labelBlock}</div>
         </th>
       );
-      return <React.Fragment key={column.key}>{headerContent}</React.Fragment>;
     }
 
-    const headerContent = (
+    return (
       <th
         ref={(el) => {
           headerRefs.current[column.key] = el;
@@ -409,45 +331,9 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         scope="col"
         role="columnheader"
       >
-        <div className="flex items-center justify-between relative w-full">
-          <div className="flex items-center flex-1" onClick={handleSortClick}>
-            {metadata ? (
-              <ColumnTooltip metadata={metadata}>
-                <div className="flex items-center space-x-1">
-                  <span>{column.label}</span>
-                  {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
-                </div>
-              </ColumnTooltip>
-            ) : (
-              <div className="flex items-center space-x-1">
-                <span>{column.label}</span>
-                {sortIcon && <span className="text-gray-600 dark:text-gray-300">{sortIcon}</span>}
-              </div>
-            )}
-          </div>
-          <div className="flex items-center relative" style={{ minWidth: '40px' }}>
-            <div className="relative">
-              {filterIcon}
-              {isFilterMenuOpen && headerRef && (
-                <ColumnFilterMenu
-                  columnKey={column.key}
-                  columnLabel={column.label}
-                  isOpen={isFilterMenuOpen}
-                  onClose={() => setOpenFilterMenuColumn(null)}
-                  filter={columnFilters[column.key]}
-                  onFilterChange={(filter) => setColumnFilter(column.key, filter)}
-                  sortConfig={sortConfig}
-                  onSort={handleColumnSort}
-                  uniqueValues={getColumnUniqueValues(column.key)}
-                  triggerRef={{ current: headerRef }}
-                />
-              )}
-            </div>
-          </div>
-        </div>
+        <div className="flex items-center w-full">{labelBlock}</div>
       </th>
     );
-    return <React.Fragment key={column.key}>{headerContent}</React.Fragment>;
   }, []);
 
   // Render cell content
@@ -638,7 +524,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         <div className="p-4 flex items-start justify-between gap-4">
           <div className="flex-1 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Antal</span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">NO.</span>
               <span className="text-sm font-medium text-black dark:text-white">{globalIndex + 1}</span>
             </div>
             <div className="flex items-center justify-between">
@@ -788,7 +674,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
   }, [hasIvFcf]);
 
   return (
-    <>
+    <div className="flex flex-col flex-1 min-h-0 h-full">
       <BaseTable<BenjaminGrahamData>
         data={data}
         loading={loading}
@@ -799,6 +685,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         renderCell={renderCell}
         renderHeader={renderHeader}
         renderMobileCard={renderMobileCard}
+        enableAdvancedColumnFilters={false}
         enableVirtualScroll={true}
         virtualScrollRowHeight={60}
         virtualScrollOverscan={10}
@@ -894,7 +781,7 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 

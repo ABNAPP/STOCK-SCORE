@@ -10,7 +10,7 @@ import type { ShareableTableState } from '../types/filters';
 const TABLE_ID = 'sma-100';
 
 const SMA_COLUMNS: ColumnDefinition<SMAData>[] = [
-  { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
+  { key: 'antal', label: 'NO.', required: true, sticky: true, sortable: false },
   { key: 'companyName', label: 'Company Name', required: true, sticky: true, sortable: true },
   { key: 'ticker', label: 'Ticker', required: true, sticky: true, sortable: true },
   { key: 'sma9', label: 'SMA(9)', defaultVisible: true, sortable: true, align: 'center' },
@@ -104,7 +104,7 @@ export default function SMATable({ data, loading, error, onRetry, initialTableSt
             <div className="flex-1 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                  Antal
+                  NO.
                 </span>
                 <span className="text-sm font-medium text-black dark:text-white">{globalIndex + 1}</span>
               </div>

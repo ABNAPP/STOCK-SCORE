@@ -224,6 +224,16 @@ function transformScoreBoard(
         ['Date of Update', 'date of update', 'DATE OF UPDATE', 'Date of update', 'DATE_OF_UPDATE'],
         row
       );
+      const dateOfValuationStr = getValueAllowZero(
+        [
+          'Date of Valuation',
+          'DATE OF VALUATION',
+          'date of valuation',
+          'Date_of_Valuation',
+          'DateOfValuation',
+        ],
+        row
+      );
       if (!isValidValue(companyName) || !isValidValue(ticker)) return null;
       const cashSdebtStr = getValueAllowZero(['Cash/SDebt', 'Cash/SDebt', 'cash/sdebt', 'CASH/SDEBT'], row);
       const isDiv0 =
@@ -251,12 +261,14 @@ function transformScoreBoard(
       const dashboardDateOfUpdate = isValidValue(dashboardDateOfUpdateStr)
         ? dashboardDateOfUpdateStr.trim()
         : null;
+      const dateOfValuation = isValidValue(dateOfValuationStr) ? dateOfValuationStr.trim() : null;
       return {
         companyName,
         ticker,
         industry: industryStr || '',
         marketCap,
         dashboardDateOfUpdate,
+        dateOfValuation,
         mungerQualityScore: parseNum(getValueAllowZero(['Munger Quality Score', 'Munger Quality Score', 'munger quality score', 'MUNGER QUALITY SCORE'], row)),
         valueCreation: parsePct(getValueAllowZero(['VALUE CREATION', 'Value Creation', 'value creation', 'VALUE_CREATION'], row)),
         leverageF2: parseNum(getValueAllowZero(['Leverage F2', 'Leverage F2', 'leverage f2', 'LEVERAGE F2'], row)),

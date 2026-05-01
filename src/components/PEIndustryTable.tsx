@@ -20,7 +20,7 @@ export default function PEIndustryTable({ data, loading, error, initialTableStat
 
   const peIndustryColumns = useMemo(
     (): ColumnDefinition<PEIndustryData>[] => [
-      { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
+      { key: 'antal', label: 'NO.', required: true, sticky: true, sortable: false },
       { key: 'industry', label: t('viewUi.sectorIsmColumn'), required: true, sticky: true, sortable: true },
       { key: 'pe', label: t('navigation.peIndustry'), defaultVisible: true, sortable: true, align: 'center' },
       { key: 'pe1', label: t('navigation.pe1Industry'), defaultVisible: true, sortable: true, align: 'center' },
@@ -282,7 +282,7 @@ export default function PEIndustryTable({ data, loading, error, initialTableStat
         <div className="p-4 flex items-start justify-between gap-4">
           <div className="flex-1 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Antal</span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">NO.</span>
               <span className="text-sm font-medium text-black dark:text-white">{globalIndex + 1}</span>
             </div>
             <div className="flex items-center justify-between">

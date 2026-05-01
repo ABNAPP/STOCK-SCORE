@@ -18,7 +18,7 @@ export interface PortfolioTableItem extends PortfolioItem {
 }
 
 export const PORTFOLIO_COLUMNS: ColumnDefinition<PortfolioTableItem>[] = [
-  { key: 'rowNumber', label: 'Antal', required: true, sticky: true, sortable: false },
+  { key: 'rowNumber', label: 'NO.', required: true, sticky: true, sortable: false },
   { key: 'companyName', label: 'Company Name', required: true, sticky: true, sortable: true },
   { key: 'ticker', label: 'Ticker', required: true, sticky: true, sortable: true },
   { key: 'currency', label: 'Currency', defaultVisible: false, sticky: true, sortable: true, align: 'center' },

@@ -16,6 +16,7 @@ import {
 } from '../utils/colorThresholds/entryExitCellColors';
 import type { MonitoringTableConfig } from '../types/managementMonitoring';
 import { useCentralDataServiceStatus } from '../hooks/useCentralDataServiceStatus';
+import { useUserRole } from '../hooks/useUserRole';
 import type { MonitoringStatusBadge } from '../types/managementMonitoring';
 
 function formatStatusTimestamp(value: number | null): string {
@@ -53,6 +54,7 @@ function deriveOverallStatus(
 
 function ManagementMonitoringPageInner() {
   const navigate = useNavigate();
+  const { canView } = useUserRole();
   const config = managementMonitoringConfig;
   const { data: scoreData, loading: scoreLoading } = useScoreBoardData();
   const { data: benjaminGrahamData } = useBenjaminGrahamData();
@@ -141,7 +143,21 @@ function ManagementMonitoringPageInner() {
   };
 
   const cards = useMemo(() => {
-    return config.cards.map((card) => {
+    return config.cards
+      .filter((card) => {
+        if (card.id === 'entry-exit') {
+          return canView('entry-exit-benjamin-graham');
+        }
+        return true;
+      })
+      .map((card) => {
+      if (card.id === 'entry-exit') {
+        return {
+          ...card,
+          interactive: true,
+          onClick: () => navigate('/entry-exit-benjamin-graham'),
+        };
+      }
       if (card.id !== 'central-data-service') {
         return card;
       }
@@ -202,7 +218,7 @@ function ManagementMonitoringPageInner() {
         },
       };
     });
-  }, [config.cards, centralStatus, navigate]);
+  }, [config.cards, centralStatus, navigate, canView]);
 
   return (
     <div

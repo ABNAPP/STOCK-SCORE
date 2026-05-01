@@ -409,6 +409,10 @@ export function useScoreBoardData() {
           const delta = await getDeltaCacheEntry<ScoreBoardData[]>(CACHE_KEY);
           currentVersionRef.current = delta?.version ?? 0;
           setLoading(false);
+          // viewData / appCache may predate new ScoreBoard columns; refresh from DashBoard snapshot in background
+          if (typeof navigator !== 'undefined' && navigator.onLine) {
+            void loadData(false, true);
+          }
           return;
         }
       } catch (err) {

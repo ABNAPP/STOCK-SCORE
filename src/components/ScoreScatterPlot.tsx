@@ -3,13 +3,16 @@ import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, Tooltip, Cart
 import { Card, CardContent } from './ui/Card';
 import { useTheme } from '../contexts/ThemeContext';
 import { ScoreData } from './views/ScoreView';
-import { IndustryThresholdData, BenjaminGrahamData } from '../types/stock';
+import { BenjaminGrahamData } from '../types/stock';
 import { EntryExitValues } from '../contexts/EntryExitContext';
-import { calculateDetailedScoreBreakdown } from '../utils/calculateScoreDetailed';
+import {
+  calculateDetailedScoreBreakdown,
+  FUNDAMENTAL_MAX_SCORE_POINTS,
+  TECHNICAL_MAX_SCORE_POINTS,
+} from '../utils/calculateScoreDetailed';
 
 interface ScoreScatterPlotProps {
   data: ScoreData[];
-  thresholdData?: IndustryThresholdData[];
   benjaminGrahamData?: BenjaminGrahamData[];
   entryExitValues?: Map<string, EntryExitValues>;
 }
@@ -24,7 +27,6 @@ interface ScatterDataPoint {
 
 export default function ScoreScatterPlot({ 
   data, 
-  thresholdData = [], 
   benjaminGrahamData = [], 
   entryExitValues = new Map() 
 }: ScoreScatterPlotProps) {
@@ -45,7 +47,6 @@ export default function ScoreScatterPlot({
       // Calculate breakdown to get fundamental and technical scores
       const breakdown = calculateDetailedScoreBreakdown(
         item.scoreBoardData,
-        thresholdData,
         benjaminGrahamData,
         entryExitValues
       );
@@ -77,7 +78,7 @@ export default function ScoreScatterPlot({
     });
 
     return { greenPoints: green, bluePoints: blue, grayPoints: gray };
-  }, [data, thresholdData, benjaminGrahamData, entryExitValues]);
+  }, [data, benjaminGrahamData, entryExitValues]);
 
   // Custom tooltip
   const ScatterTooltip = ({ active, payload }: any) => {
@@ -118,6 +119,8 @@ export default function ScoreScatterPlot({
   const blueColor = isDarkMode ? '#60a5fa' : '#1d4ed8'; // blue-400 / blue-700
   const greenColor = isDarkMode ? '#86efac' : '#15803d'; // green-300 / green-700
 
+  const fundamentalAxisMax = Math.max(FUNDAMENTAL_MAX_SCORE_POINTS, 1);
+
   return (
     <Card variant="elevated" padding="md">
       <CardContent>
@@ -137,7 +140,7 @@ export default function ScoreScatterPlot({
               dataKey="x"
               name="Fundamental poäng"
               label={{ value: 'Fundamental poäng', position: 'insideBottom', offset: -5 }}
-              domain={[0, 50]}
+              domain={[0, fundamentalAxisMax]}
               tick={{ fill: isDarkMode ? '#e5e7eb' : '#374151', fontSize: 11 }}
             />
             <YAxis
@@ -145,7 +148,7 @@ export default function ScoreScatterPlot({
               dataKey="y"
               name="Tekniska poäng"
               label={{ value: 'Tekniska poäng', angle: -90, position: 'insideLeft' }}
-              domain={[0, 50]}
+              domain={[0, TECHNICAL_MAX_SCORE_POINTS]}
               tick={{ fill: isDarkMode ? '#e5e7eb' : '#374151', fontSize: 11 }}
             />
             <Tooltip content={<ScatterTooltip />} />

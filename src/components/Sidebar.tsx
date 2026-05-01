@@ -6,10 +6,8 @@ import { useUserRole } from '../hooks/useUserRole';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   TrophyIcon, 
-  ChartBarIcon, 
-  CursorArrowRaysIcon, 
+  ChartBarIcon,
   ChartPieIcon,
-  BuildingOfficeIcon,
   UserGroupIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -40,9 +38,9 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
     collapsible: false,
   },
   {
-    id: 'score-board',
-    label: t('navigation.scoreBoard'),
-    items: [{ id: 'score-board', label: t('navigation.scoreBoard') }],
+    id: 'under-development',
+    label: t('navigation.underDevelopment'),
+    items: [{ id: 'under-development', label: t('navigation.underDevelopment') }],
     collapsible: false,
   },
   {
@@ -58,21 +56,9 @@ const getAllNavigationSections = (t: (key: string) => string): NavigationSection
     collapsible: false,
   },
   {
-    id: 'entry-exit-benjamin-graham',
-    label: t('navigation.benjaminGraham'),
-    items: [{ id: 'entry-exit-benjamin-graham', label: t('navigation.benjaminGraham') }],
-    collapsible: false,
-  },
-  {
     id: 'fundamental-pe-industry',
     label: t('navigation.peIndustry'),
     items: [{ id: 'fundamental-pe-industry', label: t('navigation.peIndustry') }],
-    collapsible: false,
-  },
-  {
-    id: 'industry-threshold',
-    label: t('navigation.industryThreshold'),
-    items: [{ id: 'industry-threshold', label: t('navigation.industryThreshold') }],
     collapsible: false,
   },
   {
@@ -106,22 +92,18 @@ const getViewIcon = (viewId: ViewId) => {
   switch (viewId) {
     case 'score':
       return TrophyIcon;
-    case 'score-board':
-      return ChartBarIcon;
     case 'ism-posture-positioning':
       return PresentationChartLineIcon;
     case 'toolbox':
       return WrenchScrewdriverIcon;
     case 'sma':
       return ArrowTrendingUpIcon;
-    case 'entry-exit-benjamin-graham':
-      return CursorArrowRaysIcon;
     case 'fundamental-pe-industry':
       return ChartPieIcon;
-    case 'industry-threshold':
-      return BuildingOfficeIcon;
     case 'stock-analyses':
       return DocumentTextIcon;
+    case 'under-development':
+      return ChartBarIcon;
     case 'stock-monitor':
       return ViewColumnsIcon;
     case 'management-monitoring':

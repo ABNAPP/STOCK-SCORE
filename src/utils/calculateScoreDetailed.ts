@@ -1,16 +1,10 @@
-import { ScoreBoardData, IndustryThresholdData, BenjaminGrahamData } from '../types/stock';
+import { ScoreBoardData, BenjaminGrahamData } from '../types/stock';
 import { EntryExitValuesForScore } from '../types/score';
 import {
   COLOR_FACTOR_GREEN,
   COLOR_FACTOR_ORANGE_BLUE,
 } from '../config/constants';
 import {
-  getMungerQualityScoreColor,
-  getValueCreationColor,
-  getLeverageF2Color,
-  getCashSdebtColor,
-  getCurrentRatioColor,
-  getPEPercentageColor,
   isTheoEntryGreen,
 } from './colorThresholds';
 import type { ColorType } from './colorThresholds';
@@ -38,29 +32,11 @@ interface Metric {
 }
 
 const METRICS: Metric[] = [
-  // Fundamental (50p)
-  { name: 'VALUE CREATION', weight: 9, method: '3Band' },
-  { name: 'Munger Quality Score', weight: 12, method: '3Band' },
-  { name: 'LEVERAGE F2', weight: 7, method: '3Band' },
-  { name: 'Cash/SDebt', weight: 7, method: '3Band' },
-  { name: 'Current Ratio', weight: 5, method: '3Band' },
-  { name: 'P/E1 SECTOR (ISM)', weight: 5, method: '3Band' },
-  { name: 'P/E2 SECTOR (ISM)', weight: 5, method: '3Band' },
-  // Technical (50p)
+  // Technical (45p) — endast THEOENTRY i Score-motorn (P/E används inte här)
   { name: 'THEOENTRY', weight: 45, method: 'GreenOnly' },
-  { name: 'SMA(9)', weight: 2.5, method: 'GreenOnly' },
-  { name: 'SMA(21)', weight: 2.5, method: 'GreenOnly' },
 ];
 
-const FUNDAMENTAL_METRIC_NAMES = new Set<string>([
-  'VALUE CREATION',
-  'Munger Quality Score',
-  'LEVERAGE F2',
-  'Cash/SDebt',
-  'Current Ratio',
-  'P/E1 SECTOR (ISM)',
-  'P/E2 SECTOR (ISM)',
-]);
+const FUNDAMENTAL_METRIC_NAMES = new Set<string>();
 
 export const FUNDAMENTAL_MAX_SCORE_POINTS = METRICS.filter((m) =>
   FUNDAMENTAL_METRIC_NAMES.has(m.name)
@@ -87,7 +63,7 @@ function getPriceFromBenjaminGraham(
 
 // Get EntryExitValuesForScore
 function getEntryExitValue(
-  ticker: string,
+  _ticker: string,
   companyName: string,
   entryExitValues: Map<string, EntryExitValuesForScore>
 ): EntryExitValuesForScore | undefined {
@@ -100,7 +76,7 @@ function getEntryExitValue(
  * Represents how a single metric contributes to the overall score.
  */
 export interface ScoreBreakdownItem {
-  /** Metric name (e.g., 'VALUE CREATION', 'TheoEntry') */
+  /** Metric name (t.ex. 'THEOENTRY') */
   metric: string;
   /** Weight of this metric in the total score calculation */
   weight: number;
@@ -133,52 +109,9 @@ export interface ScoreBreakdown {
 
 /**
  * Calculates detailed score breakdown showing individual metric contributions
- * 
- * This function provides transparency into how the score was calculated by
- * breaking down each metric's contribution. Useful for:
- * - Understanding which metrics are driving the score
- * - Identifying areas for improvement
- * - Debugging score calculations
- * - Displaying score breakdown in UI tooltips
- * 
- * **Differences from calculateScore():**
- * - Returns detailed breakdown instead of just final score
- * - Separates fundamental vs technical totals
- * - Uses BLUE instead of ORANGE for consistency with detailed view
- * - Provides per-metric point contributions
- * 
- * **Score Breakdown Structure:**
- * - Each metric shows: name, weight, color, factor, points, category
- * - Fundamental total: Sum of all fundamental metric points
- * - Technical total: Sum of all technical metric points
- * - Total score: Sum of both categories (0-100)
- * 
- * @param scoreBoardData - Core stock data with fundamental and technical metrics
- * @param thresholdData - Industry-specific threshold values for metric classification
- * @param benjaminGrahamData - Price data for technical metric calculations
- * @param entryExitValues - Entry/exit values for TheoEntry calculation
- * @returns Detailed score breakdown with per-metric contributions
- * 
- * @example
- * ```typescript
- * const breakdown = calculateDetailedScoreBreakdown(
- *   scoreBoardData,
- *   thresholdData,
- *   benjaminGrahamData,
- *   entryExitValues
- * );
- * 
- * console.log(`Total Score: ${breakdown.totalScore}`);
- * console.log(`Fundamental: ${breakdown.fundamentalTotal}`);
- * console.log(`Technical: ${breakdown.technicalTotal}`);
- * breakdown.items.forEach(item => {
- *   console.log(`${item.metric}: ${item.points} points (${item.color})`);
- * });
- * ```
  */
 export function calculateDetailedScoreBreakdown(
   scoreBoardData: ScoreBoardData,
-  thresholdData: IndustryThresholdData[],
   benjaminGrahamData: BenjaminGrahamData[],
   entryExitValues: Map<string, EntryExitValuesForScore>
 ): ScoreBreakdown {
@@ -205,40 +138,8 @@ export function calculateDetailedScoreBreakdown(
     let color: ColorType = 'BLANK';
 
     switch (metric.name) {
-      case 'VALUE CREATION':
-        color = getValueCreationColor(scoreBoardData.valueCreation);
-        break;
-      case 'Munger Quality Score':
-        color = getMungerQualityScoreColor(scoreBoardData.mungerQualityScore);
-        break;
-      case 'LEVERAGE F2':
-        color = getLeverageF2Color(scoreBoardData.leverageF2, scoreBoardData.industry, thresholdData);
-        break;
-      case 'Cash/SDebt':
-        color = getCashSdebtColor(
-          scoreBoardData.cashSdebt,
-          scoreBoardData.isCashSdebtDivZero,
-          scoreBoardData.industry,
-          thresholdData
-        );
-        break;
-      case 'Current Ratio':
-        color = getCurrentRatioColor(scoreBoardData.currentRatio, scoreBoardData.industry, thresholdData);
-        break;
-      case 'P/E1 SECTOR (ISM)':
-        color = getPEPercentageColor(scoreBoardData.pe1Industry);
-        break;
-      case 'P/E2 SECTOR (ISM)':
-        color = getPEPercentageColor(scoreBoardData.pe2Industry);
-        break;
       case 'THEOENTRY':
         color = isTheoEntryGreen(entryExitValue, price) ? 'GREEN' : 'BLANK';
-        break;
-      case 'SMA(9)':
-        color = scoreBoardData.sma9Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma9Color === 'RED' ? 'RED' : 'BLANK';
-        break;
-      case 'SMA(21)':
-        color = scoreBoardData.sma21Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma21Color === 'RED' ? 'RED' : 'BLANK';
         break;
     }
 
@@ -285,39 +186,9 @@ export function calculateDetailedScoreBreakdown(
 
 /**
  * Calculates detailed score (0-100) using the detailed scoring algorithm
- * 
- * This function uses the same algorithm as calculateScore() but with
- * different metric weights optimized for the detailed view. The main
- * differences are:
- * 
- * - Same metric weights as calculateScore (50p fundamental + 50p technical, total 100)
- * - Uses BLUE color classification instead of ORANGE
- * 
- * **When to use:**
- * - For detailed score view that matches the breakdown display
- * - When consistency with calculateDetailedScoreBreakdown() is required
- * - For alternative scoring perspective with balanced fundamental/technical weights
- * 
- * @param scoreBoardData - Core stock data with fundamental and technical metrics
- * @param thresholdData - Industry-specific threshold values for metric classification
- * @param benjaminGrahamData - Price data for technical metric calculations
- * @param entryExitValues - Entry/exit values for TheoEntry calculation
- * @returns Stock score between 0.0 and 100.0 (rounded to 1 decimal)
- * 
- * @example
- * ```typescript
- * const detailedScore = calculateDetailedScore(
- *   scoreBoardData,
- *   thresholdData,
- *   benjaminGrahamData,
- *   entryExitValues
- * );
- * // Returns: 78.5 (example score using detailed algorithm)
- * ```
  */
 export function calculateDetailedScore(
   scoreBoardData: ScoreBoardData,
-  thresholdData: IndustryThresholdData[],
   benjaminGrahamData: BenjaminGrahamData[],
   entryExitValues: Map<string, EntryExitValuesForScore>
 ): number {
@@ -340,40 +211,8 @@ export function calculateDetailedScore(
     let color: ColorType = 'BLANK';
 
     switch (metric.name) {
-      case 'VALUE CREATION':
-        color = getValueCreationColor(scoreBoardData.valueCreation);
-        break;
-      case 'Munger Quality Score':
-        color = getMungerQualityScoreColor(scoreBoardData.mungerQualityScore);
-        break;
-      case 'LEVERAGE F2':
-        color = getLeverageF2Color(scoreBoardData.leverageF2, scoreBoardData.industry, thresholdData);
-        break;
-      case 'Cash/SDebt':
-        color = getCashSdebtColor(
-          scoreBoardData.cashSdebt,
-          scoreBoardData.isCashSdebtDivZero,
-          scoreBoardData.industry,
-          thresholdData
-        );
-        break;
-      case 'Current Ratio':
-        color = getCurrentRatioColor(scoreBoardData.currentRatio, scoreBoardData.industry, thresholdData);
-        break;
-      case 'P/E1 SECTOR (ISM)':
-        color = getPEPercentageColor(scoreBoardData.pe1Industry);
-        break;
-      case 'P/E2 SECTOR (ISM)':
-        color = getPEPercentageColor(scoreBoardData.pe2Industry);
-        break;
       case 'THEOENTRY':
         color = isTheoEntryGreen(entryExitValue, price) ? 'GREEN' : 'BLANK';
-        break;
-      case 'SMA(9)':
-        color = scoreBoardData.sma9Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma9Color === 'RED' ? 'RED' : 'BLANK';
-        break;
-      case 'SMA(21)':
-        color = scoreBoardData.sma21Color === 'GREEN' ? 'GREEN' : scoreBoardData.sma21Color === 'RED' ? 'RED' : 'BLANK';
         break;
     }
 

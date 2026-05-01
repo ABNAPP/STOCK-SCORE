@@ -3,13 +3,12 @@ import { Card, CardContent } from './ui/Card';
 import { ScoreData } from './views/ScoreView';
 import { useTheme } from '../contexts/ThemeContext';
 import ScoreScatterPlot from './ScoreScatterPlot';
-import { IndustryThresholdData, BenjaminGrahamData } from '../types/stock';
+import { BenjaminGrahamData } from '../types/stock';
 import { EntryExitValues } from '../contexts/EntryExitContext';
 
 interface ScoreDashboardProps {
   data: ScoreData[];
   loading?: boolean;
-  thresholdData?: IndustryThresholdData[];
   benjaminGrahamData?: BenjaminGrahamData[];
   entryExitValues?: Map<string, EntryExitValues>;
 }
@@ -29,7 +28,6 @@ interface HeatMapDataItem {
 export default function ScoreDashboard({ 
   data, 
   loading = false,
-  thresholdData = [],
   benjaminGrahamData = [],
   entryExitValues = new Map()
 }: ScoreDashboardProps) {
@@ -196,7 +194,6 @@ export default function ScoreDashboard({
         {/* Scatter Plot */}
         <ScoreScatterPlot 
           data={data}
-          thresholdData={thresholdData}
           benjaminGrahamData={benjaminGrahamData}
           entryExitValues={entryExitValues}
         />

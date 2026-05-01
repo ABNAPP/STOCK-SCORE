@@ -1,6 +1,5 @@
 import type {
   MonitoringCardConfig,
-  CardTheme,
   MonitoringStatusBadge,
 } from '../../types/managementMonitoring';
 import {
@@ -11,37 +10,8 @@ import {
   DocumentTextIcon,
   ChartBarIcon,
   ArrowPathIcon,
+  CursorArrowRaysIcon,
 } from '@heroicons/react/24/outline';
-
-const themeClasses: Record<
-  CardTheme,
-  { bg: string; border: string; numberBg: string; numberText: string }
-> = {
-  blue: {
-    bg: 'bg-blue-50 dark:bg-blue-950/30',
-    border: 'border-blue-200 dark:border-blue-800',
-    numberBg: 'bg-blue-200 dark:bg-blue-800',
-    numberText: 'text-blue-900 dark:text-blue-100',
-  },
-  red: {
-    bg: 'bg-red-50 dark:bg-red-950/30',
-    border: 'border-red-200 dark:border-red-800',
-    numberBg: 'bg-red-200 dark:bg-red-800',
-    numberText: 'text-red-900 dark:text-red-100',
-  },
-  amber: {
-    bg: 'bg-amber-50 dark:bg-amber-950/30',
-    border: 'border-amber-200 dark:border-amber-800',
-    numberBg: 'bg-amber-200 dark:bg-amber-800',
-    numberText: 'text-amber-900 dark:text-amber-100',
-  },
-  green: {
-    bg: 'bg-green-50 dark:bg-green-950/30',
-    border: 'border-green-200 dark:border-green-800',
-    numberBg: 'bg-green-200 dark:bg-green-800',
-    numberText: 'text-green-900 dark:text-green-100',
-  },
-};
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FlagIcon,
@@ -51,24 +21,37 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   DocumentTextIcon,
   ChartBarIcon,
   ArrowPathIcon,
+  CursorArrowRaysIcon,
 };
 
 interface MonitoringCardProps extends MonitoringCardConfig {
   className?: string;
 }
 
+/** Neutral shell for all cards — theme prop from config is ignored visually */
+const cardShell =
+  'rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 shadow-sm';
+
+const interactiveShell =
+  'cursor-pointer transition-[box-shadow,border-color] hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-gray-900';
+
 const statusBadgeClasses: Record<MonitoringStatusBadge, string> = {
-  ready: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200',
-  loading: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
-  stale: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200',
-  error: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
-  idle: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  ready:
+    'bg-green-50 text-green-800 border border-green-200/70 dark:bg-green-950/30 dark:text-green-300 dark:border-green-800/50',
+  loading:
+    'bg-amber-50 text-amber-900 border border-amber-200/70 dark:bg-amber-950/25 dark:text-amber-200 dark:border-amber-800/45',
+  stale:
+    'bg-yellow-50 text-yellow-900 border border-yellow-200/70 dark:bg-yellow-950/25 dark:text-yellow-200 dark:border-yellow-800/45',
+  error:
+    'bg-red-50 text-red-800 border border-red-200/70 dark:bg-red-950/35 dark:text-red-300 dark:border-red-800/50',
+  idle:
+    'bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800/90 dark:text-gray-300 dark:border-gray-600',
 };
 
 function StatusBadge({ label }: { label: MonitoringStatusBadge }) {
   return (
     <span
-      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${statusBadgeClasses[label]}`}
+      className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusBadgeClasses[label]}`}
     >
       {label}
     </span>
@@ -78,7 +61,7 @@ function StatusBadge({ label }: { label: MonitoringStatusBadge }) {
 export default function MonitoringCard({
   number,
   title,
-  theme,
+  theme: _theme,
   icon,
   onClick,
   interactive,
@@ -87,12 +70,13 @@ export default function MonitoringCard({
   statusCard,
   className = '',
 }: MonitoringCardProps) {
-  const classes = themeClasses[theme];
   const Icon = icon ? iconMap[icon] : null;
+  const isCompactNav = Boolean(interactive && description && !statusCard);
+  const padding = statusCard ? 'p-4 sm:p-5' : isCompactNav ? 'p-4' : 'p-4 sm:p-5';
 
   return (
     <article
-      className={`rounded-xl border-2 ${classes.bg} ${classes.border} p-4 sm:p-5 h-full flex flex-col ${interactive ? 'cursor-pointer hover:shadow-sm transition-shadow' : ''} ${className}`}
+      className={`${cardShell} ${padding} flex flex-col ${interactive ? interactiveShell : ''} ${className}`}
       aria-labelledby={`card-title-${number}`}
       onClick={onClick}
       role={interactive ? 'button' : undefined}
@@ -110,7 +94,7 @@ export default function MonitoringCard({
     >
       <div className="flex items-center gap-3 flex-shrink-0">
         <span
-          className={`flex-shrink-0 w-8 h-8 rounded-full ${classes.numberBg} ${classes.numberText} flex items-center justify-center font-bold text-sm`}
+          className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 flex items-center justify-center text-sm font-semibold tabular-nums"
           aria-hidden
         >
           {number}
@@ -118,7 +102,7 @@ export default function MonitoringCard({
         <div className="min-w-0 flex-1 flex items-center gap-2">
           <h2
             id={`card-title-${number}`}
-            className="text-lg font-semibold text-gray-900 dark:text-white"
+            className={`font-semibold text-gray-900 dark:text-white ${isCompactNav ? 'text-base' : 'text-lg'}`}
           >
             {title}
           </h2>
@@ -127,12 +111,12 @@ export default function MonitoringCard({
           )}
         </div>
       </div>
-      <div className="mt-3 flex-1">
+      <div className="mt-3">
         {statusCard ? (
           <div className="space-y-3">
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-900/20 p-3">
+            <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/40 p-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                   {statusCard.summaryTitle || 'Summary'}
                 </p>
                 <StatusBadge label={statusCard.overallStatus} />
@@ -157,9 +141,9 @@ export default function MonitoringCard({
             {statusCard.sections.map((section) => (
               <div
                 key={section.title}
-                className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white/40 dark:bg-gray-900/10 p-3"
+                className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/25 p-3"
               >
-                <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide mb-2">
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">
                   {section.title}
                 </p>
                 <div className="space-y-1.5">
@@ -180,7 +164,9 @@ export default function MonitoringCard({
             ))}
           </ul>
         ) : description ? (
-          <p className="text-sm text-gray-700 dark:text-gray-300">{description}</p>
+          <p className={`text-gray-600 dark:text-gray-300 ${isCompactNav ? 'text-sm leading-snug' : 'text-sm'}`}>
+            {description}
+          </p>
         ) : null}
       </div>
     </article>

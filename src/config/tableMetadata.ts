@@ -281,137 +281,17 @@ export const tableMetadata: TableMetadata[] = [
       },
       {
         columnKey: 'score',
-        dataSource: 'Beräknat från Score Board data med viktat poängsystem. SMA-data från tabellen SMA.',
-        formula: 'Summa av (vikt × färgfaktor) för alla metrics, där färgfaktor = 1.0 (grön), 0.7 (blå), 0.0 (röd/tom/N/A). Total max 100p.',
+        dataSource: 'Beräknat utifrån THEOENTRY (Entry/Exit + pris). P/E-ingår inte i Score-poängen.',
+        formula: '(Erhållna råpoäng ÷ 45) × 100, avrundat till en decimal (0–100). TheoEntry är GreenOnly (full vikt eller 0).',
         conditions: [
-          'Poängsystem från 0-100 (total max 100p)',
-          'Beräknas baserat på färgkodning i SCORE BOARD',
-          'Fundamental metrics (50p totalt):',
-          '  - VALUE CREATION (9), Munger Quality Score (12), LEVERAGE F2 (7), Cash/SDebt (7), Current Ratio (5), P/E1 SECTOR (ISM) (5), P/E2 SECTOR (ISM) (5)',
-          'Technical metrics (50p totalt):',
-          '  - TheoEntry (45), SMA(9) (2.5), SMA(21) (2.5)',
-          'Färgmarkering:',
+          'Poäng 0–100 efter normalisering (45 råvikter för THEOENTRY)',
+          'P/E SECTOR-analys visas i dedikerad P/E-flik; ingår inte i Score.',
+          'OBS: Övrigt rådata (t.ex. SMA, fundamentalkolumner på Score Board) ingår inte i Score-poängen.',
+          'Färgmarkering för score-kolumn:',
           '  - GRÖN om score >= 70',
-          '  - BLÅ om score >= 45',
-          '  - GRÅ om score < 45',
-          'Hovra över score-värde för detaljerad breakdown'
-        ]
-      }
-    ]
-  },
-  {
-    tableId: 'score-board',
-    columns: [
-      {
-        columnKey: 'companyName',
-        dataSource: 'Dashboard sheet, kolumn "Company Name"',
-        conditions: [
-          'Filtrera bort rader där Company Name är N/A eller tomt',
-          'Filtrera bort rader där Ticker är N/A (Dashboard regel)'
-        ]
-      },
-      {
-        columnKey: 'ticker',
-        dataSource: 'Dashboard sheet, kolumn "Ticker"',
-        conditions: [
-          'Filtrera bort rader där Ticker är N/A (Dashboard regel)',
-          'Filtrera bort rader där Company Name är N/A'
-        ]
-      },
-      {
-        columnKey: 'mungerQualityScore',
-        dataSource: 'Dashboard sheet, kolumn "Munger Quality Score"',
-        conditions: [
-          'Visa N/A om värdet är null eller ogiltigt',
-          'Visa faktiska 0-värden som "0"',
-          'Röd färg om värdet är mindre än 40',
-          'Blå färg om värdet är mellan 40 och 60',
-          'Grön färg om värdet är över 60',
-          'Filtrera bort rader där Company Name eller Ticker är N/A'
-        ]
-      },
-      {
-        columnKey: 'valueCreation',
-        dataSource: 'Dashboard sheet, kolumn "VALUE CREATION"',
-        formula: 'Value Creation är genomsnitt för senaste 5 årets ROC - WACC',
-        conditions: [
-          'Visa N/A om värdet är null eller ogiltigt',
-          'Visa faktiska 0-värden som "0.00%"',
-          'Formateras som procent med %-tecken och två decimaler',
-          'Röd färg om värdet är mindre än 0',
-          'Grön färg om värdet är >= 0',
-          'Filtrera bort rader där Company Name eller Ticker är N/A'
-        ]
-      },
-      {
-        columnKey: 'currentRatio',
-        dataSource: 'Dashboard sheet, kolumn "Current Ratio"',
-        conditions: [
-          'Visa N/A om värdet är null eller ogiltigt',
-          'Visa faktiska 0-värden som "0.00"',
-          'Formateras med två decimaler',
-          'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Sector (ISM) threshold:',
-          '  - RÖD om Current Ratio < Current Ratio MIN (från Sector (ISM) threshold baserat på sektor (ISM))',
-          '  - GRÖN om Current Ratio MIN ≤ Current Ratio < Current Ratio MAX (från Sector (ISM) threshold baserat på sektor (ISM))',
-          '  - BLÅ om Current Ratio ≥ Current Ratio MAX (från Sector (ISM) threshold baserat på sektor (ISM))',
-          '  - Ingen färg om sektor (ISM) inte hittas eller värdet är null/N/A'
-        ]
-      },
-      {
-        columnKey: 'cashSdebt',
-        dataSource: 'Dashboard sheet, kolumn "Cash/SDebt"',
-        conditions: [
-          'Visa N/A om värdet är null eller ogiltigt',
-          'Visa faktiska 0-värden som "0.00"',
-          'Formateras med två decimaler',
-          'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Sector (ISM) threshold:',
-          '  - GRÖN om division-by-zero (#DIV/0!)',
-          '  - RÖD om Cash/SDebt ≤ Cash/SDebt MIN (från Sector (ISM) threshold baserat på sektor (ISM))',
-          '  - GRÖN om Cash/SDebt ≥ Cash/SDebt MAX (från Sector (ISM) threshold baserat på sektor (ISM))',
-          '  - BLÅ om Cash/SDebt MIN < Cash/SDebt < Cash/SDebt MAX (från Sector (ISM) threshold baserat på sektor (ISM))',
-          '  - Ingen färg om sektor (ISM) inte hittas eller värdet är null/N/A'
-        ]
-      },
-      {
-        columnKey: 'leverageF2',
-        dataSource: 'Dashboard sheet, kolumn "Leverage F2"',
-        conditions: [
-          'Visa N/A om värdet är null eller ogiltigt',
-          'Visa faktiska 0-värden som "0"',
-          'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Färgmarkering baserat på threshold-värden från Sector (ISM) threshold:',
-          '  - GRÖN om Leverage F2 ≤ Leverage F2 MIN (från Sector (ISM) threshold baserat på sektor (ISM))',
-          '  - BLÅ om Leverage F2 MIN < Leverage F2 ≤ Leverage F2 MAX (från Sector (ISM) threshold baserat på sektor (ISM))',
-          '  - RÖD om Leverage F2 > Leverage F2 MAX (från Sector (ISM) threshold baserat på sektor (ISM))',
-          '  - Ingen färg om sektor (ISM) inte hittas eller värdet är null/N/A'
-        ]
-      },
-      {
-        columnKey: 'pe1Industry',
-        dataSource: 'Dashboard sheet, kolumn "P/E1" jämfört med P/E SECTOR (ISM)-tabell, kolumn "P/E1 SECTOR (ISM)" (median)',
-        conditions: [
-          'Beräknar procentuell skillnad: (P/E1 från Dashboard - P/E1 SECTOR (ISM) från P/E SECTOR (ISM)-tabellen) / P/E1 SECTOR (ISM) från P/E SECTOR (ISM)-tabellen * 100',
-          'Visa N/A om värdet är null eller om sektor (ISM) inte hittas i P/E SECTOR (ISM)-tabellen',
-          'Visa faktiska 0-värden som "0.0%"',
-          'Formateras som procent med %-tecken och en decimal',
-          'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Matchar sektor (ISM) från Dashboard med sektor (ISM) i P/E SECTOR (ISM)-tabellen (case-insensitive)',
-          'Röd färg om procenttalet > 0, grön färg om procenttalet <= 0'
-        ]
-      },
-      {
-        columnKey: 'pe2Industry',
-        dataSource: 'Dashboard sheet, kolumn "P/E2" jämfört med P/E SECTOR (ISM)-tabell, kolumn "P/E2 SECTOR (ISM)" (median)',
-        conditions: [
-          'Beräknar procentuell skillnad: (P/E2 från Dashboard - P/E2 SECTOR (ISM) från P/E SECTOR (ISM)-tabellen) / P/E2 SECTOR (ISM) från P/E SECTOR (ISM)-tabellen * 100',
-          'Visa N/A om värdet är null eller om sektor (ISM) inte hittas i P/E SECTOR (ISM)-tabellen',
-          'Visa faktiska 0-värden som "0.0%"',
-          'Formateras som procent med %-tecken och en decimal',
-          'Filtrera bort rader där Company Name eller Ticker är N/A',
-          'Matchar sektor (ISM) från Dashboard med sektor (ISM) i P/E SECTOR (ISM)-tabellen (case-insensitive)',
-          'Röd färg om procenttalet > 0, grön färg om procenttalet <= 0'
+          '  - BLÅ om 50 ≤ score < 70',
+          '  - Annars neutral textsättning för score < 50',
+          'Expandera rad för detaljerad breakdown'
         ]
       }
     ]

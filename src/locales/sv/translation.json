@@ -28,11 +28,15 @@
     "condition": "Villkor",
     "industryThreshold": "Tröskelvärden sektor (ISM)",
     "stockAnalyses": "Stock Analyses",
+    "underDevelopment": "SCORE BOARD",
     "stockMonitor": "Stock Monitor",
     "managementMonitoring": "MANAGEMENT MONITORING",
     "personalPortfolio": "Personlig portfölj",
     "toolbox": "ToolBox",
     "userManagement": "Användarhantering"
+  },
+  "scoreBreakdown": {
+    "theoEntryDisplayLabel": "Technical Recommendation"
   },
   "stockAnalysesView": {
     "price": "Kurs",
@@ -72,9 +76,25 @@
     "fyPlus3": "FY+3",
     "periodColumnHeader": "Period"
   },
+  "underDevelopmentView": {
+    "currentPrice": "Nuvarande pris",
+    "dateOfValuation": "Date of Valuation",
+    "cardSearchPlaceholder": "Sök företag, ticker…",
+    "totalStocksFiltered": "Visar {{filtered}} av {{total}} aktier",
+    "noSearchMatches": "Inget bolag matchar sökningen.",
+    "decisionDiagnostics": "DECISION & DIAGNOSTICS",
+    "finalStatus": "Final Status",
+    "riskFlag": "Risk Flag",
+    "valuationScore": "Valuation Score",
+    "forecastConfidence": "Forecast Confidence",
+    "sanitySummary": "Sanity Summary",
+    "statusNote": "Status Note",
+    "technicalRecommendation": "Technical Recommendation",
+    "technicalRecommendationBuy": "BUY"
+  },
   "stockMonitorView": {
     "tableAriaLabel": "Stock Monitor-översikt",
-    "columnIndex": "Antal",
+    "columnIndex": "NO.",
     "columnCompany": "Företagsnamn",
     "columnTicker": "Ticker",
     "columnPrice": "Kurs",
@@ -513,6 +533,7 @@
   },
   "helpThisView": {
     "score": "Vy för sammanfattad poäng och översikt.",
+    "under-development": "SCORE BOARD: bolagskort och viktiga dashboard-värden i en översikt.",
     "score-board": "Detaljerad tabell med alla nyckeltal och sektor (ISM)-jämförelser.",
     "entry-exit-benjamin-graham": "Entry/Exit-värden och aktuella priser från dashboard.",
     "fundamental-pe-industry": "P/E-jämförelser per sektor (ISM).",
@@ -628,7 +649,7 @@
     "removePosition": "Ta bort",
     "atLeastOnePosition": "Minst en position krävs",
     "columns": {
-      "rowNumber": "Antal",
+      "rowNumber": "NO.",
       "quantity": "Antal",
       "companyName": "Företagsnamn",
       "ticker": "Ticker",

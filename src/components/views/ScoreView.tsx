@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useMemo, lazy, Suspense, useEffect } from 'react';
 import { useScoreBoardData } from '../../hooks/useScoreBoardData';
-import { useIndustryThresholdData } from '../../hooks/useIndustryThresholdData';
 import { useBenjaminGrahamData } from '../../hooks/useBenjaminGrahamData';
 import { EntryExitData, ScoreBoardData } from '../../types/stock';
 import { getSMAColor } from '../../utils/colorThresholds/colorLogic';
@@ -34,14 +33,13 @@ const TABLE_ID = 'score';
 function ScoreViewInner() {
   const { t } = useTranslation();
   const { data: scoreBoardData, loading, error } = useScoreBoardData();
-  const { data: thresholdData, loading: thresholdLoading } = useIndustryThresholdData();
   const { data: benjaminGrahamData, loading: bgLoading } = useBenjaminGrahamData();
   const { initializeFromData, entryExitValues } = useEntryExitValues();
   
   // Progressive loading: Only block rendering on main data (scoreBoardData)
-  // Allow thresholdData and benjaminGrahamData to load in background
+  // Allow benjaminGrahamData to load in background
   const isLoading = loading;
-  const isBackgroundLoading = thresholdLoading || bgLoading;
+  const isBackgroundLoading = bgLoading;
 
   // Initialize EntryExitContext with ScoreBoardData (same as EntryExitTable)
   useEffect(() => {
@@ -100,7 +98,6 @@ function ScoreViewInner() {
       // Calculate detailed score
       const score = calculateDetailedScore(
         enhancedData,
-        thresholdData || [],
         benjaminGrahamData || [],
         entryExitValues
       );
@@ -118,7 +115,7 @@ function ScoreViewInner() {
         scoreBoardData: enhancedData,
       };
     });
-  }, [scoreBoardData, benjaminGrahamData, thresholdData, entryExitValues]);
+  }, [scoreBoardData, benjaminGrahamData, entryExitValues]);
 
   return (
     <div className="h-full bg-gray-100 dark:bg-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6 flex flex-col transition-all duration-300 ease-in-out">
@@ -150,7 +147,6 @@ function ScoreViewInner() {
                   data={scoreData} 
                   loading={false}
                   error={error}
-                  thresholdData={thresholdData || []}
                   benjaminGrahamData={benjaminGrahamData || []}
                   entryExitValues={entryExitValues}
                 />
@@ -161,7 +157,6 @@ function ScoreViewInner() {
               <ScoreDashboard 
                 data={scoreData} 
                 loading={false}
-                thresholdData={thresholdData || []}
                 benjaminGrahamData={benjaminGrahamData || []}
                 entryExitValues={entryExitValues}
               />

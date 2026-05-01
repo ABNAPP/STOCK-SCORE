@@ -23,6 +23,8 @@ export interface ScoreBoardData extends Record<string, unknown> {
   marketCap: number | null;
   /** DashBoard "Date of Update" string — diagnostics only, not official freshness. */
   dashboardDateOfUpdate: string | null;
+  /** DashBoard "Date of Valuation" (verbatim cell; UI formats as yyyy-mm-dd). */
+  dateOfValuation: string | null;
   mungerQualityScore: number | null;
   valueCreation: number | null; // procent-värde
   leverageF2: number | null;
@@ -44,6 +46,18 @@ export interface ScoreBoardData extends Record<string, unknown> {
   price?: number | null;
   /** Dashboard column "5Y Beta" (parsed numeric; null if missing/invalid). */
   fiveYearBeta: number | null;
+  /** DashBoard "Final Status" (verbatim for display / badge styling). */
+  finalStatus: string | null;
+  /** DashBoard "Risk Flag" (verbatim). */
+  riskFlag: string | null;
+  /** DashBoard "Valuation Score" (numeric when parsable; shown as X.X / 4 in Under development). */
+  valuationScore: number | null;
+  /** DashBoard "Forecast Confidence Verdict" (verbatim; UI label may shorten to Forecast Confidence). */
+  forecastConfidenceVerdict: string | null;
+  /** DashBoard "Sanity Summary" (verbatim). */
+  sanitySummary: string | null;
+  /** DashBoard "Status Note" (or equivalent note column). */
+  statusNote: string | null;
 }
 
 export interface IndustryThresholdData extends Record<string, unknown> {

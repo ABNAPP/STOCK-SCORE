@@ -139,6 +139,9 @@ export interface BaseTableProps<T> {
 
   // Retry callback for error state (e.g. offline, network failure)
   onRetry?: () => void;
+
+  /** When false, column header filter/sort popup (ColumnFilterMenu) is hidden. Default true. */
+  enableAdvancedColumnFilters?: boolean;
 }
 
 export default function BaseTable<T extends Record<string, unknown>>({
@@ -182,6 +185,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
   initialSortConfig,
   onRetry,
   getRowClassName,
+  enableAdvancedColumnFilters = true,
 }: BaseTableProps<T>) {
   const { t } = useTranslation();
   const [filterValues, setFilterValues] = useState<FilterValues>(initialFilterState ?? {});
@@ -474,14 +478,12 @@ export default function BaseTable<T extends Record<string, unknown>>({
     };
 
     const handleSortClick = (e: React.MouseEvent) => {
-      // Only sort if clicking on the label area, not on filter icon
-      if (!isFilterMenuOpen) {
-        e.stopPropagation();
-        handleSort(column.key);
-      }
+      if (enableAdvancedColumnFilters && isFilterMenuOpen) return;
+      e.stopPropagation();
+      handleSort(column.key);
     };
 
-    const filterIcon = (
+    const filterIcon = enableAdvancedColumnFilters ? (
       <button
         onClick={handleFilterIconClick}
         className={`ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${
@@ -506,11 +508,14 @@ export default function BaseTable<T extends Record<string, unknown>>({
           />
         </svg>
       </button>
-    );
+    ) : null;
 
     const headerContent = (
       <div className="flex items-center justify-between relative w-full">
-        <div className="flex items-center flex-1" onClick={column.sortable ? handleSortClick : undefined}>
+        <div
+          className="flex items-center flex-1"
+          onClick={column.sortable && enableAdvancedColumnFilters ? handleSortClick : undefined}
+        >
           {column.sortable && (
             <div className={`flex items-center ${column.sortable ? 'cursor-pointer' : ''}`}>
               <span>{column.label}</span>
@@ -519,10 +524,13 @@ export default function BaseTable<T extends Record<string, unknown>>({
           )}
           {!column.sortable && <span>{column.label}</span>}
         </div>
-        <div className="flex items-center relative" style={{ minWidth: '40px' }}>
+        <div
+          className="flex items-center relative"
+          style={enableAdvancedColumnFilters || enableColumnResize ? { minWidth: '40px' } : undefined}
+        >
           <div className="relative">
             {filterIcon}
-            {isFilterMenuOpen && headerRef && (
+            {enableAdvancedColumnFilters && isFilterMenuOpen && headerRef && (
               <ColumnFilterMenu
                 columnKey={column.key}
                 columnLabel={column.label}
@@ -576,6 +584,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
         ref={(el) => {
           headerRefs.current[column.key] = el;
         }}
+        onClick={!enableAdvancedColumnFilters ? handleSortClick : undefined}
         className={`${headerPaddingClass} text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-200 transition-all duration-base ${stickyClass} bg-gray-50 dark:bg-gray-900 ${isResizing ? 'bg-blue-100 dark:bg-blue-900/50' : ''}`}
         style={columnWidth ? { width: `${columnWidth}px`, minWidth: `${columnWidth}px`, maxWidth: `${columnWidth}px` } : undefined}
         scope="col"
@@ -586,7 +595,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
         {headerContent}
       </th>
     );
-  }, [stickyColumns, enableColumnResize, getColumnWidth, resizingColumn, handleResizeStart, t, openFilterMenuColumn, hasActiveColumnFilter, columnFilters, getColumnUniqueValues, handleSort, sortConfig]);
+  }, [stickyColumns, enableColumnResize, enableAdvancedColumnFilters, headerCellPaddingClass, getColumnWidth, resizingColumn, handleResizeStart, t, openFilterMenuColumn, hasActiveColumnFilter, columnFilters, getColumnUniqueValues, handleSort, sortConfig, setOpenFilterMenuColumn, handleColumnSort]);
 
   // Default mobile card renderer
   const defaultRenderMobileCard = useCallback((item: T, index: number, globalIndex: number, isExpanded: boolean, toggleExpand: () => void) => {

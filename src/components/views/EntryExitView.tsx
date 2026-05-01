@@ -41,7 +41,7 @@ export default function EntryExitView({ viewId }: EntryExitViewProps) {
                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Entry och exit-punkter för aktier</p>
               </div>
             </div>
-            <div className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
+            <div className="flex-1 min-h-0 flex flex-col transition-all duration-300 ease-in-out">
               {!benjaminGrahamLoading && benjaminGrahamData.length > 0 ? (
                 <Suspense fallback={<TableSkeleton rows={10} columns={5} hasStickyColumns={true} />}>
                   <EntryExitTable data={benjaminGrahamData} loading={false} error={benjaminGrahamError} />

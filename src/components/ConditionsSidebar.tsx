@@ -16,12 +16,6 @@ const getNavigationSections = (t: (key: string) => string): NavigationSection[] 
     collapsible: false,
   },
   {
-    id: 'score-board',
-    label: t('navigation.scoreBoard'),
-    items: [{ id: 'score-board', label: t('navigation.scoreBoard') }],
-    collapsible: false,
-  },
-  {
     id: 'ism-posture-positioning',
     label: t('navigation.ismPosturePositioning'),
     items: [{ id: 'ism-posture-positioning', label: t('navigation.ismPosturePositioning') }],
@@ -43,12 +37,6 @@ const getNavigationSections = (t: (key: string) => string): NavigationSection[] 
     id: 'fundamental-pe-industry',
     label: t('navigation.peIndustry'),
     items: [{ id: 'fundamental-pe-industry', label: t('navigation.peIndustry') }],
-    collapsible: false,
-  },
-  {
-    id: 'industry-threshold',
-    label: t('navigation.industryThreshold'),
-    items: [{ id: 'industry-threshold', label: t('navigation.industryThreshold') }],
     collapsible: false,
   },
   {

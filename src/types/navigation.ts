@@ -1,6 +1,5 @@
 export type ViewId =
   | 'score'
-  | 'score-board'
   | 'ism-posture-positioning'
   | 'toolbox'
   | 'sma'
@@ -16,6 +15,7 @@ export type ViewId =
   | 'teknikal-tachart'
   | 'industry-threshold'
   | 'stock-analyses'
+  | 'under-development'
   | 'stock-monitor'
   | 'management-monitoring'
   | 'personal-portfolio';

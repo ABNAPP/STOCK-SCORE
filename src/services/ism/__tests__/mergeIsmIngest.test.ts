@@ -11,6 +11,7 @@ function mockRow(partial: Partial<ScoreBoardData> & Pick<ScoreBoardData, 'compan
     marketCap: partial.marketCap !== undefined ? partial.marketCap : 1e9,
     dashboardDateOfUpdate:
       partial.dashboardDateOfUpdate !== undefined ? partial.dashboardDateOfUpdate : '2024-01-01',
+    dateOfValuation: partial.dateOfValuation !== undefined ? partial.dateOfValuation : null,
     mungerQualityScore: partial.mungerQualityScore ?? 50,
     valueCreation: partial.valueCreation ?? 10,
     leverageF2: partial.leverageF2 ?? 1,
@@ -25,6 +26,12 @@ function mockRow(partial: Partial<ScoreBoardData> & Pick<ScoreBoardData, 'compan
     sma200: partial.sma200 ?? null,
     price: partial.price ?? null,
     fiveYearBeta: partial.fiveYearBeta ?? null,
+    finalStatus: partial.finalStatus ?? null,
+    riskFlag: partial.riskFlag ?? null,
+    valuationScore: partial.valuationScore ?? null,
+    forecastConfidenceVerdict: partial.forecastConfidenceVerdict ?? null,
+    sanitySummary: partial.sanitySummary ?? null,
+    statusNote: partial.statusNote ?? null,
   };
 }
 

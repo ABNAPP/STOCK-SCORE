@@ -53,12 +53,11 @@ export function useUserRole() {
   /** Main navigation view order (used for default landing) */
   const NAV_VIEW_ORDER: ViewId[] = [
     'score',
-    'score-board',
+    'under-development',
     'ism-posture-positioning',
     'sma',
     'entry-exit-benjamin-graham',
     'fundamental-pe-industry',
-    'industry-threshold',
     'stock-analyses',
     'stock-monitor',
     'toolbox',
@@ -68,15 +67,15 @@ export function useUserRole() {
 
   /**
    * Get default landing view for the current user
-   * - Admin: score-board
+   * - Admin: score
    * - Viewer: first view in allowedViews that exists in navigation
    */
   const getDefaultLandingView = (): ViewId => {
     if (isAdmin) {
-      return 'score-board';
+      return 'score';
     }
     const allowed = getAllowedViews();
-    if (!allowed) return 'score-board';
+    if (!allowed) return 'score';
     for (const vid of NAV_VIEW_ORDER) {
       if (allowed.includes(vid)) return vid;
     }

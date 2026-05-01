@@ -5,6 +5,9 @@ import {
   type SheetSnapshotData,
   type SupportedSheetName,
 } from '../services/sheets/sheetSnapshotService';
+import TableSearchBar from '../components/TableSearchBar';
+import { useDebounce } from '../hooks/useDebounce';
+import { sanitizeSearchQuery } from '../utils/inputValidator';
 
 function formatSnapshotCell(
   value: unknown,
@@ -52,6 +55,51 @@ function formatSnapshotCell(
 
 const INITIAL_VISIBLE_ROWS = 100;
 
+/** Sheet error / placeholder company names — sorted A–Z among themselves but always after normal names. */
+const BAD_COMPANY_NAME_EXACT = new Set([
+  '#N/A',
+  '#REF!',
+  '#NUM!',
+  '#DIV/0!',
+  'Loading...',
+  '—',
+]);
+
+function isBadCompanyNameForSort(raw: string): boolean {
+  const t = raw.trim();
+  if (t === '') return true;
+  return BAD_COMPANY_NAME_EXACT.has(t);
+}
+
+function isAntalHeader(header: string): boolean {
+  return header.trim().toLowerCase() === 'antal';
+}
+
+/** Presentation columns: optional leading NO., plus sheet headers (ANTAL → NO. + row index in view). */
+type PresentationCol =
+  | { kind: 'presentation-no' }
+  | { kind: 'data'; header: string; label: string; useViewRowNumber: boolean };
+
+const ROW_NUMBER_HEADER = 'NO.';
+
+function buildPresentationColumns(headers: string[]): PresentationCol[] {
+  const hasAntal = headers.some(isAntalHeader);
+  const cols: PresentationCol[] = [];
+  if (!hasAntal) {
+    cols.push({ kind: 'presentation-no' });
+  }
+  for (const h of headers) {
+    const antal = isAntalHeader(h);
+    cols.push({
+      kind: 'data',
+      header: h,
+      label: antal ? ROW_NUMBER_HEADER : h || '—',
+      useViewRowNumber: antal,
+    });
+  }
+  return cols;
+}
+
 function formatGeneratedAt(value: string | null): string {
   if (!value) return '—';
 
@@ -80,6 +128,8 @@ export default function CentralDataServicePage() {
     DashBoard: INITIAL_VISIBLE_ROWS,
     SMA: INITIAL_VISIBLE_ROWS,
   });
+  const [searchValue, setSearchValue] = useState('');
+  const debouncedSearch = useDebounce(searchValue, 300);
 
   useEffect(() => {
     let isMounted = true;
@@ -110,6 +160,14 @@ export default function CentralDataServicePage() {
     };
   }, []);
 
+  useEffect(() => {
+    setSearchValue('');
+    setVisibleRows((prev) => ({
+      ...prev,
+      [activeTab]: INITIAL_VISIBLE_ROWS,
+    }));
+  }, [activeTab]);
+
   const activeSnapshot = snapshotData[activeTab];
   const activeHeaders = activeSnapshot?.headers ?? [];
   const activeRows = useMemo(() => {
@@ -125,27 +183,51 @@ export default function CentralDataServicePage() {
     return [...rows].sort((a, b) => {
       const aName = String(a[companyHeader] ?? '').trim();
       const bName = String(b[companyHeader] ?? '').trim();
-      const aEmpty = aName === '';
-      const bEmpty = bName === '';
-
-      if (aEmpty && bEmpty) return 0;
-      if (aEmpty) return 1;
-      if (bEmpty) return -1;
-
+      const aBad = isBadCompanyNameForSort(aName);
+      const bBad = isBadCompanyNameForSort(bName);
+      if (aBad !== bBad) {
+        return aBad ? 1 : -1;
+      }
       return aName.localeCompare(bName, undefined, { sensitivity: 'base' });
     });
   }, [activeHeaders, activeSnapshot]);
+
+  const searchedRows = useMemo(() => {
+    if (!debouncedSearch.trim()) {
+      return activeRows;
+    }
+    const sanitizedQuery = sanitizeSearchQuery(debouncedSearch);
+    const searchLower = sanitizedQuery.toLowerCase().trim();
+    if (!searchLower) {
+      return activeRows;
+    }
+
+    return activeRows.filter((row) =>
+      activeHeaders.some((header) => {
+        const raw = row[header];
+        const rawStr = String(raw ?? '').toLowerCase();
+        const formatted = formatSnapshotCell(raw, activeTab, header).toLowerCase();
+        return rawStr.includes(searchLower) || formatted.includes(searchLower);
+      })
+    );
+  }, [activeRows, activeHeaders, debouncedSearch, activeTab]);
+
   const currentVisibleRows = visibleRows[activeTab] ?? INITIAL_VISIBLE_ROWS;
   const displayedRows = useMemo(
-    () => activeRows.slice(0, currentVisibleRows),
-    [activeRows, currentVisibleRows]
+    () => searchedRows.slice(0, currentVisibleRows),
+    [searchedRows, currentVisibleRows]
   );
-  const canLoadMore = activeRows.length > currentVisibleRows;
+  const canLoadMore = searchedRows.length > currentVisibleRows;
+
+  const presentationColumns = useMemo(
+    () => buildPresentationColumns(activeHeaders),
+    [activeHeaders]
+  );
 
   return (
-    <div className="h-full bg-gray-100 dark:bg-gray-900 py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-7xl mx-auto">
-        <div className="mb-4">
+    <div className="h-full min-h-0 bg-gray-100 dark:bg-gray-900 py-6 sm:py-8 px-4 sm:px-6 lg:px-8 flex flex-col">
+      <div className="w-full flex-1 min-h-0 flex flex-col mx-auto">
+        <div className="mb-4 flex-shrink-0">
           <Link
             to="/management-monitoring"
             className="inline-flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -154,29 +236,41 @@ export default function CentralDataServicePage() {
           </Link>
         </div>
 
-        <section className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 sm:p-5">
-          <div className="mb-4">
+        <section className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 sm:p-5 flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="mb-4 flex-shrink-0">
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Central Data Service</h1>
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
               Read-only mirror of the cached Google Sheets snapshot used by the app.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 mb-3">
-            {(['DashBoard', 'SMA'] as SupportedSheetName[]).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-md text-sm border ${
-                  activeTab === tab
-                    ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200'
-                    : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-3 flex-shrink-0 w-full">
+            <div className="flex flex-wrap items-center gap-2">
+              {(['DashBoard', 'SMA'] as SupportedSheetName[]).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-3 py-1.5 rounded-md text-sm border ${
+                    activeTab === tab
+                      ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200'
+                      : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            <div className="w-full sm:w-auto sm:min-w-[220px] sm:max-w-md flex-shrink-0 sm:ml-auto">
+              <TableSearchBar
+                searchValue={searchValue}
+                onSearchChange={setSearchValue}
+                totalRows={activeSnapshot ? activeRows.length : 0}
+                filteredRows={activeSnapshot ? searchedRows.length : 0}
+                placeholder="Sök efter företag eller ticker..."
+                showResultCount={false}
+              />
+            </div>
           </div>
 
           {loading ? (
@@ -186,8 +280,8 @@ export default function CentralDataServicePage() {
           ) : activeHeaders.length === 0 || activeRows.length === 0 ? (
             <div className="text-sm text-gray-500 dark:text-gray-400">Cached snapshot is empty</div>
           ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-3 text-sm">
+            <div className="flex flex-col flex-1 min-h-0 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-sm flex-shrink-0">
                 <div className="rounded-md border border-gray-200 dark:border-gray-700 px-3 py-2">
                   <div className="text-xs text-gray-500 dark:text-gray-400">Row count</div>
                   <div className="font-medium text-gray-900 dark:text-white">{activeRows.length}</div>
@@ -208,46 +302,79 @@ export default function CentralDataServicePage() {
                 </div>
               </div>
 
-              <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">
-                Showing {Math.min(currentVisibleRows, activeRows.length)} of {activeRows.length}
+              <div className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                Showing {Math.min(currentVisibleRows, searchedRows.length)} of {searchedRows.length}
+                {searchedRows.length !== activeRows.length ? ` (filtered from ${activeRows.length})` : ''}
               </div>
 
-              <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-900/30">
-                    <tr>
-                      {activeHeaders.map((header) => (
-                        <th
-                          key={header}
-                          className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap border-b border-gray-200 dark:border-gray-700"
-                        >
-                          {header || '—'}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedRows.map((row, idx) => (
-                      <tr
-                        key={`${activeTab}-row-${idx}`}
-                        className="odd:bg-white even:bg-gray-50/50 dark:odd:bg-gray-800 dark:even:bg-gray-800/60"
-                      >
-                        {activeHeaders.map((header) => (
-                          <td
-                            key={`${activeTab}-${idx}-${header}`}
-                            className="px-3 py-2 text-gray-800 dark:text-gray-200 whitespace-nowrap border-b border-gray-100 dark:border-gray-700"
+              <div className="flex-1 min-h-0 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden flex flex-col min-h-[12rem]">
+                <div className="flex-1 min-h-0 overflow-auto">
+                  <table className="min-w-max w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-900/30 sticky top-0 z-10 shadow-sm">
+                      <tr>
+                        {presentationColumns.map((col) => (
+                          <th
+                            key={
+                              col.kind === 'presentation-no'
+                                ? '__presentation_no__'
+                                : col.header
+                            }
+                            className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap border-b border-gray-200 dark:border-gray-700"
                           >
-                            {formatSnapshotCell(row[header], activeTab, header)}
-                          </td>
+                            {col.kind === 'presentation-no' ? ROW_NUMBER_HEADER : col.label}
+                          </th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {displayedRows.map((row, idx) => {
+                        const viewNumber = idx + 1;
+
+                        return (
+                          <tr
+                            key={`${activeTab}-row-${idx}`}
+                            className="odd:bg-white even:bg-gray-50/50 dark:odd:bg-gray-800 dark:even:bg-gray-800/60"
+                          >
+                            {presentationColumns.map((col) => {
+                              if (col.kind === 'presentation-no') {
+                                return (
+                                  <td
+                                    key="__presentation_no__"
+                                    className="px-3 py-2 text-gray-800 dark:text-gray-200 whitespace-nowrap border-b border-gray-100 dark:border-gray-700 tabular-nums"
+                                  >
+                                    {viewNumber}
+                                  </td>
+                                );
+                              }
+                              if (col.useViewRowNumber) {
+                                return (
+                                  <td
+                                    key={col.header}
+                                    className="px-3 py-2 text-gray-800 dark:text-gray-200 whitespace-nowrap border-b border-gray-100 dark:border-gray-700 tabular-nums"
+                                  >
+                                    {viewNumber}
+                                  </td>
+                                );
+                              }
+                              return (
+                                <td
+                                  key={col.header}
+                                  className="px-3 py-2 text-gray-800 dark:text-gray-200 whitespace-nowrap border-b border-gray-100 dark:border-gray-700"
+                                >
+                                  {formatSnapshotCell(row[col.header], activeTab, col.header)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {canLoadMore && (
-                <div className="mt-3">
+                <div className="mt-1 flex-shrink-0">
                   <button
                     type="button"
                     onClick={() =>
@@ -262,7 +389,7 @@ export default function CentralDataServicePage() {
                   </button>
                 </div>
               )}
-            </>
+            </div>
           )}
         </section>
       </div>

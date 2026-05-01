@@ -24,11 +24,9 @@ import { usePullToRefresh } from './hooks/usePullToRefresh';
 import { runPostAuthMigrations } from './services/migrations';
 
 // Lazy load view components for better performance (with retry for dev "Failed to fetch" resilience)
-const ScoreBoardView = lazyWithRetry<typeof import('./components/views/ScoreBoardView').default>(() => import('./components/views/ScoreBoardView'), 'ScoreBoardView');
 const ScoreView = lazyWithRetry<typeof import('./components/views/ScoreView').default>(() => import('./components/views/ScoreView'), 'ScoreView');
 const EntryExitView = lazyWithRetry<typeof import('./components/views/EntryExitView').default>(() => import('./components/views/EntryExitView'), 'EntryExitView');
 const FundamentalView = lazyWithRetry<typeof import('./components/views/FundamentalView').default>(() => import('./components/views/FundamentalView'), 'FundamentalView');
-const IndustryThresholdView = lazyWithRetry<typeof import('./components/views/IndustryThresholdView').default>(() => import('./components/views/IndustryThresholdView'), 'IndustryThresholdView');
 const PersonalPortfolioView = lazyWithRetry<typeof import('./components/views/PersonalPortfolioView').default>(() => import('./components/views/PersonalPortfolioView'), 'PersonalPortfolioView');
 const ISMPostureView = lazyWithRetry<typeof import('./components/views/ISMPostureView').default>(() => import('./components/views/ISMPostureView'), 'ISMPostureView');
 const ToolBoxView = lazyWithRetry<typeof import('./components/views/ToolBoxView').default>(() => import('./components/views/ToolBoxView'), 'ToolBoxView');
@@ -36,6 +34,7 @@ const SMAView = lazyWithRetry<typeof import('./components/views/SMAView').defaul
 const ManagementMonitoringPage = lazyWithRetry<typeof import('./pages/ManagementMonitoringPage').default>(() => import('./pages/ManagementMonitoringPage'), 'ManagementMonitoringPage');
 const CentralDataServicePage = lazyWithRetry<typeof import('./pages/CentralDataServicePage').default>(() => import('./pages/CentralDataServicePage'), 'CentralDataServicePage');
 const StockAnalysesView = lazyWithRetry<typeof import('./components/views/StockAnalysesView').default>(() => import('./components/views/StockAnalysesView'), 'StockAnalysesView');
+const UnderDevelopmentView = lazyWithRetry<typeof import('./components/views/UnderDevelopmentView').default>(() => import('./components/views/UnderDevelopmentView'), 'UnderDevelopmentView');
 const StockMonitorView = lazyWithRetry<typeof import('./components/views/StockMonitorView').default>(() => import('./components/views/StockMonitorView'), 'StockMonitorView');
 
 // Lazy load modal components
@@ -45,12 +44,11 @@ const HelpModal = lazyWithRetry<typeof import('./components/HelpModal').default>
 
 const MAIN_VIEW_IDS: ViewId[] = [
   'score',
-  'score-board',
+  'under-development',
   'ism-posture-positioning',
   'sma',
   'entry-exit-benjamin-graham',
   'fundamental-pe-industry',
-  'industry-threshold',
   'stock-analyses',
   'stock-monitor',
   'toolbox',
@@ -182,15 +180,14 @@ function App() {
 
   const getPageName = (viewId: ViewId): string => {
     const names: Partial<Record<ViewId, string>> = {
-      'score-board': t('navigation.scoreBoard'),
       'ism-posture-positioning': t('navigation.ismPosturePositioning'),
       'toolbox': t('navigation.toolbox'),
       'sma': t('navigation.sma'),
       'score': t('navigation.score'),
       'entry-exit-benjamin-graham': t('navigation.benjaminGraham'),
       'fundamental-pe-industry': t('navigation.peIndustry'),
-      'industry-threshold': t('navigation.industryThreshold'),
       'stock-analyses': t('navigation.stockAnalyses'),
+      'under-development': t('navigation.underDevelopment'),
       'stock-monitor': t('navigation.stockMonitor'),
       'management-monitoring': t('navigation.managementMonitoring'),
       'personal-portfolio': t('navigation.personalPortfolio'),
@@ -203,14 +200,6 @@ function App() {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <ScoreView />
-        </Suspense>
-      );
-    }
-
-    if (activeView === 'score-board') {
-      return (
-        <Suspense fallback={<LoadingFallback />}>
-          <ScoreBoardView />
         </Suspense>
       );
     }
@@ -235,6 +224,14 @@ function App() {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <StockAnalysesView />
+        </Suspense>
+      );
+    }
+
+    if (activeView === 'under-development') {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <UnderDevelopmentView />
         </Suspense>
       );
     }
@@ -267,14 +264,6 @@ function App() {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <FundamentalView viewId={activeView} />
-        </Suspense>
-      );
-    }
-
-    if (activeView === 'industry-threshold') {
-      return (
-        <Suspense fallback={<LoadingFallback />}>
-          <IndustryThresholdView />
         </Suspense>
       );
     }

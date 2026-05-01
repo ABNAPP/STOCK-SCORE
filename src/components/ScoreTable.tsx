@@ -1,7 +1,7 @@
 import { useCallback, useMemo, memo } from 'react';
 import BaseTable, { ColumnDefinition } from './BaseTable';
 import { ScoreData } from './views/ScoreView';
-import { ScoreBoardData, IndustryThresholdData, BenjaminGrahamData } from '../types/stock';
+import { ScoreBoardData, BenjaminGrahamData } from '../types/stock';
 import { EntryExitValues } from '../contexts/EntryExitContext';
 import { calculateDetailedScoreBreakdown } from '../utils/calculateScoreDetailed';
 import { FilterConfig, ShareableTableState } from '../types/filters';
@@ -18,12 +18,10 @@ import { ENTRY_EXIT_COLUMN_LABELS } from '../constants/entryExitColumnLabels';
 /** Memoized expanded row to avoid recalculating breakdown on every render */
 const MemoizedScoreBreakdownExpandedRow = memo(function MemoizedScoreBreakdownExpandedRow({
   scoreBoardData,
-  thresholdData,
   benjaminGrahamData,
   entryExitValues,
 }: {
   scoreBoardData: ScoreBoardData;
-  thresholdData: IndustryThresholdData[];
   benjaminGrahamData: BenjaminGrahamData[];
   entryExitValues: Map<string, EntryExitValues>;
 }) {
@@ -31,11 +29,10 @@ const MemoizedScoreBreakdownExpandedRow = memo(function MemoizedScoreBreakdownEx
     () =>
       calculateDetailedScoreBreakdown(
         scoreBoardData,
-        thresholdData,
         benjaminGrahamData,
         entryExitValues
       ),
-    [scoreBoardData, thresholdData, benjaminGrahamData, entryExitValues]
+    [scoreBoardData, benjaminGrahamData, entryExitValues]
   );
   return <ScoreBreakdownRow breakdown={breakdown} />;
 });
@@ -44,14 +41,13 @@ interface ScoreTableProps {
   data: ScoreData[];
   loading: boolean;
   error: string | null;
-  thresholdData?: IndustryThresholdData[];
   benjaminGrahamData?: BenjaminGrahamData[];
   entryExitValues?: Map<string, EntryExitValues>;
   initialTableState?: ShareableTableState;
 }
 
 const SCORE_COLUMNS: ColumnDefinition[] = [
-  { key: 'antal', label: 'Antal', required: true, sticky: true, sortable: false },
+  { key: 'antal', label: 'NO.', required: true, sticky: true, sortable: false },
   { key: 'companyName', label: 'Company Name', required: true, sticky: true, sortable: true },
   { key: 'ticker', label: 'Ticker', required: true, sticky: true, sortable: true },
   { key: 'currency', label: 'Currency', defaultVisible: true, sortable: true, align: 'center' },
@@ -84,7 +80,7 @@ const SCORE_FILTERS: FilterConfig[] = [
   },
 ];
 
-export default function ScoreTable({ data, loading, error, thresholdData = [], benjaminGrahamData = [], entryExitValues = new Map(), initialTableState }: ScoreTableProps) {
+export default function ScoreTable({ data, loading, error, benjaminGrahamData = [], entryExitValues = new Map(), initialTableState }: ScoreTableProps) {
   // Helper function to generate row key - must be used consistently everywhere.
   // Stable identifier (no index) so expanded state survives sort/filter changes.
   const generateRowKey = useCallback((item: ScoreData): string => {
@@ -182,7 +178,7 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
       >
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Antal</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">NO.</span>
             <span className="text-sm font-medium text-black dark:text-white">{globalIndex + 1}</span>
           </div>
           <div className="flex items-center justify-between">
@@ -232,12 +228,11 @@ export default function ScoreTable({ data, loading, error, thresholdData = [], b
     (item: ScoreData) => (
       <MemoizedScoreBreakdownExpandedRow
         scoreBoardData={item.scoreBoardData}
-        thresholdData={thresholdData}
         benjaminGrahamData={benjaminGrahamData}
         entryExitValues={entryExitValues}
       />
     ),
-    [thresholdData, benjaminGrahamData, entryExitValues]
+    [benjaminGrahamData, entryExitValues]
   );
 
   return (

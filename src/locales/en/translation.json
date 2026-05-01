@@ -28,11 +28,15 @@
     "condition": "Condition",
     "industryThreshold": "Sector (ISM) threshold",
     "stockAnalyses": "Stock Analyses",
+    "underDevelopment": "SCORE BOARD",
     "stockMonitor": "Stock Monitor",
     "managementMonitoring": "MANAGEMENT MONITORING",
     "personalPortfolio": "Personal Portfolio",
     "toolbox": "ToolBox",
     "userManagement": "User Management"
+  },
+  "scoreBreakdown": {
+    "theoEntryDisplayLabel": "Technical Recommendation"
   },
   "stockAnalysesView": {
     "price": "Price",
@@ -72,9 +76,25 @@
     "fyPlus3": "FY+3",
     "periodColumnHeader": "Period"
   },
+  "underDevelopmentView": {
+    "currentPrice": "Current Price",
+    "dateOfValuation": "Date of Valuation",
+    "cardSearchPlaceholder": "Search by company, ticker…",
+    "totalStocksFiltered": "Showing {{filtered}} of {{total}} stocks",
+    "noSearchMatches": "No companies match your search.",
+    "decisionDiagnostics": "DECISION & DIAGNOSTICS",
+    "finalStatus": "Final Status",
+    "riskFlag": "Risk Flag",
+    "valuationScore": "Valuation Score",
+    "forecastConfidence": "Forecast Confidence",
+    "sanitySummary": "Sanity Summary",
+    "statusNote": "Status Note",
+    "technicalRecommendation": "Technical Recommendation",
+    "technicalRecommendationBuy": "BUY"
+  },
   "stockMonitorView": {
     "tableAriaLabel": "Stock monitor overview",
-    "columnIndex": "No.",
+    "columnIndex": "NO.",
     "columnCompany": "Company name",
     "columnTicker": "Ticker",
     "columnPrice": "Price",
@@ -513,6 +533,7 @@
   },
   "helpThisView": {
     "score": "View for summary score and overview.",
+    "under-development": "SCORE BOARD: company cards and key dashboard metrics in one overview.",
     "score-board": "Detailed table with all metrics and sector (ISM) comparisons.",
     "entry-exit-benjamin-graham": "Entry/Exit values and live prices from the dashboard.",
     "fundamental-pe-industry": "P/E comparisons by sector (ISM).",
@@ -628,7 +649,7 @@
     "removePosition": "Remove",
     "atLeastOnePosition": "At least one position is required",
     "columns": {
-      "rowNumber": "Number",
+      "rowNumber": "NO.",
       "quantity": "Quantity",
       "companyName": "Company name",
       "ticker": "Ticker",

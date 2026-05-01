@@ -5,13 +5,12 @@ import { transformPEIndustryData } from '../services/sheets/peIndustryService';
 import { transformSMAData } from '../services/sheets/smaService';
 import { getSheetSnapshot } from '../services/sheets/sheetSnapshotService';
 import type { ScoreBoardData, BenjaminGrahamData, PEIndustryData } from '../types/stock';
-import { useIndustryThresholdData } from './useIndustryThresholdData';
 import { ViewId } from '../types/navigation';
 import { logger } from '../utils/logger';
 
 export interface SearchResult {
   id: string;
-  type: 'score-board' | 'benjamin-graham' | 'pe-industry' | 'entry-exit' | 'industry-threshold';
+  type: 'score-board' | 'benjamin-graham' | 'pe-industry' | 'entry-exit';
   viewId: ViewId;
   label: string;
   companyName?: string;
@@ -24,7 +23,6 @@ export function useGlobalSearch() {
   const [scoreBoardData, setScoreBoardData] = useState<ScoreBoardData[]>([]);
   const [benjaminGrahamData, setBenjaminGrahamData] = useState<BenjaminGrahamData[]>([]);
   const [peIndustryData, setPeIndustryData] = useState<PEIndustryData[]>([]);
-  const { data: industryThresholdData } = useIndustryThresholdData();
 
   useEffect(() => {
     let mounted = true;
@@ -116,7 +114,7 @@ export function useGlobalSearch() {
           results.push({
             id: `score-board-${index}`,
             type: 'score-board',
-            viewId: 'score-board',
+            viewId: 'score',
             label: item.companyName,
             companyName: item.companyName,
             ticker: item.ticker,
@@ -127,7 +125,7 @@ export function useGlobalSearch() {
           results.push({
             id: `score-board-${index}`,
             type: 'score-board',
-            viewId: 'score-board',
+            viewId: 'score',
             label: `${item.companyName} (${item.ticker})`,
             companyName: item.companyName,
             ticker: item.ticker,
@@ -138,7 +136,7 @@ export function useGlobalSearch() {
           results.push({
             id: `score-board-${index}`,
             type: 'score-board',
-            viewId: 'score-board',
+            viewId: 'score',
             label: `${item.industry} - ${item.companyName}`,
             companyName: item.companyName,
             ticker: item.ticker,
@@ -181,21 +179,6 @@ export function useGlobalSearch() {
         }
       });
 
-      // Search in IndustryThresholdData
-      industryThresholdData.forEach((item, index) => {
-        const industry = item.industry?.toLowerCase() || '';
-        if (industry.includes(normalizedQuery)) {
-          results.push({
-            id: `industry-threshold-${index}`,
-            type: 'industry-threshold',
-            viewId: 'industry-threshold',
-            label: item.industry,
-            industry: item.industry,
-            matchField: 'industry',
-          });
-        }
-      });
-
       // Remove only exact duplicates (same id) to allow same company in different tables
       const uniqueResults = results.filter((result, index, self) =>
         index === self.findIndex((r) => r.id === result.id)
@@ -204,7 +187,7 @@ export function useGlobalSearch() {
       // Limit to 50 results for performance (increased from 20 since we show all tables)
       return uniqueResults.slice(0, 50);
     };
-  }, [scoreBoardData, benjaminGrahamData, peIndustryData, industryThresholdData]);
+  }, [scoreBoardData, benjaminGrahamData, peIndustryData]);
 
   return { search };
 }

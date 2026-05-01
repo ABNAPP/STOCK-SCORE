@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip } from 'recharts';
 import {
   ScoreBreakdown,
@@ -19,8 +20,14 @@ interface StackedBarDataItem {
 }
 
 export default function ScoreBreakdownRow({ breakdown }: ScoreBreakdownRowProps) {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDarkMode = resolvedTheme === 'dark';
+
+  const metricDisplayLabel = (metric: string) =>
+    metric === 'THEOENTRY'
+      ? t('scoreBreakdown.theoEntryDisplayLabel')
+      : metric;
 
   // Stacked bar data: Fundamental vs Teknisk
   const stackedBarData: StackedBarDataItem[] = useMemo(() => [
@@ -151,7 +158,7 @@ export default function ScoreBreakdownRow({ breakdown }: ScoreBreakdownRowProps)
                 >
                   <div className="flex items-center space-x-2 flex-1 min-w-0">
                     <span className="flex-shrink-0">{getColorIndicator(item.color)}</span>
-                    <span className="text-gray-700 dark:text-gray-300 truncate">{item.metric}</span>
+                    <span className="text-gray-700 dark:text-gray-300 truncate">{metricDisplayLabel(item.metric)}</span>
                   </div>
                   <div className="flex items-center space-x-3 flex-shrink-0 ml-2">
                     <span className="text-gray-500 dark:text-gray-400 w-8 text-right text-[10px]">v:{item.weight}</span>
@@ -179,7 +186,7 @@ export default function ScoreBreakdownRow({ breakdown }: ScoreBreakdownRowProps)
                 >
                   <div className="flex items-center space-x-2 flex-1 min-w-0">
                     <span className="flex-shrink-0">{getColorIndicator(item.color)}</span>
-                    <span className="text-gray-700 dark:text-gray-300 truncate">{item.metric}</span>
+                    <span className="text-gray-700 dark:text-gray-300 truncate">{metricDisplayLabel(item.metric)}</span>
                   </div>
                   <div className="flex items-center space-x-3 flex-shrink-0 ml-2">
                     <span className="text-gray-500 dark:text-gray-400 w-8 text-right text-[10px]">v:{item.weight}</span>

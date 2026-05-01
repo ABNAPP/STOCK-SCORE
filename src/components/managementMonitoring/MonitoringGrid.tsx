@@ -8,18 +8,25 @@ interface MonitoringGridProps {
 export default function MonitoringGrid({ cards }: MonitoringGridProps) {
   return (
     <div
-      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+      className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-12 lg:items-start"
       role="list"
     >
-      {cards.map((card) => (
-        <div
-          key={card.id}
-          role="listitem"
-          className={card.gridSpan === 2 ? 'md:col-span-2' : ''}
-        >
-          <MonitoringCard {...card} />
-        </div>
-      ))}
+      {cards.map((card) => {
+        const isWide = card.gridSpan === 2;
+        return (
+          <div
+            key={card.id}
+            role="listitem"
+            className={
+              isWide
+                ? 'lg:col-span-8'
+                : 'mx-auto w-full max-w-md lg:mx-0 lg:max-w-none lg:col-span-4 lg:self-start'
+            }
+          >
+            <MonitoringCard {...card} />
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -6,6 +6,9 @@ interface TableSearchBarProps {
   totalRows: number;
   filteredRows: number;
   placeholder?: string;
+  /** When false, only the search field is shown (e.g. inline beside tabs). Default true. */
+  showResultCount?: boolean;
+  className?: string;
 }
 
 export default function TableSearchBar({
@@ -14,11 +17,19 @@ export default function TableSearchBar({
   totalRows,
   filteredRows,
   placeholder = 'Sök...',
+  showResultCount = true,
+  className = '',
 }: TableSearchBarProps) {
   return (
-    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 flex-shrink-0">
+    <div
+      className={`flex-shrink-0 ${
+        showResultCount
+          ? 'flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4'
+          : 'w-full'
+      } ${className}`.trim()}
+    >
       {/* Search */}
-      <div className="flex-1 min-w-0 sm:min-w-[200px] sm:max-w-md">
+      <div className={showResultCount ? 'flex-1 min-w-0 sm:min-w-[200px] sm:max-w-md' : 'w-full min-w-0'}>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg
@@ -72,18 +83,20 @@ export default function TableSearchBar({
       </div>
 
       {/* Results count */}
-      <div className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap text-center sm:text-left">
-        {filteredRows !== totalRows ? (
-          <>
-            Visar <span className="font-bold text-black dark:text-white">{filteredRows}</span> av{' '}
-            <span className="font-bold text-black dark:text-white">{totalRows}</span> rader
-          </>
-        ) : (
-          <>
-            <span className="font-bold text-black dark:text-white">{totalRows}</span> rader
-          </>
-        )}
-      </div>
+      {showResultCount ? (
+        <div className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap text-center sm:text-left">
+          {filteredRows !== totalRows ? (
+            <>
+              Visar <span className="font-bold text-black dark:text-white">{filteredRows}</span> av{' '}
+              <span className="font-bold text-black dark:text-white">{totalRows}</span> rader
+            </>
+          ) : (
+            <>
+              <span className="font-bold text-black dark:text-white">{totalRows}</span> rader
+            </>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -92,11 +92,10 @@ export default function GlobalSearch({ onNavigate }: GlobalSearchProps) {
 
   const getTypeLabel = (type: SearchResult['type']): string => {
     const labels: Record<SearchResult['type'], string> = {
-      'score-board': t('navigation.scoreBoard'),
+      'score-board': t('navigation.score'),
       'benjamin-graham': t('navigation.benjaminGraham'),
       'pe-industry': t('navigation.peIndustry'),
       'entry-exit': t('navigation.tachart'),
-      'industry-threshold': t('navigation.industryThreshold'),
     };
     return labels[type] || type;
   };

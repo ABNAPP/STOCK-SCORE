@@ -16,7 +16,6 @@ interface BreadcrumbsProps {
 function getViewLabel(viewId: ViewId, t: (key: string) => string): string {
   const labels: Partial<Record<ViewId, string>> = {
     'score': t('navigation.score'),
-    'score-board': t('navigation.scoreBoard'),
     'ism-posture-positioning': t('navigation.ismPosturePositioning'),
     'toolbox': t('navigation.toolbox'),
     'sma': t('navigation.sma'),
@@ -29,8 +28,8 @@ function getViewLabel(viewId: ViewId, t: (key: string) => string): string {
     'fundamental-pe-industry': t('navigation.peIndustry'),
     'fundamental-current-ratio': t('navigation.currentRatio'),
     'fundamental-cash-sdebt': t('navigation.cashSdebt'),
-    'industry-threshold': t('navigation.industryThreshold'),
     'stock-analyses': t('navigation.stockAnalyses'),
+    'under-development': t('navigation.underDevelopment'),
     'stock-monitor': t('navigation.stockMonitor'),
     'management-monitoring': t('navigation.managementMonitoring'),
     'personal-portfolio': t('navigation.personalPortfolio'),

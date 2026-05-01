@@ -127,38 +127,46 @@ export function parseNumericValueNullable(valueStr: string): number | null {
  * @param row - Data row object to search in
  * @returns The found value as a trimmed string, or empty string if not found
  */
+/** Normalize sheet header keys for matching (BOM, trim, case-insensitive). */
+function normalizeHeaderKeyForLookup(key: string): string {
+  return String(key).replace(/^\uFEFF/, '').trim().toLowerCase();
+}
+
 export function getValueAllowZero(possibleNames: string[], row: DataRow): string {
+  if (!row || typeof row !== 'object') {
+    return '';
+  }
+
   for (const name of possibleNames) {
-    // Try exact match first
+    if (typeof name !== 'string') continue;
+
+    // Exact key as listed in possibleNames
     if (row[name] !== undefined && row[name] !== null) {
       const value = row[name];
-      // Om värdet är 0 (nummer eller sträng "0"), returnera "0"
       if (value === 0 || value === '0') {
         return '0';
       }
-      // Om värdet är en tom sträng, hoppa över
       if (value === '') {
         continue;
       }
       return String(value).trim();
     }
-    // Try case-insensitive match
-    const lowerName = name.toLowerCase();
-    for (const key in row) {
-      if (key.toLowerCase() === lowerName) {
+
+    // Match any row key: trim + strip BOM + case-insensitive (CSV headers often have stray spaces)
+    const targetNorm = normalizeHeaderKeyForLookup(name);
+    for (const key of Object.keys(row)) {
+      if (normalizeHeaderKeyForLookup(key) === targetNorm) {
         const value = row[key];
-        // Tillåt 0 som ett giltigt värde
-        if (value !== undefined && value !== null) {
-          // Om värdet är 0 (nummer eller sträng "0"), returnera "0"
-          if (value === 0 || value === '0') {
-            return '0';
-          }
-          // Om värdet är en tom sträng, hoppa över
-          if (value === '') {
-            continue;
-          }
-          return String(value).trim();
+        if (value === undefined || value === null) {
+          continue;
         }
+        if (value === 0 || value === '0') {
+          return '0';
+        }
+        if (value === '') {
+          continue;
+        }
+        return String(value).trim();
       }
     }
   }

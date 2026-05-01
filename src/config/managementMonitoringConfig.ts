@@ -17,6 +17,14 @@ export const managementMonitoringConfig: ManagementMonitoringConfig = {
         'Shows the status of the shared Google Sheets snapshot layer used by the app.',
       gridSpan: 2,
     },
+    {
+      id: 'entry-exit',
+      number: 2,
+      title: 'ENTRY/EXIT',
+      theme: 'blue',
+      icon: 'CursorArrowRaysIcon',
+      description: 'ENTRY AND EXIT POINTS FOR STOCKS',
+    },
   ],
 
   tables: [
@@ -25,7 +33,7 @@ export const managementMonitoringConfig: ManagementMonitoringConfig = {
       title: 'STOCK WITH GREEN ENTRY',
       dataSource: 'stocksGreenEntry' as const,
       columns: [
-        { key: 'no', label: 'No.' },
+        { key: 'no', label: 'NO.' },
         { key: 'companyName', label: 'Company Name' },
         { key: 'ticker', label: 'Ticker' },
         { key: 'currency', label: 'Currency' },
