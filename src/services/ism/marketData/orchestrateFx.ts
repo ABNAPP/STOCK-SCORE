@@ -1,6 +1,6 @@
 /**
  * Sequential FX provider chain (USD-denominated rate maps).
- * Priority: EODHD → Alpha Vantage → Finnhub (Marketstack omitted by ISM v1 spec).
+ * Order: {@link ISM_FX_PROVIDER_CHAIN} (EODHD first; Marketstack omitted by ISM v1 spec).
  */
 
 import type { IsmMarketProviderAdapter } from './adapterInterface';
@@ -15,7 +15,7 @@ import type { ProviderKeyPool } from './keyPool';
 import { stampKeyOnSuccess } from './stampMeta';
 import { withPreferredFirst } from './providerPriority';
 
-const FX_PRIORITY: IsmMarketProviderId[] = ['eodhd', 'alpha_vantage', 'finnhub'];
+import { ISM_FX_PROVIDER_CHAIN } from './providerChainConfig';
 
 export type IsmFxOrchestrateOptions = {
   resume?: IsmProviderAttemptMeta | null;
@@ -30,7 +30,7 @@ export async function fetchIsmUsdFxRatesWithFallback(
 ): Promise<IsmMarketDataResult<Record<string, number>>> {
   const base = metaBase(mode);
   let last: IsmMarketDataResult<Record<string, number>> | null = null;
-  const order = withPreferredFirst(FX_PRIORITY, options?.resume?.providerId);
+  const order = withPreferredFirst(ISM_FX_PROVIDER_CHAIN, options?.resume?.providerId);
 
   for (const providerId of order) {
     const adapter = adapters[providerId];

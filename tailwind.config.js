@@ -127,17 +127,10 @@ export default {
         '80': '20rem',    // 320px
         '96': '24rem',    // 384px
       },
-      // Typography
+      // Typography — app body uses Times New Roman via index.css; align Tailwind font-sans so utilities match
       fontFamily: {
-        sans: [
-          '-apple-system',
-          'BlinkMacSystemFont',
-          '"Segoe UI"',
-          'Roboto',
-          '"Helvetica Neue"',
-          'Arial',
-          'sans-serif',
-        ],
+        sans: ['"Times New Roman"', 'Times', 'serif'],
+        serif: ['"Times New Roman"', 'Times', 'serif'],
         mono: [
           'ui-monospace',
           'SFMono-Regular',

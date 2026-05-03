@@ -1,5 +1,11 @@
 /**
  * Provider-specific symbol translation (v1: conservative MIC-style guesses only where documented).
+ *
+ * EODHD expects instruments as `CODE.EXCHANGE`, e.g. `AAPL.US`, `VOW3.ST`, `BP.LSE`, `EURUSD.FOREX`.
+ * Unknown exchange defaults to `.US` here (see notes on returned symbol).
+ *
+ * @see https://eodhd.com/financial-apis/quick-start-with-our-financial-data-apis
+ * @see https://eodhd.com/financial-apis/exchanges-api-list-of-tickers-and-trading-hours
  */
 
 import type { IsmMarketProviderId, SymbolTranslationContext } from './types';

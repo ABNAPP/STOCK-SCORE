@@ -130,6 +130,36 @@ export function createScoreBoardTransformer(
           ],
           row
         );
+        const businessQualitySummaryStr = getValueAllowZero(
+          [
+            'Business Quality Summary',
+            'BUSINESS QUALITY SUMMARY',
+            'business quality summary',
+            'Business_Quality_Summary',
+            'BusinessQualitySummary',
+          ],
+          row
+        );
+        const operatingPillarScoreStr = getValueAllowZero(
+          [
+            'Operating Pillar Score',
+            'OPERATING PILLAR SCORE',
+            'operating pillar score',
+            'Operating_Pillar_Score',
+            'OperatingPillarScore',
+          ],
+          row
+        );
+        const overallStrengthStr = getValueAllowZero(
+          [
+            'Overall Strength',
+            'OVERALL STRENGTH',
+            'overall strength',
+            'Overall_Strength',
+            'OverallStrength',
+          ],
+          row
+        );
         const statusNoteStr = getValueAllowZero(
           [
             'Status Note',
@@ -166,6 +196,11 @@ export function createScoreBoardTransformer(
           ? forecastConfidenceStr.trim()
           : null;
         const sanitySummary = isValidValue(sanitySummaryStr) ? sanitySummaryStr.trim() : null;
+        const businessQualitySummary = isValidValue(businessQualitySummaryStr)
+          ? businessQualitySummaryStr.trim()
+          : null;
+        const operatingPillarScore = parseNumericValueNullable(operatingPillarScoreStr);
+        const overallStrength = parseNumericValueNullable(overallStrengthStr);
         const statusNote = isValidValue(statusNoteStr) ? statusNoteStr.trim() : null;
         const dashboardDateOfUpdate = isValidValue(dashboardDateOfUpdateStr)
           ? dashboardDateOfUpdateStr.trim()
@@ -230,6 +265,9 @@ export function createScoreBoardTransformer(
           valuationScore,
           forecastConfidenceVerdict,
           sanitySummary,
+          businessQualitySummary,
+          operatingPillarScore,
+          overallStrength,
           statusNote,
         };
       })

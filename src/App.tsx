@@ -33,6 +33,7 @@ const ToolBoxView = lazyWithRetry<typeof import('./components/views/ToolBoxView'
 const SMAView = lazyWithRetry<typeof import('./components/views/SMAView').default>(() => import('./components/views/SMAView'), 'SMAView');
 const ManagementMonitoringPage = lazyWithRetry<typeof import('./pages/ManagementMonitoringPage').default>(() => import('./pages/ManagementMonitoringPage'), 'ManagementMonitoringPage');
 const CentralDataServicePage = lazyWithRetry<typeof import('./pages/CentralDataServicePage').default>(() => import('./pages/CentralDataServicePage'), 'CentralDataServicePage');
+const ScoreModelSettingsPage = lazyWithRetry<typeof import('./pages/ScoreModelSettingsPage').default>(() => import('./pages/ScoreModelSettingsPage'), 'ScoreModelSettingsPage');
 const StockAnalysesView = lazyWithRetry<typeof import('./components/views/StockAnalysesView').default>(() => import('./components/views/StockAnalysesView'), 'StockAnalysesView');
 const UnderDevelopmentView = lazyWithRetry<typeof import('./components/views/UnderDevelopmentView').default>(() => import('./components/views/UnderDevelopmentView'), 'UnderDevelopmentView');
 const StockMonitorView = lazyWithRetry<typeof import('./components/views/StockMonitorView').default>(() => import('./components/views/StockMonitorView'), 'StockMonitorView');
@@ -90,9 +91,11 @@ function App() {
     const rawPath = location.pathname.replace(/^\//, '');
     const path = rawPath || 'score';
     const defaultView = getDefaultLandingView();
-    const isCentralDataServicePath = path === 'management-monitoring/central-data-service';
+    const isManagementMonitoringSubPath =
+      path === 'management-monitoring/central-data-service' ||
+      path === 'management-monitoring/score-model-settings';
 
-    if (isCentralDataServicePath) {
+    if (isManagementMonitoringSubPath) {
       if (canView('management-monitoring')) {
         setActiveView('management-monitoring');
       } else {
@@ -273,6 +276,13 @@ function App() {
         return (
           <Suspense fallback={<LoadingFallback />}>
             <CentralDataServicePage />
+          </Suspense>
+        );
+      }
+      if (location.pathname === '/management-monitoring/score-model-settings') {
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <ScoreModelSettingsPage />
           </Suspense>
         );
       }

@@ -56,6 +56,12 @@ export interface ScoreBoardData extends Record<string, unknown> {
   forecastConfidenceVerdict: string | null;
   /** DashBoard "Sanity Summary" (verbatim). */
   sanitySummary: string | null;
+  /** DashBoard "Business Quality Summary" (verbatim). */
+  businessQualitySummary: string | null;
+  /** DashBoard "Operating Pillar Score" (parsed numeric). */
+  operatingPillarScore: number | null;
+  /** DashBoard "Overall Strength" (parsed numeric). */
+  overallStrength: number | null;
   /** DashBoard "Status Note" (or equivalent note column). */
   statusNote: string | null;
 }

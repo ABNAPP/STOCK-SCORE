@@ -6,6 +6,7 @@ import {
   FUNDAMENTAL_MAX_SCORE_POINTS,
   TECHNICAL_MAX_SCORE_POINTS,
 } from '../utils/calculateScoreDetailed';
+import { formatScoreMetricLabel } from '../utils/scoreMetricLabels';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface ScoreBreakdownRowProps {
@@ -24,10 +25,7 @@ export default function ScoreBreakdownRow({ breakdown }: ScoreBreakdownRowProps)
   const { resolvedTheme } = useTheme();
   const isDarkMode = resolvedTheme === 'dark';
 
-  const metricDisplayLabel = (metric: string) =>
-    metric === 'THEOENTRY'
-      ? t('scoreBreakdown.theoEntryDisplayLabel')
-      : metric;
+  const metricDisplayLabel = (metric: string) => formatScoreMetricLabel(metric, t);
 
   // Stacked bar data: Fundamental vs Teknisk
   const stackedBarData: StackedBarDataItem[] = useMemo(() => [
@@ -76,11 +74,7 @@ export default function ScoreBreakdownRow({ breakdown }: ScoreBreakdownRowProps)
     }
   };
 
-  const getMultiplierText = (factor: number) => {
-    if (factor === 1.00) return '100%';
-    if (factor === 0.70) return '70%';
-    return '0%';
-  };
+  const getMultiplierText = (factor: number) => `${Math.round(factor * 100)}%`;
 
   // Custom tooltip for stacked bar
   const StackedBarTooltip = ({ active, payload }: any) => {
@@ -141,7 +135,7 @@ export default function ScoreBreakdownRow({ breakdown }: ScoreBreakdownRowProps)
         <h4 className="text-sm font-semibold text-black dark:text-white mb-3">
           Metric Detaljer
         </h4>
-        <div className="space-y-4 max-h-[200px] overflow-y-auto pr-2">
+        <div className="space-y-4 max-h-[min(360px,50vh)] overflow-y-auto pr-2">
           {/* Fundamental Section */}
           <div>
             <div className="flex items-center justify-between mb-2">

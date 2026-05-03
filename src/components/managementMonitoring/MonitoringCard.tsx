@@ -11,6 +11,7 @@ import {
   ChartBarIcon,
   ArrowPathIcon,
   CursorArrowRaysIcon,
+  AdjustmentsHorizontalIcon,
 } from '@heroicons/react/24/outline';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -22,6 +23,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   ChartBarIcon,
   ArrowPathIcon,
   CursorArrowRaysIcon,
+  AdjustmentsHorizontalIcon,
 };
 
 interface MonitoringCardProps extends MonitoringCardConfig {

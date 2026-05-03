@@ -1,3 +1,4 @@
+import { EODHD_API_ORIGIN } from '../../../../config/eodhdApi';
 import type { IsmMarketProviderAdapter } from '../adapterInterface';
 import type { IsmDailyBar, IsmDataRequestMode, IsmMarketDataResult, SymbolTranslationContext } from '../types';
 import { translateForProvider } from '../symbolTranslate';
@@ -28,7 +29,7 @@ export const eodhdAdapter: IsmMarketProviderAdapter = {
   ): Promise<IsmMarketDataResult<IsmDailyBar[]>> {
     const { symbol, notes } = translateForProvider('eodhd', ctx);
     const base = metaBase(mode, notes);
-    const url = `https://eodhistoricaldata.com/api/eod/${encodeURIComponent(symbol)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&api_token=${encodeURIComponent(apiKey)}&fmt=json`;
+    const url = `${EODHD_API_ORIGIN}/eod/${encodeURIComponent(symbol)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&period=d&api_token=${encodeURIComponent(apiKey)}&fmt=json`;
     const parsed = await fetchJson<unknown[]>(url, signal);
     if (!parsed.ok || !Array.isArray(parsed.body)) {
       return failedResult(base, `http_${parsed.status}`, symbol);
@@ -90,7 +91,7 @@ export const eodhdAdapter: IsmMarketProviderAdapter = {
     const rates: Record<string, number> = { USD: 1 };
     for (const ccy of MAJOR_FX) {
       const symbol = `USD${ccy}.FOREX`;
-      const url = `https://eodhistoricaldata.com/api/real-time/${symbol}?api_token=${encodeURIComponent(apiKey)}&fmt=json`;
+      const url = `${EODHD_API_ORIGIN}/real-time/${encodeURIComponent(symbol)}?api_token=${encodeURIComponent(apiKey)}&fmt=json`;
       const parsed = await fetchJson<{ close?: number; code?: string }>(url, signal);
       if (!parsed.ok || !parsed.body || typeof parsed.body.close !== 'number') {
         continue;

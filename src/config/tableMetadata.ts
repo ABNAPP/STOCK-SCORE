@@ -281,12 +281,12 @@ export const tableMetadata: TableMetadata[] = [
       },
       {
         columnKey: 'score',
-        dataSource: 'Beräknat utifrån THEOENTRY (Entry/Exit + pris). P/E-ingår inte i Score-poängen.',
-        formula: '(Erhållna råpoäng ÷ 45) × 100, avrundat till en decimal (0–100). TheoEntry är GreenOnly (full vikt eller 0).',
+        dataSource: 'Beräknat från DashBoard-fundamental (max 55 p) + Technical Recommendation / THEOENTRY (max 45 p). P/E och SMA ingår inte i Score-poängen.',
+        formula: 'Total = (summa erhållna råpoäng ÷ 100) × 100, avrundat till en decimal (0–100). Fundamental: valuation, risk, business quality, sanity, forecast confidence, operating pillar, overall strength. Teknisk: THEOENTRY GreenOnly (45 vid grön TheoEntry, annars 0).',
         conditions: [
-          'Poäng 0–100 efter normalisering (45 råvikter för THEOENTRY)',
-          'P/E SECTOR-analys visas i dedikerad P/E-flik; ingår inte i Score.',
-          'OBS: Övrigt rådata (t.ex. SMA, fundamentalkolumner på Score Board) ingår inte i Score-poängen.',
+          'Fundamental högst 55 poäng; teknisk högst 45 poäng; total högst 100 poäng.',
+          'P/E SECTOR visas i dedikerad P/E-flik; ingår inte i Score-poängen.',
+          'SMA ingår inte i Score-poängen.',
           'Färgmarkering för score-kolumn:',
           '  - GRÖN om score >= 70',
           '  - BLÅ om 50 ≤ score < 70',

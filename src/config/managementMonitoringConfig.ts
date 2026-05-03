@@ -25,6 +25,15 @@ export const managementMonitoringConfig: ManagementMonitoringConfig = {
       icon: 'CursorArrowRaysIcon',
       description: 'ENTRY AND EXIT POINTS FOR STOCKS',
     },
+    {
+      id: 'score-model-settings',
+      number: 3,
+      title: 'Score Model Settings',
+      theme: 'green',
+      icon: 'AdjustmentsHorizontalIcon',
+      description:
+        'View the active SCORE model, weights and scoring rules.',
+    },
   ],
 
   tables: [

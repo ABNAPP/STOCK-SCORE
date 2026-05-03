@@ -11,6 +11,7 @@
  */
 
 import { getApiKeys } from '../config/apiKeys';
+import { EODHD_API_ORIGIN } from '../config/eodhdApi';
 import { getCachedData, setCachedData } from './firestoreCacheService';
 import { CACHE_KEYS } from './cacheKeys';
 
@@ -170,7 +171,7 @@ async function fetchEODHDRates(apiKey: string): Promise<Record<string, number> |
     const symbols = MAJOR_CURRENCIES.map((c) => `USD${c}.FOREX`);
     const results = await Promise.all(
       symbols.map(async (symbol) => {
-        const url = `https://eodhistoricaldata.com/api/real-time/${symbol}?api_token=${apiKey}&fmt=json`;
+        const url = `${EODHD_API_ORIGIN}/real-time/${encodeURIComponent(symbol)}?api_token=${encodeURIComponent(apiKey)}&fmt=json`;
         const res = await fetch(url);
         if (!res.ok) return null;
         const data = (await res.json()) as { close?: number; code?: string };

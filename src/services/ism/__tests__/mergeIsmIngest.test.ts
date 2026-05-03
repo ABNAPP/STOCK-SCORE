@@ -31,6 +31,9 @@ function mockRow(partial: Partial<ScoreBoardData> & Pick<ScoreBoardData, 'compan
     valuationScore: partial.valuationScore ?? null,
     forecastConfidenceVerdict: partial.forecastConfidenceVerdict ?? null,
     sanitySummary: partial.sanitySummary ?? null,
+    businessQualitySummary: partial.businessQualitySummary ?? null,
+    operatingPillarScore: partial.operatingPillarScore ?? null,
+    overallStrength: partial.overallStrength ?? null,
     statusNote: partial.statusNote ?? null,
   };
 }

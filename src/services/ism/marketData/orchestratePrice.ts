@@ -1,6 +1,6 @@
 /**
  * Sequential price/history provider chain (one provider, one key at a time).
- * Priority: EODHD → Alpha Vantage → Marketstack → Finnhub.
+ * Order: {@link ISM_PRICE_PROVIDER_CHAIN} (EODHD first).
  */
 
 import type { IsmMarketProviderAdapter } from './adapterInterface';
@@ -16,8 +16,7 @@ import { failedResult, metaBase } from './resultHelpers';
 import type { ProviderKeyPool } from './keyPool';
 import { stampKeyOnSuccess } from './stampMeta';
 import { withPreferredFirst } from './providerPriority';
-
-const PRICE_PRIORITY: IsmMarketProviderId[] = ['eodhd', 'alpha_vantage', 'marketstack', 'finnhub'];
+import { ISM_PRICE_PROVIDER_CHAIN } from './providerChainConfig';
 
 export type IsmPriceOrchestrateOptions = {
   /** Try this provider first; if it matches `resume`, start at `resume.keyIndex`. */
@@ -36,7 +35,7 @@ export async function fetchIsmHistoricalDailyWithFallback(
 ): Promise<IsmMarketDataResult<IsmDailyBar[]>> {
   const base = metaBase(mode);
   let last: IsmMarketDataResult<IsmDailyBar[]> | null = null;
-  const order = withPreferredFirst(PRICE_PRIORITY, options?.resume?.providerId);
+  const order = withPreferredFirst(ISM_PRICE_PROVIDER_CHAIN, options?.resume?.providerId);
 
   for (const providerId of order) {
     const adapter = adapters[providerId];
@@ -79,7 +78,7 @@ export async function fetchIsmLatestDailyCloseWithFallback(
 ): Promise<IsmMarketDataResult<number>> {
   const base = metaBase(mode);
   let last: IsmMarketDataResult<number> | null = null;
-  const order = withPreferredFirst(PRICE_PRIORITY, options?.resume?.providerId);
+  const order = withPreferredFirst(ISM_PRICE_PROVIDER_CHAIN, options?.resume?.providerId);
 
   for (const providerId of order) {
     const adapter = adapters[providerId];

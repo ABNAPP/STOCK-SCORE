@@ -36,7 +36,16 @@
     "userManagement": "User Management"
   },
   "scoreBreakdown": {
-    "theoEntryDisplayLabel": "Technical Recommendation"
+    "theoEntryDisplayLabel": "Technical Recommendation",
+    "metrics": {
+      "VALUATION_SCORE": "Valuation Score",
+      "RISK_FLAG": "Risk Flag",
+      "BUSINESS_QUALITY_SUMMARY": "Business Quality Summary",
+      "SANITY_SUMMARY": "Sanity Summary",
+      "FORECAST_CONFIDENCE": "Forecast Confidence",
+      "OPERATING_PILLAR_SCORE": "Operating Pillar Score",
+      "OVERALL_STRENGTH": "Overall Strength"
+    }
   },
   "stockAnalysesView": {
     "price": "Price",

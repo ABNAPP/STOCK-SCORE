@@ -15,6 +15,7 @@ export type {
 
 export { parseKeyPool, fingerprintKey, ProviderKeyPool } from './keyPool';
 export { withPreferredFirst } from './providerPriority';
+export { ISM_PRICE_PROVIDER_CHAIN, ISM_FX_PROVIDER_CHAIN } from './providerChainConfig';
 export { translateForProvider } from './symbolTranslate';
 export { buildSymbolTranslationContext } from './translationContext';
 export { defaultIsmMarketAdapters, buildDefaultProviderKeyPools } from './defaultRegistry';

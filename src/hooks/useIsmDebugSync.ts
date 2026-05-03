@@ -31,6 +31,7 @@ import {
   translateForProvider,
   fetchIsmHistoricalDailyWithFallback,
   fetchIsmLatestDailyCloseWithFallback,
+  ISM_PRICE_PROVIDER_CHAIN,
 } from '../services/ism/marketData';
 import type { IsmMarketProviderId } from '../services/ism/marketData/types';
 
@@ -161,8 +162,6 @@ function median(nums: number[]): number {
   return sorted[mid];
 }
 
-const PRICE_PRIORITY: IsmMarketProviderId[] = ['eodhd', 'alpha_vantage', 'marketstack', 'finnhub'];
-
 async function traceHistoricalProviderAttempts(
   ingest: ISMInstrumentIngest,
   fromIso: string,
@@ -173,7 +172,7 @@ async function traceHistoricalProviderAttempts(
   const pools = buildDefaultProviderKeyPools();
   const adapters = defaultIsmMarketAdapters;
 
-  for (const providerId of PRICE_PRIORITY) {
+  for (const providerId of ISM_PRICE_PROVIDER_CHAIN) {
     const adapter = adapters[providerId];
     const pool = pools.get(providerId);
     const translated = translateForProvider(providerId, ctx).symbol;
@@ -644,7 +643,7 @@ export function useIsmDebugSync(
           companyName: row.companyName,
           tickerRaw: row.tickerRaw,
           symbolId: row.symbolId,
-          providerAttemptOrder: PRICE_PRIORITY,
+          providerAttemptOrder: [...ISM_PRICE_PROVIDER_CHAIN],
           attempts: traced.attempts,
           firstStop: stop,
           beforeHistoryDaysAvailable: before.history,

@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useId } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ScoreBreakdown,
   FUNDAMENTAL_MAX_SCORE_POINTS,
   TECHNICAL_MAX_SCORE_POINTS,
 } from '../utils/calculateScoreDetailed';
+import { formatScoreMetricLabel } from '../utils/scoreMetricLabels';
 
 interface ScoreBreakdownTooltipProps {
   breakdown: ScoreBreakdown;
@@ -11,6 +13,7 @@ interface ScoreBreakdownTooltipProps {
 }
 
 export default function ScoreBreakdownTooltip({ breakdown, children }: ScoreBreakdownTooltipProps) {
+  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -71,11 +74,7 @@ export default function ScoreBreakdownTooltip({ breakdown, children }: ScoreBrea
     }
   };
 
-  const getMultiplierText = (factor: number) => {
-    if (factor === 1.00) return '100%';
-    if (factor === 0.70) return '70%';
-    return '0%';
-  };
+  const getMultiplierText = (factor: number) => `${Math.round(factor * 100)}%`;
 
   const fundamentalItems = breakdown.items.filter(item => item.category === 'Fundamental');
   const technicalItems = breakdown.items.filter(item => item.category === 'Technical');
@@ -124,7 +123,7 @@ export default function ScoreBreakdownTooltip({ breakdown, children }: ScoreBrea
                   <div key={index} className="flex items-center justify-between text-xs py-1 border-b border-gray-800 last:border-0">
                     <div className="flex items-center space-x-2 flex-1 min-w-0">
                       <span className="flex-shrink-0">{getColorIndicator(item.color)}</span>
-                      <span className="text-gray-300 truncate">{item.metric}</span>
+                      <span className="text-gray-300 truncate">{formatScoreMetricLabel(item.metric, t)}</span>
                     </div>
                     <div className="flex items-center space-x-3 flex-shrink-0 ml-2">
                       <span className="text-gray-400 w-8 text-right">v:{item.weight}</span>
@@ -147,7 +146,7 @@ export default function ScoreBreakdownTooltip({ breakdown, children }: ScoreBrea
                   <div key={index} className="flex items-center justify-between text-xs py-1 border-b border-gray-800 last:border-0">
                     <div className="flex items-center space-x-2 flex-1 min-w-0">
                       <span className="flex-shrink-0">{getColorIndicator(item.color)}</span>
-                      <span className="text-gray-300 truncate">{item.metric}</span>
+                      <span className="text-gray-300 truncate">{formatScoreMetricLabel(item.metric, t)}</span>
                     </div>
                     <div className="flex items-center space-x-3 flex-shrink-0 ml-2">
                       <span className="text-gray-400 w-8 text-right">v:{item.weight}</span>

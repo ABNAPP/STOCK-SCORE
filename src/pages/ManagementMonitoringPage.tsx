@@ -158,6 +158,13 @@ function ManagementMonitoringPageInner() {
           onClick: () => navigate('/entry-exit-benjamin-graham'),
         };
       }
+      if (card.id === 'score-model-settings') {
+        return {
+          ...card,
+          interactive: true,
+          onClick: () => navigate('/management-monitoring/score-model-settings'),
+        };
+      }
       if (card.id !== 'central-data-service') {
         return card;
       }
