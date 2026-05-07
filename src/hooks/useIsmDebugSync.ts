@@ -29,11 +29,15 @@ import {
   defaultIsmMarketAdapters,
   buildSymbolTranslationContext,
   translateForProvider,
-  fetchIsmHistoricalDailyWithFallback,
-  fetchIsmLatestDailyCloseWithFallback,
   ISM_PRICE_PROVIDER_CHAIN,
 } from '../services/ism/marketData';
-import type { IsmMarketProviderId } from '../services/ism/marketData/types';
+import {
+  collectConstituentFetchRefs,
+  fetchConstituentCloseHistories,
+  fetchEodCloseSeriesForTicker,
+  ISM_POSTURE_EOD_FETCH_BATCH_SIZE,
+  postureEodWindowFromTradeDate,
+} from '../services/ism/dailySector/fetchPostureEodInputs';
 
 type StepStatus = 'ok' | 'failed' | 'warn';
 
@@ -455,7 +459,7 @@ export function useIsmDebugSync(
           : 'Mining sector not present in weekly run result',
       });
 
-      // 6) runDailyIsmSectorIndex for sectors with active snapshot
+      // 6) runDailyIsmSectorIndex for sectors with active snapshot (fresh EODHD window per run)
       const bySector = new Map<string, ISMInstrumentIngest[]>();
       for (const row of ingestRows) {
         const sectorId = ismSectorIdFromName(row.sectorIsm);
@@ -465,23 +469,23 @@ export function useIsmDebugSync(
       }
 
       const dayTo = isoTodayUtc();
-      const dayFrom = addCalendarDays(dayTo, -320);
-      const spyHistoryRes = await fetchIsmHistoricalDailyWithFallback(
-        buildSymbolTranslationContext('SPY'),
-        dayFrom,
-        dayTo,
-        'daily',
-        buildDefaultProviderKeyPools(),
-        defaultIsmMarketAdapters
-      );
-      const spyHistory =
-        spyHistoryRes.outcome === 'valid' && spyHistoryRes.data
-          ? spyHistoryRes.data.map((b) => b.close).filter((v) => Number.isFinite(v) && v > 0)
-          : [];
+      const { fromIso: postureFromIso, toIso: postureToIso } = postureEodWindowFromTradeDate(dayTo);
 
+      let spyHistory: number[] = [];
       let activeSectorCount = 0;
       let dailyOkCount = 0;
-      for (const [sectorId, sectorRows] of bySector.entries()) {
+
+      if (!apiKeys.eodhd?.trim()) {
+        steps.push({
+          step: 'runDailyIsmSectorIndex',
+          status: 'failed',
+          detail:
+            'ISM posture requires VITE_EODHD_API_KEY (or saved EODHD key): EOD-only provider chain cannot fetch SPY/constituent histories.',
+        });
+      } else {
+        spyHistory = await fetchEodCloseSeriesForTicker('SPY', postureFromIso, postureToIso);
+
+        for (const [sectorId, sectorRows] of bySector.entries()) {
         let activeSnapshot: Record<string, unknown> | null = null;
         try {
           activeSnapshot = await loadActiveSectorRebalanceSnapshot(user, sectorId);
@@ -517,6 +521,14 @@ export function useIsmDebugSync(
           ? activeSnapshot.constituents
           : [];
 
+        const refs = collectConstituentFetchRefs(cons, ingestBySymbolId);
+        const fetchedHistories = await fetchConstituentCloseHistories(
+          refs,
+          postureFromIso,
+          postureToIso,
+          ISM_POSTURE_EOD_FETCH_BATCH_SIZE
+        );
+
         for (const item of cons) {
           if (!item || typeof item !== 'object') continue;
           const row = item as Record<string, unknown>;
@@ -535,25 +547,16 @@ export function useIsmDebugSync(
             continue;
           }
 
-          const latest = await fetchIsmLatestDailyCloseWithFallback(
-            buildSymbolTranslationContext(ingest.tickerRaw),
-            'daily',
-            buildDefaultProviderKeyPools(),
-            defaultIsmMarketAdapters
-          );
-          if (latest.outcome === 'valid' && latest.data != null && Number.isFinite(latest.data)) {
-            latestCloseBySymbolId[symbolId] = latest.data;
-            constituentHistoryBySymbolId[symbolId] = [latest.data];
-          } else {
-            latestCloseBySymbolId[symbolId] = fallbackLastClose;
-            constituentHistoryBySymbolId[symbolId] =
-              fallbackLastClose != null ? [fallbackLastClose] : [];
-          }
+          const hist = fetchedHistories[symbolId] ?? [];
+          const lastClose = hist.length > 0 ? hist[hist.length - 1]! : fallbackLastClose;
+          latestCloseBySymbolId[symbolId] = lastClose ?? undefined;
+          constituentHistoryBySymbolId[symbolId] =
+            hist.length > 0 ? hist : fallbackLastClose != null ? [fallbackLastClose] : [];
         }
 
         const sectorSeriesDocs = await fetchSectorIndexDailyInRange(
           sectorId,
-          dayFrom,
+          postureFromIso,
           addCalendarDays(dayTo, -1)
         );
         const sectorIndexHistory = sectorSeriesDocs
@@ -603,11 +606,12 @@ export function useIsmDebugSync(
             });
           }
         }
+        }
       }
 
       steps.push({
         step: 'runDailyIsmSectorIndex',
-        status: dailyOkCount > 0 ? 'ok' : 'warn',
+        status: dailyOkCount > 0 ? 'ok' : apiKeys.eodhd?.trim() ? 'warn' : 'failed',
         detail: `activeSnapshots=${activeSectorCount}, dailyOk=${dailyOkCount}`,
       });
 

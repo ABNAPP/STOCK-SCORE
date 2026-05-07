@@ -19,6 +19,25 @@ export default defineConfig({
     port: 5173, // Default Vite port
     strictPort: false, // If port is in use, try next available port
     open: true, // Automatically open browser when dev server starts
+    /** Same-origin proxy so browser `fetch` avoids EODHD CORS (Postman is unaffected). */
+    proxy: {
+      '/eodhd-proxy': {
+        target: 'https://eodhd.com',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/eodhd-proxy/, ''),
+      },
+    },
+  },
+  preview: {
+    proxy: {
+      '/eodhd-proxy': {
+        target: 'https://eodhd.com',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/eodhd-proxy/, ''),
+      },
+    },
   },
   plugins: [
     react(),

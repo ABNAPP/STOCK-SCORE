@@ -1,8 +1,12 @@
 # EODHD as primary market-data provider
 
-The app already treats **EODHD as the main provider** for ISM price history, latest close, and ISM USD FX: it is **first** in the fallback chains defined in `src/services/ism/marketData/providerChainConfig.ts` (`ISM_PRICE_PROVIDER_CHAIN`, `ISM_FX_PROVIDER_CHAIN`). The global currency cache in `src/services/currencyService.ts` also tries EODHD before Marketstack, Finnhub, and Alpha Vantage.
+ISM market-data layers use **EODHD only**: `ISM_PRICE_PROVIDER_CHAIN` and `ISM_FX_PROVIDER_CHAIN` in [`src/services/ism/marketData/providerChainConfig.ts`](src/services/ism/marketData/providerChainConfig.ts) contain **`['eodhd']`**—no Alpha Vantage / Marketstack / Finnhub fallback for ISM. Posture calculations pull **fresh** full-window EOD series via [`fetchPostureEodInputs.ts`](src/services/ism/dailySector/fetchPostureEodInputs.ts) each run. The global currency cache in [`currencyService.ts`](src/services/currencyService.ts) may still try other providers after EODHD.
 
 Ensure **`VITE_EODHD_API_KEY`** is set (and optionally stored via your API keys UI / Firestore app config) so requests hit EODHD instead of falling through to other keys.
+
+### Browser CORS (why Postman works but DevTools looked “red”)
+
+Browsers block cross-origin reads unless the API sends permissive CORS headers; EODHD’s JSON API typically does not allow arbitrary web origins. Postman does not apply CORS. This app defaults to same-origin URLs under **`/eodhd-proxy/api`**, proxied to `https://eodhd.com` in **Vite dev** (`vite.config.ts`) and **Vercel** (`vercel.json`). See [`src/config/eodhdApi.ts`](../src/config/eodhdApi.ts).
 
 ## How EODHD identifies tickers (official)
 
@@ -24,9 +28,9 @@ Implementation: `toEodhdSymbol` in `src/services/ism/marketData/symbolTranslate.
 - `lse` → **`TICKER.LSE`**
 - Anything else → **`TICKER.{EXCHANGE}`** uppercased with note `eodhd_generic_exchange_suffix`
 
-HTTP usage for daily bars: `eodhdAdapter.ts` uses `EODHD_API_ORIGIN` from `src/config/eodhdApi.ts` (`https://eodhd.com/api`), e.g.:
+HTTP usage for daily bars: `eodhdAdapter.ts` builds URLs from `EODHD_API_ORIGIN` (usually **`/eodhd-proxy/api`** in the SPA → forwarded to `https://eodhd.com/api`), e.g.:
 
-`GET https://eodhd.com/api/eod/{SYMBOL.EXCHANGE}?from=…&to=…&period=d&api_token=…&fmt=json`
+`GET …/eod/{SYMBOL.EXCHANGE}?from=…&to=…&period=d&api_token=…&fmt=json` → upstream `https://eodhd.com/api/eod/...`
 
 FX in that adapter uses real-time symbols like `USDSEK.FOREX`.
 
@@ -42,5 +46,5 @@ Plan limits (daily quota, requests per minute) are enforced by **EODHD**, not ha
 | EODHD HTTP adapter | `src/services/ism/marketData/adapters/eodhdAdapter.ts` |
 | Symbol translation | `src/services/ism/marketData/symbolTranslate.ts` |
 | App-wide FX rates cache | `src/services/currencyService.ts` |
-| API base URL | `src/config/eodhdApi.ts` (`EODHD_API_ORIGIN`) |
+| API base URL / CORS proxy | `src/config/eodhdApi.ts`, `vite.config.ts`, `vercel.json` |
 | API key wiring | `src/config/apiKeys.ts`, `VITE_EODHD_API_KEY` |

@@ -20,7 +20,7 @@ function okBars(symbol: string): IsmMarketDataResult<IsmDailyBar[]> {
 }
 
 describe('fetchIsmHistoricalDailyWithFallback', () => {
-  it('tries next provider when first returns invalid', async () => {
+  it('ISM chain is EODHD-only: invalid eodhd does not call other providers', async () => {
     const eodhd: IsmMarketProviderAdapter = {
       id: 'eodhd',
       fetchHistoricalDaily: vi.fn().mockResolvedValue({
@@ -67,10 +67,9 @@ describe('fetchIsmHistoricalDailyWithFallback', () => {
       pools,
       adapters
     );
-    expect(res.outcome).toBe('valid');
-    expect(res.meta.lastSuccess?.providerId).toBe('alpha_vantage');
+    expect(res.outcome).toBe('invalid');
     expect(eodhd.fetchHistoricalDaily).toHaveBeenCalledTimes(1);
-    expect(alpha.fetchHistoricalDaily).toHaveBeenCalledTimes(1);
+    expect(alpha.fetchHistoricalDaily).not.toHaveBeenCalled();
   });
 
   it('rotates keys on failed then succeeds', async () => {
@@ -120,20 +119,16 @@ describe('fetchIsmHistoricalDailyWithFallback', () => {
     expect(res.meta.lastSuccess?.keyIndex).toBe(1);
   });
 
-  it('tries resume provider before default priority', async () => {
+  it('withPreferredFirst resumes eodhd when resume meta matches chain', async () => {
     const eodhd: IsmMarketProviderAdapter = {
       id: 'eodhd',
-      fetchHistoricalDaily: vi.fn().mockResolvedValue({
-        outcome: 'valid',
-        data: [],
-        meta: metaBase('daily'),
-      }),
+      fetchHistoricalDaily: vi.fn().mockResolvedValue(okBars('MMM.US')),
       fetchLatestDailyClose: vi.fn(),
       fetchUsdFxRates: vi.fn(),
     };
     const alpha: IsmMarketProviderAdapter = {
       id: 'alpha_vantage',
-      fetchHistoricalDaily: vi.fn().mockResolvedValue(okBars('A')),
+      fetchHistoricalDaily: vi.fn(),
       fetchLatestDailyClose: vi.fn(),
       fetchUsdFxRates: vi.fn(),
     };
@@ -163,16 +158,16 @@ describe('fetchIsmHistoricalDailyWithFallback', () => {
       pools,
       { eodhd, alpha_vantage: alpha, marketstack: ms, finnhub: fh },
       undefined,
-      { resume: { providerId: 'alpha_vantage', keyIndex: 0, keyFingerprint: '…test' } }
+      { resume: { providerId: 'eodhd', keyIndex: 0, keyFingerprint: '…test' } }
     );
     expect(res.outcome).toBe('valid');
-    expect(alpha.fetchHistoricalDaily).toHaveBeenCalledTimes(1);
-    expect(eodhd.fetchHistoricalDaily).not.toHaveBeenCalled();
+    expect(eodhd.fetchHistoricalDaily).toHaveBeenCalledTimes(1);
+    expect(alpha.fetchHistoricalDaily).not.toHaveBeenCalled();
   });
 });
 
 describe('fetchIsmUsdFxRatesWithFallback', () => {
-  it('skips marketstack and uses finnhub after eodhd invalid', async () => {
+  it('ISM FX chain is EODHD-only: no fallback after eodhd invalid', async () => {
     const eodhd: IsmMarketProviderAdapter = {
       id: 'eodhd',
       fetchHistoricalDaily: vi.fn(),
@@ -188,12 +183,9 @@ describe('fetchIsmUsdFxRatesWithFallback', () => {
       id: 'alpha_vantage',
       fetchHistoricalDaily: vi.fn(),
       fetchLatestDailyClose: vi.fn(),
-      fetchUsdFxRates: vi.fn().mockResolvedValue({
-        outcome: 'invalid',
-        data: null,
-        reason: 'fx_insufficient_pairs',
-        meta: metaBase('daily'),
-      }),
+      fetchUsdFxRates: vi.fn().mockResolvedValue(
+        withSuccessMeta(metaBase('daily'), 'alpha_vantage', 0, 'b', 'USD', { USD: 1, SEK: 10 })
+      ),
     };
     const ms: IsmMarketProviderAdapter = {
       id: 'marketstack',
@@ -205,9 +197,7 @@ describe('fetchIsmUsdFxRatesWithFallback', () => {
       id: 'finnhub',
       fetchHistoricalDaily: vi.fn(),
       fetchLatestDailyClose: vi.fn(),
-      fetchUsdFxRates: vi.fn().mockResolvedValue(
-        withSuccessMeta(metaBase('daily'), 'finnhub', 0, 't', 'USD', { USD: 1, SEK: 10 })
-      ),
+      fetchUsdFxRates: vi.fn(),
     };
     const pools = new Map([
       ['eodhd', new ProviderKeyPool('eodhd', ['a'])],
@@ -221,8 +211,8 @@ describe('fetchIsmUsdFxRatesWithFallback', () => {
       marketstack: ms,
       finnhub: fh,
     });
-    expect(res.outcome).toBe('valid');
-    expect(res.meta.lastSuccess?.providerId).toBe('finnhub');
-    expect(ms.fetchUsdFxRates).not.toHaveBeenCalled();
+    expect(res.outcome).toBe('invalid');
+    expect(alpha.fetchUsdFxRates).not.toHaveBeenCalled();
+    expect(fh.fetchUsdFxRates).not.toHaveBeenCalled();
   });
 });

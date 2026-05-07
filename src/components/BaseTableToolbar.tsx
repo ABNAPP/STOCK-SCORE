@@ -13,6 +13,7 @@ export interface BaseTableToolbarProps<T = unknown> {
   totalRows: number;
   filteredRows: number;
   searchPlaceholder?: string;
+  showSearch?: boolean;
   columns: Array<{ key: string; label: string }>;
   columnVisibility: Record<string, boolean>;
   onToggleColumn: (key: string) => void;
@@ -29,6 +30,7 @@ export default function BaseTableToolbar<T = unknown>({
   totalRows,
   filteredRows,
   searchPlaceholder = 'Sök...',
+  showSearch = true,
   columns,
   columnVisibility,
   onToggleColumn,
@@ -40,15 +42,19 @@ export default function BaseTableToolbar<T = unknown>({
 }: BaseTableToolbarProps<T>) {
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-300 dark:border-gray-500 px-4 py-3 flex items-center justify-between gap-4 flex-shrink-0">
-      <div className="flex-1">
-        <TableSearchBar
-          searchValue={searchValue}
-          onSearchChange={onSearchChange}
-          totalRows={totalRows}
-          filteredRows={filteredRows}
-          placeholder={searchPlaceholder}
-        />
-      </div>
+      {showSearch ? (
+        <div className="flex-1">
+          <TableSearchBar
+            searchValue={searchValue}
+            onSearchChange={onSearchChange}
+            totalRows={totalRows}
+            filteredRows={filteredRows}
+            placeholder={searchPlaceholder}
+          />
+        </div>
+      ) : (
+        <div className="flex-1" />
+      )}
       <div className="flex items-center gap-2">
         <ColumnVisibilityToggle
           columns={columns}
