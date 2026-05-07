@@ -44,6 +44,8 @@ interface ScoreTableProps {
   benjaminGrahamData?: BenjaminGrahamData[];
   entryExitValues?: Map<string, EntryExitValues>;
   initialTableState?: ShareableTableState;
+  defaultSortKey?: 'score' | 'companyName';
+  defaultSortDirection?: 'asc' | 'desc';
 }
 
 const SCORE_COLUMNS: ColumnDefinition[] = [
@@ -80,7 +82,16 @@ const SCORE_FILTERS: FilterConfig[] = [
   },
 ];
 
-export default function ScoreTable({ data, loading, error, benjaminGrahamData = [], entryExitValues = new Map(), initialTableState }: ScoreTableProps) {
+export default function ScoreTable({
+  data,
+  loading,
+  error,
+  benjaminGrahamData = [],
+  entryExitValues = new Map(),
+  initialTableState,
+  defaultSortKey = 'score',
+  defaultSortDirection = 'desc',
+}: ScoreTableProps) {
   // Helper function to generate row key - must be used consistently everywhere.
   // Stable identifier (no index) so expanded state survives sort/filter changes.
   const generateRowKey = useCallback((item: ScoreData): string => {
@@ -246,11 +257,13 @@ export default function ScoreTable({ data, loading, error, benjaminGrahamData = 
       renderCell={renderCell}
       renderMobileCard={renderMobileCard}
       renderExpandedRow={renderExpandedRow}
-      enableVirtualScroll={true}
+      enableAdvancedColumnFilters={false}
+      showSearch={false}
+      enableVirtualScroll={false}
       searchFields={['companyName', 'ticker']}
       searchPlaceholder="Sök efter företag eller ticker..."
-      defaultSortKey="score"
-      defaultSortDirection="desc"
+      defaultSortKey={defaultSortKey}
+      defaultSortDirection={defaultSortDirection}
       stickyColumns={['antal', 'companyName', 'ticker', 'currency']}
       headerCellPaddingClass="px-2 py-2"
       cellPaddingClass="px-2 py-2"

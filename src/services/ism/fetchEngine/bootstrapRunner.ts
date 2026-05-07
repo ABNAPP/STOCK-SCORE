@@ -1,3 +1,8 @@
+/**
+ * Chunked history backfill for fetch-engine **state only** (progress counters / resume).
+ * ISM posture math (`computeDailySectorIndex`) does **not** use stored OHLC from this loop;
+ * it relies on fresh per-run EODHD window fetches — see `fetchPostureEodInputs.ts`.
+ */
 import type { ISMInstrumentIngest } from '../../../types/ismIngest';
 import {
   fetchIsmHistoricalDailyWithFallback,

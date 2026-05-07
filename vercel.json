@@ -4,6 +4,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/eodhd-proxy/:path*", "destination": "https://eodhd.com/:path*" },
     { "source": "/", "destination": "/index.html" },
     { "source": "/((?!assets/|vite.svg|favicon).*)", "destination": "/index.html" }
   ],

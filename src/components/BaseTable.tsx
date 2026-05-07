@@ -98,6 +98,7 @@ export interface BaseTableProps<T> {
   // Search configuration
   searchFields: (keyof T)[];
   searchPlaceholder?: string;
+  showSearch?: boolean;
   
   // Sort configuration
   defaultSortKey?: keyof T;
@@ -164,6 +165,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
   virtualScrollOverscan = 10,
   searchFields,
   searchPlaceholder = 'Sök...',
+  showSearch = true,
   defaultSortKey,
   defaultSortDirection = 'asc',
   stickyColumns = [],
@@ -723,6 +725,7 @@ export default function BaseTable<T extends Record<string, unknown>>({
           totalRows={data.length}
           filteredRows={filteredData.length}
           searchPlaceholder={searchPlaceholder}
+          showSearch={showSearch}
           columns={columns}
           columnVisibility={columnVisibility}
           onToggleColumn={toggleColumn}
