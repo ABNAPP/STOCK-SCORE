@@ -9,6 +9,99 @@ import TableSearchBar from '../components/TableSearchBar';
 import { useDebounce } from '../hooks/useDebounce';
 import { sanitizeSearchQuery } from '../utils/inputValidator';
 
+const LOGO_HEADER_NAMES = new Set(['company logo', 'company logo url', 'logo']);
+
+function isLogoColumnHeader(headerName: string): boolean {
+  return LOGO_HEADER_NAMES.has(headerName.trim().toLowerCase());
+}
+
+/**
+ * Logo column: derive safe `src` for `<img>`.
+ * Accepts http(s)-prefixed strings (covers Google favicon URLs with nested query chars).
+ * If `URL` parsing fails on edge cases, still returns trimmed string starting with http(s).
+ * Never stringifies arbitrary objects (`[object Object]`).
+ */
+function extractLogoImgSrc(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'object') return null;
+
+  let raw = typeof value === 'string' ? value.trim() : String(value).trim();
+  raw = raw.replace(/^\ufeff/, '');
+  if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+    raw = raw.slice(1, -1).trim();
+  }
+  if (raw === '') return null;
+
+  const lc = raw.toLowerCase();
+  const hasHttpScheme = lc.startsWith('https://') || lc.startsWith('http://');
+  if (!hasHttpScheme) {
+    try {
+      const u = new URL(raw);
+      if (u.protocol === 'http:' || u.protocol === 'https:') {
+        return u.href;
+      }
+    } catch {
+      /* noop */
+    }
+    return null;
+  }
+
+  try {
+    const u = new URL(raw);
+    if (u.protocol === 'http:' || u.protocol === 'https:') {
+      return u.href;
+    }
+  } catch {
+    /* Fallback: Sheets / favicon URLs can fail strict parsing — still attempt as image src */
+  }
+  return raw;
+}
+
+function SnapshotLogoCell({ url }: { url: string }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [url]);
+
+  if (failed) {
+    return <span className="text-gray-400 dark:text-gray-500">—</span>;
+  }
+
+  return (
+    <img
+      src={url}
+      alt="Company logo"
+      className="mx-auto h-8 w-8 object-contain"
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function formatDateUtcYyyyMmDd(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Parse sheet value to UTC calendar yyyy-mm-dd; null if unparseable. */
+function tryFormatDateOfValuation(value: unknown): string | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : formatDateUtcYyyyMmDd(value);
+  }
+  if (typeof value === 'string') {
+    const t = value.trim();
+    if (t === '') return null;
+    const d = new Date(t);
+    return Number.isNaN(d.getTime()) ? null : formatDateUtcYyyyMmDd(d);
+  }
+  return null;
+}
+
 function formatSnapshotCell(
   value: unknown,
   sheetName: SupportedSheetName,
@@ -16,15 +109,26 @@ function formatSnapshotCell(
 ): string {
   if (value === null || value === undefined || value === '') return '—';
 
+  const headerNorm = headerName.trim().toLowerCase();
+
   if (
     sheetName === 'DashBoard' &&
-    headerName.trim().toLowerCase() === 'date of update'
+    headerNorm === 'date of update'
   ) {
     const dateValue = value instanceof Date ? value : new Date(String(value));
     if (!Number.isNaN(dateValue.getTime())) {
       return dateValue.toLocaleDateString();
     }
     return String(value);
+  }
+
+  if (headerNorm === 'date of valuation') {
+    return tryFormatDateOfValuation(value) ?? '—';
+  }
+
+  if (isLogoColumnHeader(headerName)) {
+    const u = extractLogoImgSrc(value);
+    return u ?? '—';
   }
 
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -48,6 +152,14 @@ function formatSnapshotCell(
         return numericValue.toLocaleString(undefined, { maximumFractionDigits: 2 });
       }
     }
+  }
+
+  if (value instanceof Date) {
+    return !Number.isNaN(value.getTime()) ? value.toLocaleDateString() : '—';
+  }
+
+  if (typeof value === 'object' && value !== null) {
+    return '—';
   }
 
   return String(value);
@@ -205,7 +317,10 @@ export default function CentralDataServicePage() {
     return activeRows.filter((row) =>
       activeHeaders.some((header) => {
         const raw = row[header];
-        const rawStr = String(raw ?? '').toLowerCase();
+        const rawStr =
+          raw !== null && raw !== undefined && typeof raw !== 'object'
+            ? String(raw).toLowerCase()
+            : '';
         const formatted = formatSnapshotCell(raw, activeTab, header).toLowerCase();
         return rawStr.includes(searchLower) || formatted.includes(searchLower);
       })
@@ -356,12 +471,28 @@ export default function CentralDataServicePage() {
                                   </td>
                                 );
                               }
+                              const cellValue = row[col.header];
+                              if (isLogoColumnHeader(col.header)) {
+                                const logoUrl = extractLogoImgSrc(cellValue);
+                                return (
+                                  <td
+                                    key={col.header}
+                                    className="px-3 py-2 text-center align-middle border-b border-gray-100 dark:border-gray-700 min-w-[3rem]"
+                                  >
+                                    {logoUrl ? (
+                                      <SnapshotLogoCell url={logoUrl} />
+                                    ) : (
+                                      <span className="text-gray-400 dark:text-gray-500">—</span>
+                                    )}
+                                  </td>
+                                );
+                              }
                               return (
                                 <td
                                   key={col.header}
                                   className="px-3 py-2 text-gray-800 dark:text-gray-200 whitespace-nowrap border-b border-gray-100 dark:border-gray-700"
                                 >
-                                  {formatSnapshotCell(row[col.header], activeTab, col.header)}
+                                  {formatSnapshotCell(cellValue, activeTab, col.header)}
                                 </td>
                               );
                             })}

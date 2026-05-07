@@ -36,8 +36,10 @@ const ENTRY_EXIT_COLUMNS: ColumnDefinition<BenjaminGrahamData>[] = [
   { key: 'price', label: 'Price', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'entryF1', label: 'ENTRY F1', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'entry1', label: ENTRY_EXIT_COLUMN_LABELS.entry1, defaultVisible: true, sortable: true, align: 'center' },
-  { key: 'entry2', label: ENTRY_EXIT_COLUMN_LABELS.entry2, defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'exitF1', label: 'EXIT F1', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'exit1', label: ENTRY_EXIT_COLUMN_LABELS.exit1, defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'entry2', label: ENTRY_EXIT_COLUMN_LABELS.entry2, defaultVisible: true, sortable: true, align: 'center' },
+  { key: 'exitF2', label: 'EXIT F2', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'exit2', label: ENTRY_EXIT_COLUMN_LABELS.exit2, defaultVisible: true, sortable: true, align: 'center' },
   { key: 'ivFcf', label: 'IV (FCF)', defaultVisible: true, sortable: true, align: 'center' },
   { key: 'irr1', label: RR_COLUMN_LABELS.irr1, defaultVisible: true, sortable: true, align: 'center' },
@@ -101,6 +103,20 @@ const ENTRY_EXIT_FILTERS: FilterConfig[] = [
   {
     key: 'entryF1',
     label: 'ENTRY F1',
+    type: 'numberRange',
+    min: 0,
+    step: 0.01,
+  },
+  {
+    key: 'exitF1',
+    label: 'EXIT F1',
+    type: 'numberRange',
+    min: 0,
+    step: 0.01,
+  },
+  {
+    key: 'exitF2',
+    label: 'EXIT F2',
     type: 'numberRange',
     min: 0,
     step: 0.01,
@@ -464,6 +480,22 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
           </span>
         );
       }
+      case 'exitF1': {
+        const v = item.exitF1;
+        return (
+          <span className="text-black dark:text-white">
+            {v !== null && v !== undefined ? v.toLocaleString() : 'N/A'}
+          </span>
+        );
+      }
+      case 'exitF2': {
+        const v = item.exitF2;
+        return (
+          <span className="text-black dark:text-white">
+            {v !== null && v !== undefined ? v.toLocaleString() : 'N/A'}
+          </span>
+        );
+      }
       case 'ivFcf':
         if (!hasIvFcf) return null;
         return <span className="text-black dark:text-white">{item.ivFcf !== null && item.ivFcf !== undefined ? item.ivFcf.toLocaleString() : 'N/A'}</span>;
@@ -586,16 +618,34 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
         {isExpanded && (
           <div className="border-t border-gray-300 dark:border-gray-600 p-4 space-y-3 animate-fade-in">
             <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">ENTRY F1</span>
+              <span className="text-sm text-black dark:text-white">
+                {item.entryF1 !== null && item.entryF1 !== undefined ? item.entryF1.toLocaleString() : 'N/A'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.entry1}</span>
               <span className="text-sm text-black dark:text-white">{entry1 || '-'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">EXIT F1</span>
+              <span className="text-sm text-black dark:text-white">
+                {item.exitF1 !== null && item.exitF1 !== undefined ? item.exitF1.toLocaleString() : 'N/A'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.exit1}</span>
+              <span className="text-sm text-black dark:text-white">{exit1 || '-'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.entry2}</span>
               <span className="text-sm text-black dark:text-white">{entry2 || '-'}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.exit1}</span>
-              <span className="text-sm text-black dark:text-white">{exit1 || '-'}</span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">EXIT F2</span>
+              <span className="text-sm text-black dark:text-white">
+                {item.exitF2 !== null && item.exitF2 !== undefined ? item.exitF2.toLocaleString() : 'N/A'}
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{ENTRY_EXIT_COLUMN_LABELS.exit2}</span>
@@ -631,12 +681,6 @@ function EntryExitTable({ data, loading, error, initialTableState }: EntryExitTa
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Price</span>
               <span className="text-sm text-black dark:text-white">
                 {item.price !== null ? item.price.toLocaleString() : 'N/A'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">ENTRY F1</span>
-              <span className="text-sm text-black dark:text-white">
-                {item.entryF1 !== null && item.entryF1 !== undefined ? item.entryF1.toLocaleString() : 'N/A'}
               </span>
             </div>
             {hasIvFcf && (

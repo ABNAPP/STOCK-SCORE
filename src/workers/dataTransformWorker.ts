@@ -235,6 +235,12 @@ function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields:
 
       const entryF1Str = getValue(['ENTRY F1', 'entry f1', 'Entry F1', 'ENTRY_F1'], row);
       const entryF1 = parseNumericValueNullable(entryF1Str);
+
+      const exitF1Str = getValue(['EXIT F1', 'exit f1', 'Exit F1', 'EXIT_F1'], row);
+      const exitF1 = parseNumericValueNullable(exitF1Str);
+
+      const exitF2Str = getValue(['EXIT F2', 'exit f2', 'Exit F2', 'EXIT_F2'], row);
+      const exitF2 = parseNumericValueNullable(exitF2Str);
       
       // Parse IV (FCF) if it exists
       const ivFcfStr = getValue(['IV (FCF)', 'IV(FCF)', 'iv fcf', 'ivfcf'], row);
@@ -249,6 +255,8 @@ function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields:
         ticker: ticker,
         price: price,
         entryF1,
+        exitF1,
+        exitF2,
         ivFcf: ivFcf,
         irr1: irr1,
       };
