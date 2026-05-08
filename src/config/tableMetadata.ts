@@ -99,6 +99,26 @@ export const tableMetadata: TableMetadata[] = [
         ]
       },
       {
+        columnKey: 'exitF1',
+        dataSource: 'Dashboard sheet, kolumn "EXIT F1"',
+        conditions: [
+          'Skrivskyddad i appen; hämtas endast från Dashboard (samma sätt som ENTRY F1)',
+          'Visa N/A om värdet är null eller ogiltigt',
+          'Ej manuellt redigerbar och sparas inte i Entry/Exit Firestore',
+          'Filtrera bort rader där Company Name eller Ticker är N/A'
+        ]
+      },
+      {
+        columnKey: 'exitF2',
+        dataSource: 'Dashboard sheet, kolumn "EXIT F2"',
+        conditions: [
+          'Skrivskyddad i appen; hämtas endast från Dashboard (samma sätt som ENTRY F1)',
+          'Visa N/A om värdet är null eller ogiltigt',
+          'Ej manuellt redigerbar och sparas inte i Entry/Exit Firestore',
+          'Filtrera bort rader där Company Name eller Ticker är N/A'
+        ]
+      },
+      {
         columnKey: 'ivFcf',
         dataSource: 'Dashboard sheet, kolumn "IV (FCF)"',
         conditions: [
