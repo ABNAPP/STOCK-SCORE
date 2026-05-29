@@ -1,5 +1,6 @@
 /**
- * Fresh EODHD pulls for ISM posture (`computeDailySectorIndex`): full calendar window per run, no durable OHLC cache.
+ * EOD closes for ISM posture (`computeDailySectorIndex`): prefers `eodAdjustedDaily` Firestore cache, then EODHD
+ * unless `cacheOnly` (ISM admin debug sync — no browser API calls).
  */
 
 import type { ISMInstrumentIngest } from '../../../types/ismIngest';
@@ -11,6 +12,7 @@ import {
 } from '../marketData';
 import type { IsmDailyBar } from '../marketData/types';
 import { addCalendarDays } from '../fetchEngine/dateUtils';
+import { tryReadAdjustedEodCloseSeries } from './eodAdjustedFirestoreCache';
 
 /** Five calendar years of daily bars (aligned with legacy bootstrap horizon). */
 export const ISM_POSTURE_EOD_LOOKBACK_CALENDAR_DAYS = 5 * 365;
@@ -29,15 +31,29 @@ function closesOldestFirstFromBars(bars: IsmDailyBar[]): number[] {
   return sorted.map((b) => b.close).filter((v) => Number.isFinite(v) && v > 0);
 }
 
+export type FetchEodCloseSeriesOptions = {
+  /** When true, only `eodAdjustedDaily` Firestore cache — no provider HTTP (use from ISM admin debug sync). */
+  cacheOnly?: boolean;
+};
+
 /**
- * One instrument: full-window EOD closes from EODHD (ISM-only provider chain).
+ * One instrument: full-window EOD closes (cache first, then EODHD unless `cacheOnly`).
  */
 export async function fetchEodCloseSeriesForTicker(
   tickerRaw: string,
   fromIso: string,
   toIso: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: FetchEodCloseSeriesOptions
 ): Promise<number[]> {
+  const cached = await tryReadAdjustedEodCloseSeries(tickerRaw, fromIso, toIso);
+  if (cached && cached.length > 0) {
+    return cached;
+  }
+  if (options?.cacheOnly) {
+    return [];
+  }
+
   const ctx = buildSymbolTranslationContext(tickerRaw);
   const res = await fetchIsmHistoricalDailyWithFallback(
     ctx,
@@ -83,7 +99,8 @@ export async function fetchConstituentCloseHistories(
   fromIso: string,
   toIso: string,
   batchSize: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: FetchEodCloseSeriesOptions
 ): Promise<Record<string, number[]>> {
   const acc: Record<string, number[]> = {};
   const size = Math.max(1, batchSize);
@@ -91,7 +108,7 @@ export async function fetchConstituentCloseHistories(
     const batch = refs.slice(i, i + size);
     const settled = await Promise.all(
       batch.map(async (ref) => {
-        const closes = await fetchEodCloseSeriesForTicker(ref.tickerRaw, fromIso, toIso, signal);
+        const closes = await fetchEodCloseSeriesForTicker(ref.tickerRaw, fromIso, toIso, signal, options);
         return { symbolId: ref.symbolId, closes };
       })
     );

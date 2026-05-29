@@ -1,8 +1,11 @@
 import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import { useTranslation, type TFunction } from 'react-i18next';
 import type { User } from 'firebase/auth';
+import type { ISMInstrumentIngest } from '../../types/ismIngest';
 import type { ParsedSectorIndexDaily } from '../../services/ism/dailySector/readSectorIndexDaily';
 import { useIsmSectorDetailData, type IsmConstituentTableRow } from '../../hooks/useIsmSectorDetailData';
+import { useToast } from '../../contexts/ToastContext';
+import { refreshSectorRebalanceSnapshotOnDemand } from '../../services/ism/rebalance';
 import { ISM_FULL_COVERAGE_TARGET } from '../../config/ismPostureDefaults';
 import { Badge } from '../ui/Badge';
 import { Card, CardContent, CardHeader } from '../ui/Card';
@@ -16,6 +19,8 @@ type ISMPostureSectorDetailProps = {
   user: User;
   sectorId: string;
   sectorDisplayName: string;
+  ingestRows: ISMInstrumentIngest[];
+  getHasEntryExitRow: (ticker: string, companyName: string) => boolean;
   onBack: () => void;
 };
 
@@ -155,14 +160,37 @@ export default function ISMPostureSectorDetail({
   user,
   sectorId,
   sectorDisplayName,
+  ingestRows,
+  getHasEntryExitRow,
   onBack,
 }: ISMPostureSectorDetailProps) {
   const { t } = useTranslation();
+  const { showSuccess, showError } = useToast();
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
+  const [rebalanceRefreshing, setRebalanceRefreshing] = useState(false);
   const { daily, docTradeDate, missingDailyDoc, constituents, activeSnapshotDiagnostics, loading, error, refetch } =
     useIsmSectorDetailData(sectorId, user);
 
   const buildingUx = isDataBuildingUx(missingDailyDoc, daily);
+
+  const handleRefreshRebalanceSnapshot = async () => {
+    if (rebalanceRefreshing) return;
+    setRebalanceRefreshing(true);
+    try {
+      const res = await refreshSectorRebalanceSnapshotOnDemand(user, sectorId, ingestRows, getHasEntryExitRow);
+      if (res.ok) {
+        showSuccess(t('ism.detail.refreshRebalanceSnapshotSuccess'));
+        await refetch();
+      } else {
+        showError(t('ism.detail.refreshRebalanceSnapshotError', { detail: (res.errors ?? []).join(' · ') }));
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      showError(t('ism.detail.refreshRebalanceSnapshotError', { detail: msg }));
+    } finally {
+      setRebalanceRefreshing(false);
+    }
+  };
 
   return (
     <div className="h-full bg-gray-100 dark:bg-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6 flex flex-col">
@@ -193,6 +221,15 @@ export default function ISMPostureSectorDetail({
           )}
           <Button type="button" variant="ghost" size="sm" onClick={() => void refetch()} disabled={loading}>
             {t('ism.detail.refresh')}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void handleRefreshRebalanceSnapshot()}
+            disabled={loading || rebalanceRefreshing || ingestRows.length === 0}
+          >
+            {rebalanceRefreshing ? t('ism.detail.refreshRebalanceSnapshotRunning') : t('ism.detail.refreshRebalanceSnapshot')}
           </Button>
         </div>
 

@@ -8,6 +8,7 @@ import { EntryExitProvider, useEntryExitValues } from '../../contexts/EntryExitC
 import { isTheoEntryGreen } from '../../utils/colorThresholds';
 import { CalendarDaysIcon, ViewfinderCircleIcon } from '@heroicons/react/24/outline';
 import TableSearchBar from '../TableSearchBar';
+import EodAdjustedDailyPriceChartPanel from '../EodAdjustedDailyPriceChartPanel';
 
 /**
  * Under-development route: same card grid as Stock Analyses; detail panel evolves independently.
@@ -519,6 +520,8 @@ function UnderDevelopmentViewInner() {
               </div>
             </div>
           </div>
+
+          <EodAdjustedDailyPriceChartPanel tickerRaw={selectedRow.ticker} />
 
           <TechnicalRecommendationPanel row={selectedRow} t={t} />
 

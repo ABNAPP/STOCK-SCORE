@@ -29,7 +29,6 @@ import {
   defaultIsmMarketAdapters,
   buildSymbolTranslationContext,
   translateForProvider,
-  ISM_PRICE_PROVIDER_CHAIN,
 } from '../services/ism/marketData';
 import {
   collectConstituentFetchRefs,
@@ -38,6 +37,7 @@ import {
   ISM_POSTURE_EOD_FETCH_BATCH_SIZE,
   postureEodWindowFromTradeDate,
 } from '../services/ism/dailySector/fetchPostureEodInputs';
+import { tryReadAdjustedEodDailyBarsInRange } from '../services/ism/dailySector/eodAdjustedFirestoreCache';
 
 type StepStatus = 'ok' | 'failed' | 'warn';
 
@@ -92,13 +92,13 @@ export type IsmDebugRunReport = {
   startedAt: string;
   finishedAt: string;
   bootstrapIterations: number;
-  bootstrapCallsConsumed: number;
+  /** EODHD HTTP calls from bootstrap (always 0 when using Firestore cache only). */
+  bootstrapProviderApiCalls: number;
+  /** History chunks read from `eodAdjustedDaily` during bootstrap. */
+  bootstrapFirestoreCacheChunks: number;
   bootstrapStopReason: 'all_complete' | 'max_calls_reached' | 'no_progress';
   apiKeysStatus: {
     eodhd: boolean;
-    alphaVantage: boolean;
-    marketstack: boolean;
-    finnhub: boolean;
   };
   steps: IsmDebugStepResult[];
   miningSymbolTraces: IsmMiningSymbolTrace[];
@@ -166,82 +166,46 @@ function median(nums: number[]): number {
   return sorted[mid];
 }
 
-async function traceHistoricalProviderAttempts(
+async function traceMiningEodFirestoreWindow(
   ingest: ISMInstrumentIngest,
   fromIso: string,
   toIso: string
 ): Promise<{ attempts: IsmProviderAttemptDebug[]; firstStop: string }> {
-  const attempts: IsmProviderAttemptDebug[] = [];
   const ctx = buildSymbolTranslationContext(ingest.tickerRaw);
-  const pools = buildDefaultProviderKeyPools();
-  const adapters = defaultIsmMarketAdapters;
-
-  for (const providerId of ISM_PRICE_PROVIDER_CHAIN) {
-    const adapter = adapters[providerId];
-    const pool = pools.get(providerId);
-    const translated = translateForProvider(providerId, ctx).symbol;
-    if (!adapter || !pool || !pool.hasKeys()) {
-      attempts.push({
-        provider: providerId,
+  const translated = translateForProvider('eodhd', ctx).symbol;
+  const bars = await tryReadAdjustedEodDailyBarsInRange(ingest.tickerRaw, fromIso, toIso);
+  if (bars && bars.length > 0) {
+    return {
+      attempts: [
+        {
+          provider: 'eodhd',
+          translatedSymbol: translated,
+          keyIndex: null,
+          resultType: 'valid',
+          reason: 'firestore_eod_adjusted_daily',
+          dataPoints: bars.length,
+          firstDate: bars[0]!.date,
+          lastDate: bars[bars.length - 1]!.date,
+        },
+      ],
+      firstStop: 'firestore_cache_valid',
+    };
+  }
+  return {
+    attempts: [
+      {
+        provider: 'eodhd',
         translatedSymbol: translated,
         keyIndex: null,
         resultType: 'failed',
-        reason: 'no_api_key_or_pool',
+        reason: 'firestore_cache_miss',
         dataPoints: 0,
         firstDate: null,
         lastDate: null,
-      });
-      continue;
-    }
-
-    pool.reset();
-    while (true) {
-      const key = pool.currentKey();
-      if (!key) break;
-      const keyIndex = pool.currentKeyIndex();
-      const res = await adapter.fetchHistoricalDaily(key, ctx, fromIso, toIso, 'bootstrap');
-      if (res.outcome === 'valid' && res.data) {
-        attempts.push({
-          provider: providerId,
-          translatedSymbol: translated,
-          keyIndex,
-          resultType: 'valid',
-          reason: 'ok',
-          dataPoints: res.data.length,
-          firstDate: res.data[0]?.date ?? null,
-          lastDate: res.data[res.data.length - 1]?.date ?? null,
-        });
-        return { attempts, firstStop: 'valid_history_returned' };
-      }
-      if (res.outcome === 'invalid') {
-        attempts.push({
-          provider: providerId,
-          translatedSymbol: translated,
-          keyIndex,
-          resultType: 'invalid',
-          reason: res.reason ?? 'invalid_payload',
-          dataPoints: 0,
-          firstDate: null,
-          lastDate: null,
-        });
-        break;
-      }
-      attempts.push({
-        provider: providerId,
-        translatedSymbol: translated,
-        keyIndex,
-        resultType: 'failed',
-        reason: res.reason ?? 'request_failed',
-        dataPoints: 0,
-        firstDate: null,
-        lastDate: null,
-      });
-      pool.advanceAfterFailure();
-    }
-  }
-
-  const firstStop = attempts.length > 0 ? `no_valid_history:${attempts[0]!.reason}` : 'no_attempts';
-  return { attempts, firstStop };
+      },
+    ],
+    firstStop: 'no_firestore_cache',
+  };
 }
 
 export function useIsmDebugSync(
@@ -266,15 +230,15 @@ export function useIsmDebugSync(
       const miningRows = ingestRows.filter((r) => ismSectorIdFromName(r.sectorIsm) === 'mining');
       let weeklyMiningCreated = false;
       let dailyMiningCreated = false;
-      const DEBUG_MAX_BOOTSTRAP_CALLS = 80;
+      const DEBUG_MAX_BOOTSTRAP_ITERATIONS = 40;
       const DEBUG_MAX_NO_PROGRESS_ITERATIONS = 2;
+      /** Normal motor uses a 60-call/day cap on `dailyCallBudgetUsed`; kept high for any provider-mode bootstrap. Debug bootstrap uses Firestore only and does not consume this budget. */
+      const DEBUG_BOOTSTRAP_DAILY_CALL_BUDGET_LIMIT = 50_000;
       const apiKeys = getApiKeys();
       const apiKeysStatus = {
         eodhd: Boolean(apiKeys.eodhd?.trim()),
-        alphaVantage: Boolean(apiKeys.alphaVantage?.trim()),
-        marketstack: Boolean(apiKeys.marketstack?.trim()),
-        finnhub: Boolean(apiKeys.finnhub?.trim()),
       };
+      const postureEodOpts = { cacheOnly: true } as const;
 
       // 1) syncIsmSymbolsFromIngest
       try {
@@ -332,12 +296,14 @@ export function useIsmDebugSync(
       );
       let bootstrapState = alignedState;
       let bootstrapIterations = 0;
-      let bootstrapCallsConsumed = 0;
+      let bootstrapProviderApiCalls = 0;
+      let bootstrapFirestoreCacheChunks = 0;
       let noProgressIterations = 0;
       let bootstrapAllComplete = false;
       let bootstrapStopReason: IsmDebugRunReport['bootstrapStopReason'] = 'max_calls_reached';
+      let lastTickStoppedReason = '';
 
-      while (bootstrapCallsConsumed < DEBUG_MAX_BOOTSTRAP_CALLS) {
+      while (bootstrapIterations < DEBUG_MAX_BOOTSTRAP_ITERATIONS) {
         const beforeTotalHistory = Object.values(bootstrapState.perSymbol).reduce(
           (sum, s) => sum + (s.historyDaysFetched ?? 0),
           0
@@ -352,11 +318,15 @@ export function useIsmDebugSync(
           {
             pools: buildDefaultProviderKeyPools(),
             adapters: defaultIsmMarketAdapters,
+            dailyCallBudgetLimit: DEBUG_BOOTSTRAP_DAILY_CALL_BUDGET_LIMIT,
+            bootstrapHistorySource: 'firestore_cache_only',
           }
         );
 
+        lastTickStoppedReason = res.stoppedReason;
         bootstrapIterations += 1;
-        bootstrapCallsConsumed += res.callsConsumed;
+        bootstrapProviderApiCalls += res.callsConsumed;
+        bootstrapFirestoreCacheChunks += res.firestoreCacheChunksServed;
         bootstrapState = res.state;
         bootstrapAllComplete = res.bootstrapAllComplete;
 
@@ -371,7 +341,8 @@ export function useIsmDebugSync(
         const progressed =
           afterTotalHistory > beforeTotalHistory ||
           afterSuccess > beforeSuccess ||
-          res.callsConsumed > 0;
+          res.callsConsumed > 0 ||
+          res.firestoreCacheChunksServed > 0;
 
         if (!progressed) {
           noProgressIterations += 1;
@@ -387,13 +358,6 @@ export function useIsmDebugSync(
           bootstrapStopReason = 'no_progress';
           break;
         }
-        if (res.callsConsumed === 0 && res.stoppedReason === 'bootstrap_idle') {
-          noProgressIterations += 1;
-          if (noProgressIterations >= DEBUG_MAX_NO_PROGRESS_ITERATIONS) {
-            bootstrapStopReason = 'no_progress';
-            break;
-          }
-        }
       }
 
       if (!bootstrapAllComplete && bootstrapStopReason !== 'no_progress') {
@@ -403,7 +367,7 @@ export function useIsmDebugSync(
       steps.push({
         step: 'tickIsmBootstrap',
         status: 'ok',
-        detail: `iterations=${bootstrapIterations}, calls=${bootstrapCallsConsumed}, stop=${bootstrapStopReason}, allComplete=${String(bootstrapAllComplete)}`,
+        detail: `iterations=${bootstrapIterations}, providerApiCalls=${bootstrapProviderApiCalls}, firestoreChunks=${bootstrapFirestoreCacheChunks}, stop=${bootstrapStopReason}, lastTick=${lastTickStoppedReason}, budgetLimit=${String(DEBUG_BOOTSTRAP_DAILY_CALL_BUDGET_LIMIT)}, allComplete=${String(bootstrapAllComplete)}`,
       });
 
       // 4) saveOfficialIsmFetchEngineState
@@ -459,7 +423,7 @@ export function useIsmDebugSync(
           : 'Mining sector not present in weekly run result',
       });
 
-      // 6) runDailyIsmSectorIndex for sectors with active snapshot (fresh EODHD window per run)
+      // 6) runDailyIsmSectorIndex for sectors with active snapshot (Firestore `eodAdjustedDaily` only in debug)
       const bySector = new Map<string, ISMInstrumentIngest[]>();
       for (const row of ingestRows) {
         const sectorId = ismSectorIdFromName(row.sectorIsm);
@@ -475,17 +439,23 @@ export function useIsmDebugSync(
       let activeSectorCount = 0;
       let dailyOkCount = 0;
 
-      if (!apiKeys.eodhd?.trim()) {
+      spyHistory = await fetchEodCloseSeriesForTicker(
+        'SPY',
+        postureFromIso,
+        postureToIso,
+        undefined,
+        postureEodOpts
+      );
+      if (spyHistory.length === 0) {
         steps.push({
           step: 'runDailyIsmSectorIndex',
-          status: 'failed',
+          status: 'warn',
           detail:
-            'ISM posture requires VITE_EODHD_API_KEY (or saved EODHD key): EOD-only provider chain cannot fetch SPY/constituent histories.',
+            'SPY window empty in Firestore `eodAdjustedDaily` (debug sync uses cache only; nightly cloud function fills this collection).',
         });
-      } else {
-        spyHistory = await fetchEodCloseSeriesForTicker('SPY', postureFromIso, postureToIso);
+      }
 
-        for (const [sectorId, sectorRows] of bySector.entries()) {
+      for (const [sectorId, sectorRows] of bySector.entries()) {
         let activeSnapshot: Record<string, unknown> | null = null;
         try {
           activeSnapshot = await loadActiveSectorRebalanceSnapshot(user, sectorId);
@@ -526,7 +496,9 @@ export function useIsmDebugSync(
           refs,
           postureFromIso,
           postureToIso,
-          ISM_POSTURE_EOD_FETCH_BATCH_SIZE
+          ISM_POSTURE_EOD_FETCH_BATCH_SIZE,
+          undefined,
+          postureEodOpts
         );
 
         for (const item of cons) {
@@ -606,12 +578,11 @@ export function useIsmDebugSync(
             });
           }
         }
-        }
       }
 
       steps.push({
         step: 'runDailyIsmSectorIndex',
-        status: dailyOkCount > 0 ? 'ok' : apiKeys.eodhd?.trim() ? 'warn' : 'failed',
+        status: dailyOkCount > 0 ? 'ok' : activeSectorCount > 0 ? 'warn' : 'ok',
         detail: `activeSnapshots=${activeSectorCount}, dailyOk=${dailyOkCount}`,
       });
 
@@ -634,20 +605,20 @@ export function useIsmDebugSync(
       const traceTo = isoTodayUtc();
       const miningSymbolTraces: IsmMiningSymbolTrace[] = [];
       for (const row of miningTop5) {
-        const traced = await traceHistoricalProviderAttempts(row, traceFrom, traceTo);
+        const traced = await traceMiningEodFirestoreWindow(row, traceFrom, traceTo);
         const before = miningBeforeState.get(row.symbolId) ?? { history: 0, latest: null };
         const afterHistory = stateAfterSave.perSymbol[row.symbolId]?.historyDaysFetched ?? 0;
         const afterLatest = isoFromMillis(stateAfterSave.perSymbol[row.symbolId]?.lastHistoryFetchSuccessAt ?? null);
         const hasValidAttempt = traced.attempts.some((a) => a.resultType === 'valid');
         const stop =
           hasValidAttempt && afterHistory === before.history && !afterLatest
-            ? 'valid_payload_seen_but_fetch_state_not_advanced_for_symbol_in_this_run'
+            ? 'valid_firestore_cache_but_fetch_state_not_advanced_for_symbol_in_this_run'
             : traced.firstStop;
         miningSymbolTraces.push({
           companyName: row.companyName,
           tickerRaw: row.tickerRaw,
           symbolId: row.symbolId,
-          providerAttemptOrder: [...ISM_PRICE_PROVIDER_CHAIN],
+          providerAttemptOrder: ['eodhd'],
           attempts: traced.attempts,
           firstStop: stop,
           beforeHistoryDaysAvailable: before.history,
@@ -661,7 +632,8 @@ export function useIsmDebugSync(
         startedAt,
         finishedAt: new Date().toISOString(),
         bootstrapIterations,
-        bootstrapCallsConsumed,
+        bootstrapProviderApiCalls,
+        bootstrapFirestoreCacheChunks,
         bootstrapStopReason,
         apiKeysStatus,
         steps,
@@ -716,13 +688,11 @@ export function useIsmDebugSync(
           dailyDocCreated: false,
         },
         bootstrapIterations: 0,
-        bootstrapCallsConsumed: 0,
+        bootstrapProviderApiCalls: 0,
+        bootstrapFirestoreCacheChunks: 0,
         bootstrapStopReason: 'no_progress',
         apiKeysStatus: {
           eodhd: false,
-          alphaVantage: false,
-          marketstack: false,
-          finnhub: false,
         },
         miningSymbolTraces: [],
       });

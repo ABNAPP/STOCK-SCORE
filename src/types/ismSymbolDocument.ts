@@ -40,6 +40,8 @@ export interface IsmSymbolFirestoreDoc {
   symbol_id: string;
   ticker_raw: string;
   ticker_normalized: string;
+  /** Snapshot of EODHD `SYMBOL.EXCHANGE` at last symbol sync (display/diagnostics). Warm path resolves from `ticker_raw` via `eodSymbolFromTickerRaw`. */
+  eodhd_symbol?: string;
   company_name: string;
   sector: string;
   /** ENTRY/EXIT listing currency (trimmed). */

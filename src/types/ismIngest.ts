@@ -1,5 +1,5 @@
 /**
- * ISM ingest: merged DashBoard row + ENTRY/EXIT currency read path, keyed by ISM symbolId.
+ * ISM ingest: official DashBoard sheet row fields + ENTRY/EXIT currency only, keyed by ISM symbolId.
  */
 
 /** Future readiness pipeline — populated from quality flags in v1 prep. */
@@ -36,7 +36,7 @@ export interface ISMInstrumentIngest extends Record<string, unknown> {
   tickerNormalized: string;
   symbolId: string;
   companyName: string;
-  /** SECTOR (ISM) from DashBoard (`ScoreBoardData.industry`) */
+  /** ISM sector label from DashBoard `SECTOR (ISM)` only for snapshot ingest (Industry not used). */
   sectorIsm: string;
   marketCap: number | null;
   /** DashBoard date string — diagnostics only */

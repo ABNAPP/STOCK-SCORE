@@ -22,6 +22,13 @@
     "test:unit": "vitest run __tests__",
     "test:integration": "vitest run src/test/integration",
     "test:e2e": "playwright test",
+    "functions:sync-env": "node scripts/sync-eodhd-to-functions.mjs",
+    "eodhd:sync-exchanges": "node scripts/sync-eodhd-exchanges.mjs",
+    "test:eodhd-fetch": "node scripts/test-eodhd-daily-fetch.mjs",
+    "functions:log:eod": "firebase functions:log --only eodAdjustedCacheNightly -n 40",
+    "report:eod-gaps": "npm run build --prefix functions && node scripts/report-eod-cache-gaps.mjs",
+    "analyze:ism-candidates": "node scripts/analyze-ism-sector-candidates.mjs",
+    "analyze:ism-candidates:firestore": "npm run build --prefix functions && node scripts/analyze-ism-sector-candidates.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

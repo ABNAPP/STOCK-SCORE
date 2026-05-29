@@ -10,6 +10,15 @@ import { PEIndustryData } from '../../types/stock';
 import { CACHE_KEYS, DEFAULT_TTL } from '../firestoreCacheService';
 import { fetchWithFallback } from './fetchService';
 import { getValue, isValidValue, parseNumericValueNullable, calculateMedian } from './dataTransformers';
+import {
+  asHeaderList,
+  DASHBOARD_COMPANY_NAME_COLUMNS,
+  DASHBOARD_INDUSTRY_KEY_COLUMNS,
+  DASHBOARD_PE1_COLUMNS,
+  DASHBOARD_PE2_COLUMNS,
+  DASHBOARD_PE_COLUMNS,
+  DASHBOARD_TICKER_COLUMNS,
+} from './dashboardSheetContract';
 import type { DataRow, ProgressCallback } from './types';
 
 // P/E sector (ISM) sheet configuration (separate spreadsheet from Dashboard)
@@ -25,18 +34,18 @@ export function transformPEIndustryData(results: { data: DataRow[]; meta: { fiel
   const industryMap = new Map<string, { pe: number[], pe1: number[], pe2: number[], count: number }>();
 
   results.data.forEach((row: DataRow) => {
-    const companyName = getValue(['Company Name', 'Company', 'company'], row);
-    const ticker = getValue(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
-    const industry = getValue(['SECTOR (ISM)', 'INDUSTRY', 'Industry', 'industry'], row);
+    const companyName = getValue(asHeaderList(DASHBOARD_COMPANY_NAME_COLUMNS), row);
+    const ticker = getValue(asHeaderList(DASHBOARD_TICKER_COLUMNS), row);
+    const industry = getValue(asHeaderList(DASHBOARD_INDUSTRY_KEY_COLUMNS), row);
     
     // Filter out rows where Company Name, Ticker, or Industry is N/A
     if (!isValidValue(companyName) || !isValidValue(ticker) || !isValidValue(industry)) {
       return;
     }
 
-    const peStr = getValue(['P/E', 'P/E', 'pe', 'PE'], row);
-    const pe1Str = getValue(['P/E1', 'P/E 1', 'pe1', 'PE1'], row);
-    const pe2Str = getValue(['P/E2', 'P/E 2', 'pe2', 'PE2'], row);
+    const peStr = getValue(asHeaderList(DASHBOARD_PE_COLUMNS), row);
+    const pe1Str = getValue(asHeaderList(DASHBOARD_PE1_COLUMNS), row);
+    const pe2Str = getValue(asHeaderList(DASHBOARD_PE2_COLUMNS), row);
 
     let industryData = industryMap.get(industry);
     if (!industryData) {

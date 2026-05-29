@@ -22,7 +22,7 @@ import {
 } from '../services/deltaSyncService';
 import { usePageVisibility } from './usePageVisibility';
 import { useTranslation } from 'react-i18next';
-import { getSheetSnapshot } from '../services/sheets/sheetSnapshotService';
+import { getSheetSnapshot, type SheetSnapshotResult } from '../services/sheets/sheetSnapshotService';
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
 const CACHE_KEY = CACHE_KEYS.SCORE_BOARD;
@@ -93,17 +93,26 @@ export function useScoreBoardData() {
       }),
     ]);
 
+    const dashboardSnapshot: SheetSnapshotResult | null =
+      dashboardSnapshotResult.status === 'fulfilled' ? dashboardSnapshotResult.value : null;
+    const smaSnapshot: SheetSnapshotResult | null =
+      smaSnapshotResult.status === 'fulfilled' ? smaSnapshotResult.value : null;
+
     // Process PEIndustryData from DashBoard snapshot
     let peIndustryData: PEIndustryData[] = [];
-    if (dashboardSnapshotResult.status === 'fulfilled') {
+    if (dashboardSnapshot) {
       peIndustryData = transformPEIndustryData({
-        data: dashboardSnapshotResult.value.data.rows,
-        meta: { fields: dashboardSnapshotResult.value.data.headers },
+        data: dashboardSnapshot.data.rows,
+        meta: { fields: dashboardSnapshot.data.headers },
       });
-    } else {
+    } else if (dashboardSnapshotResult.status === 'rejected') {
       logger.warn(
         'Failed to load DashBoard snapshot for P/E1/P/E2 median calculation',
-        { component: 'useScoreBoardData', operation: 'fetchDependenciesAndCreateTransformer', error: dashboardSnapshotResult.reason }
+        {
+          component: 'useScoreBoardData',
+          operation: 'fetchDependenciesAndCreateTransformer',
+          error: dashboardSnapshotResult.reason,
+        }
       );
     }
 
@@ -121,19 +130,23 @@ export function useScoreBoardData() {
 
     // Process SMAData results from SMA snapshot (SMA colors computed in view from price vs SMA values)
     let smaDataMap = new Map<string, SMADataMapEntry>();
-    if (smaSnapshotResult.status === 'fulfilled') {
+    if (smaSnapshot) {
       const smaData = transformSMAData({
-        data: smaSnapshotResult.value.data.rows,
-        meta: { fields: smaSnapshotResult.value.data.headers },
+        data: smaSnapshot.data.rows,
+        meta: { fields: smaSnapshot.data.headers },
       });
       smaData.forEach((sma) => {
         const tickerKey = sma.ticker.toLowerCase().trim();
         smaDataMap.set(tickerKey, { sma9: sma.sma9, sma21: sma.sma21, sma55: sma.sma55, sma200: sma.sma200 });
       });
-    } else {
+    } else if (smaSnapshotResult.status === 'rejected') {
       logger.warn(
         'Failed to load SMA snapshot for Score Board',
-        { component: 'useScoreBoardData', operation: 'fetchDependenciesAndCreateTransformer', error: smaSnapshotResult.reason }
+        {
+          component: 'useScoreBoardData',
+          operation: 'fetchDependenciesAndCreateTransformer',
+          error: smaSnapshotResult.reason,
+        }
       );
     }
 
@@ -161,6 +174,8 @@ export function useScoreBoardData() {
         industryPe2Map: industryPe2MapObj,
         smaDataMap: smaDataMapObj,
       },
+      dashboardSnapshot,
+      smaSnapshot,
     };
   }, []);
 
@@ -211,13 +226,15 @@ export function useScoreBoardData() {
         isBackground 
       });
 
-      // Build transformer from snapshot-derived dependencies
-      const { transformer } = await fetchDependenciesAndCreateTransformer(forceRefresh);
-      // Use DashBoard snapshot as base dataset for Score Board transformation
-      const dashboardSnapshot = await getSheetSnapshot('DashBoard', {
-        forceRefresh,
-        preferCache: !forceRefresh,
-      });
+      // Build transformer from snapshot-derived dependencies (reuse DashBoard snapshot — no second fetch)
+      const { transformer, dashboardSnapshot: dashboardFromDeps } =
+        await fetchDependenciesAndCreateTransformer(forceRefresh);
+      const dashboardSnapshot =
+        dashboardFromDeps ??
+        (await getSheetSnapshot('DashBoard', {
+          forceRefresh,
+          preferCache: !forceRefresh,
+        }));
       const fetchedData = transformer({
         data: dashboardSnapshot.data.rows,
         meta: { fields: dashboardSnapshot.data.headers },
@@ -327,11 +344,14 @@ export function useScoreBoardData() {
 
     try {
       // Minimal-risk polling update: force-refresh central snapshots and re-transform
-      const { transformer } = await fetchDependenciesAndCreateTransformer(true);
-      const dashboardSnapshot = await getSheetSnapshot('DashBoard', {
-        forceRefresh: true,
-        preferCache: false,
-      });
+      const { transformer, dashboardSnapshot: dashboardFromDeps } =
+        await fetchDependenciesAndCreateTransformer(true);
+      const dashboardSnapshot =
+        dashboardFromDeps ??
+        (await getSheetSnapshot('DashBoard', {
+          forceRefresh: true,
+          preferCache: false,
+        }));
       const transformedData = transformer({
         data: dashboardSnapshot.data.rows,
         meta: { fields: dashboardSnapshot.data.headers },

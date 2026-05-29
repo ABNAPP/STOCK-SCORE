@@ -42,7 +42,10 @@ export const eodhdAdapter: IsmMarketProviderAdapter = {
       const open = Number(r.open);
       const high = Number(r.high);
       const low = Number(r.low);
-      const close = Number(r.close);
+      const rawClose = Number(r.close);
+      const adj = r.adjusted_close !== undefined ? Number(r.adjusted_close) : NaN;
+      /** EODHD: OHLC raw; adjusted_close is split+dividend adjusted — use for comparable closes. */
+      const close = Number.isFinite(adj) && adj > 0 ? adj : rawClose;
       const volume = r.volume !== undefined ? Number(r.volume) : undefined;
       if (!date || !Number.isFinite(close)) continue;
       bars.push({

@@ -99,7 +99,19 @@
     "sanitySummary": "Sanity Summary",
     "statusNote": "Status Note",
     "technicalRecommendation": "Technical Recommendation",
-    "technicalRecommendationBuy": "BUY"
+    "technicalRecommendationBuy": "BUY",
+    "adjustedDailyChartTitle": "Adjusted daily close (EODHD)",
+    "adjustedDailyChartSubtitle": "From the Firestore nightly cache; ranges use the last available trading day in the series.",
+    "adjustedDailyRange5y": "5 years",
+    "adjustedDailyRange1y": "1 year",
+    "adjustedDailyRangeYtd": "Year to date",
+    "adjustedDailyRangeMtd": "Month to date",
+    "adjustedDailyChartLoading": "Loading prices…",
+    "adjustedDailyChartLoadError": "Could not load prices (missing cache or insufficient permissions).",
+    "adjustedDailyChartEmpty": "No bars in this window. Try another range or wait for the nightly cache update.",
+    "adjustedDailyStaleGeneration": "This symbol’s cache generation does not match the global generation; prices may be out of date.",
+    "adjustedDailyTooltipSeries": "Adj. close",
+    "adjustedDailyTooltipDate": "Date"
   },
   "stockMonitorView": {
     "tableAriaLabel": "Stock monitor overview",
@@ -732,10 +744,19 @@
       "tipAllowedSizing": "Position size guidance.",
       "tipCoverage": "Data building <10, Limited 10-29, Full 30."
     },
+    "posture": {
+      "refreshSheetData": "Refresh sheet data",
+      "refreshingSheetData": "Refreshing sheet…",
+      "lastSheetSnapshot": "Last sheet snapshot: {{time}}"
+    },
     "detail": {
       "backToOverview": "Back to overview",
       "tradeDate": "Official trade date: {{date}}",
       "refresh": "Refresh",
+      "refreshRebalanceSnapshot": "Rebuild weekly snapshot",
+      "refreshRebalanceSnapshotRunning": "Rebuilding snapshot…",
+      "refreshRebalanceSnapshotSuccess": "Weekly rebalance snapshot saved to Firestore.",
+      "refreshRebalanceSnapshotError": "Snapshot was not saved: {{detail}}",
       "loadingDetail": "Loading official sector detail…",
       "statusBoxTitle": "Official status",
       "chartAria": "Sector chart",

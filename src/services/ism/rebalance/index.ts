@@ -16,3 +16,4 @@ export { computeIsmRebalanceRowMetrics, hasPriceDataSignal, type IsmRebalanceRow
 export { validateSectorRebalanceSnapshot, type RebalanceValidationResult } from './validateRebalanceSnapshot';
 export { ismSectorIdFromName } from './sectorSlug';
 export { isoLastCompletedFridayAmericaNewYork, nyCalendarDateIso } from './usMarketWeek';
+export { refreshSectorRebalanceSnapshotOnDemand } from './refreshSectorRebalanceSnapshot';

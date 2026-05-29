@@ -30,6 +30,17 @@ function baseIngest(over: Partial<ISMInstrumentIngest> = {}): ISMInstrumentInges
 }
 
 describe('buildIsmSymbolFirestoreDoc', () => {
+  it('sets eodhd_symbol from ticker for EODHD API', () => {
+    const doc = buildIsmSymbolFirestoreDoc({
+      ingest: baseIngest({ tickerRaw: 'AAPL' }),
+      hasEntryExitRow: true,
+      usdPerUnitLocalCurrency: 1,
+      fetchState: null,
+      fetchEngineState: null,
+    });
+    expect(doc.eodhd_symbol).toBe('AAPL.US');
+  });
+
   it('stays detected when ticker missing', () => {
     const doc = buildIsmSymbolFirestoreDoc({
       ingest: baseIngest({ quality: { missingTicker: true } as ISMInstrumentIngest['quality'] }),
