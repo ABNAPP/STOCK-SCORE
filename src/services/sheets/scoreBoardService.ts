@@ -38,7 +38,8 @@ import {
   DASHBOARD_VALUE_CREATION_COLUMNS,
 } from './dashboardSheetContract';
 import { fetchPEIndustryData } from './peIndustryService';
-import { fetchSMAData } from './smaService';
+import { getSmaData } from '../smaDataService';
+import { transformSMAData } from './smaService';
 import { logger } from '../../utils/logger';
 import type { DataRow, ProgressCallback } from './types';
 
@@ -228,7 +229,9 @@ export async function fetchScoreBoardData(
   
   const [peIndustryResult, smaResult] = await Promise.allSettled([
     fetchPEIndustryData(forceRefresh),
-    fetchSMAData(forceRefresh),
+    getSmaData().then((sheet) =>
+      transformSMAData({ data: sheet.rows, meta: { fields: sheet.headers } })
+    ),
   ]);
 
   // Process PEIndustryData results

@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SMAData } from '../types/stock';
+import { getSmaData } from '../services/smaDataService';
 import { transformSMAData } from '../services/sheets/smaService';
-import { getSheetSnapshot } from '../services/sheets/sheetSnapshotService';
 
 /**
- * Hook to load SMA (Simple Moving Average) data from Google Sheets.
+ * Hook to load SMA data from value-insight-be GET /sma-data.
  * Used by the SMA view to display the SMA(200) table.
  *
  * @returns Object with data, loading state, error, and refetch function
@@ -14,17 +14,14 @@ export function useSMAData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (forceRefresh = false) => {
+  const load = useCallback(async (_forceRefresh = false) => {
     setLoading(true);
     setError(null);
     try {
-      const snapshotResult = await getSheetSnapshot('SMA', {
-        forceRefresh,
-        preferCache: !forceRefresh,
-      });
+      const sheet = await getSmaData();
       const result = transformSMAData({
-        data: snapshotResult.data.rows,
-        meta: { fields: snapshotResult.data.headers },
+        data: sheet.rows,
+        meta: { fields: sheet.headers },
       });
       setData(result);
     } catch (err) {

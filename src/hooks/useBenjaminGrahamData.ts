@@ -21,7 +21,7 @@ import { isDataRowArray } from '../utils/typeGuards';
 import { logger } from '../utils/logger';
 import { useNotifications } from '../contexts/NotificationContext';
 import { detectDataChanges, formatChangeSummary } from '../utils/dataChangeDetector';
-import { getSheetSnapshot } from '../services/sheets/sheetSnapshotService';
+import { getMainData } from '../services/mainDataService';
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
 const CACHE_KEY = CACHE_KEYS.BENJAMIN_GRAHAM;
@@ -106,21 +106,17 @@ export function useBenjaminGrahamData() {
         isBackground 
       });
 
-      const snapshotResult = await getSheetSnapshot('DashBoard', {
-        forceRefresh,
-        preferCache: !forceRefresh,
-      });
+      const mainData = await getMainData();
       const fetchedData = transformBenjaminGrahamData({
-        data: snapshotResult.data.rows,
-        meta: { fields: snapshotResult.data.headers },
+        data: mainData.rows,
+        meta: { fields: mainData.headers },
       });
 
-      logger.info('Benjamin Graham data transformed from snapshot successfully', { 
+      logger.info('Benjamin Graham data transformed successfully', { 
         component: 'useBenjaminGrahamData', 
         operation: 'loadData',
         entryCount: fetchedData.length,
         forceRefresh,
-        source: snapshotResult.source,
       });
       
       // Detect data changes
@@ -141,7 +137,7 @@ export function useBenjaminGrahamData() {
       setData(fetchedData);
       previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
-      currentVersionRef.current = snapshotResult.data.version ?? currentVersionRef.current;
+      currentVersionRef.current = mainData.version ?? currentVersionRef.current;
       setViewData('entry-exit-benjamin-graham', { benjaminGraham: fetchedData }, { source: 'client-refresh' }).catch((e) =>
         logger.warn('Failed to write viewData', { component: 'useBenjaminGrahamData', error: e })
       );
@@ -205,13 +201,10 @@ export function useBenjaminGrahamData() {
     }
 
     try {
-      const snapshotResult = await getSheetSnapshot('DashBoard', {
-        forceRefresh: true,
-        preferCache: false,
-      });
+      const mainData = await getMainData();
       const transformedData = transformBenjaminGrahamData({
-        data: snapshotResult.data.rows,
-        meta: { fields: snapshotResult.data.headers },
+        data: mainData.rows,
+        meta: { fields: mainData.headers },
       });
       setViewData('entry-exit-benjamin-graham', { benjaminGraham: transformedData }, { source: 'client-refresh' }).catch((e) =>
         logger.warn('Failed to write viewData', { component: 'useBenjaminGrahamData', error: e })
@@ -225,7 +218,7 @@ export function useBenjaminGrahamData() {
 
       setData(transformedData);
       previousDataRef.current = transformedData;
-      currentVersionRef.current = snapshotResult.data.version ?? currentVersionRef.current;
+      currentVersionRef.current = mainData.version ?? currentVersionRef.current;
       setLastUpdated(new Date());
 
       if (changes.hasSignificantChanges) {

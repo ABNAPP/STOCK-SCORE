@@ -3,6 +3,9 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "env": {
+    "VITE_API_BASE_URL": "https://value-insight-be-f8a5039709ae.herokuapp.com"
+  },
   "rewrites": [
     { "source": "/eodhd-proxy/:path*", "destination": "https://eodhd.com/:path*" },
     { "source": "/", "destination": "/index.html" },
