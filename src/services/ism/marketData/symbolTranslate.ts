@@ -9,37 +9,19 @@
  */
 
 import type { IsmMarketProviderId, SymbolTranslationContext } from './types';
-
-const US_EXCHANGES = new Set(['nyse', 'nasdaq', 'amex', 'bats', 'otc', 'us']);
+import { eodhdSymbolFromIsmSlugs } from './eodhdExchangeResolve';
 
 function upperSymbol(slug: string): string {
   return slug.replace(/_/g, '-').toUpperCase();
 }
 
 /**
- * EODHD uses TICKER.EXCHANGE (e.g. AAPL.US, BP.L).
- * When exchange is unknown, default to `.US` and record assumption (no extra exchange inference).
+ * EODHD uses TICKER.EXCHANGE (e.g. AAPL.US, MC.PA). Exchange `Code` values follow
+ * EODHD’s exchanges-list; Yahoo-style sheet prefixes are aliased in `eodhdExchangeSlugAliases.ts`.
+ * Unknown exchange still defaults to `.US` (see `eodhdSymbolFromIsmSlugs`).
  */
 export function toEodhdSymbol(ctx: SymbolTranslationContext): { symbol: string; notes: string[] } {
-  const sym = upperSymbol(ctx.symbolSlug);
-  const notes: string[] = [];
-  const ex = ctx.exchangeSlug.toLowerCase();
-
-  if (ex === 'unknown') {
-    notes.push('eodhd_default_us_suffix');
-    return { symbol: `${sym}.US`, notes };
-  }
-  if (US_EXCHANGES.has(ex)) {
-    return { symbol: `${sym}.US`, notes };
-  }
-  if (ex === 'sto' || ex === 'ome' || ex === 'ngm') {
-    return { symbol: `${sym}.ST`, notes };
-  }
-  if (ex === 'lse') {
-    return { symbol: `${sym}.LSE`, notes };
-  }
-  notes.push('eodhd_generic_exchange_suffix');
-  return { symbol: `${sym}.${ex.toUpperCase()}`, notes };
+  return eodhdSymbolFromIsmSlugs(ctx.symbolSlug, ctx.exchangeSlug);
 }
 
 export function toAlphaVantageSymbol(ctx: SymbolTranslationContext): { symbol: string; notes: string[] } {

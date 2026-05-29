@@ -270,6 +270,23 @@ service cloud.firestore {
         request.resource.data.engineState.schemaVersion == 1;
       allow delete: if request.auth != null && isAdmin();
     }
+
+    // EODHD adjusted EOD cache (Cloud Functions Admin SDK writes only)
+    match /system/{docId} {
+      allow read: if request.auth != null && hasRole();
+      allow write: if false;
+    }
+
+    match /eodAdjustedDaily/{eodSymbol} {
+      allow read: if request.auth != null && hasRole() && (
+        isAdmin() ||
+        canView('management-monitoring') ||
+        canView('under-development') ||
+        canView('ism-posture-positioning') ||
+        canView('score-board')
+      );
+      allow write: if false;
+    }
     
     // Deny all other access by default
     match /{document=**} {

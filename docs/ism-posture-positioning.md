@@ -24,7 +24,7 @@ export default function ISMPostureView() {
 
 ### 1) Ingest / universe (from your dashboard)
 
-`useIsmIngestData` reuses **Score Board** rows and merges them with **currency** from the existing Entry/Exit accessor (`mergeIsmIngestRows`). Each row carries an ISM sector label from the dashboard **`industry`** field (`sectorIsm` in ingest types). That defines **which sectors appear at all**: distinct non-empty `sectorIsm` values are normalized to stable sector ids (`ismSectorIdFromName`) in `buildIsmSectorUniverseFromIngest`.
+`useIsmIngestData` loads the same **DashBoard** sheet snapshot as Central Data Service (`getSheetSnapshot('DashBoard')`) and builds `ISMInstrumentIngest` rows via `mergeIsmIngestFromDashboardRows`: ticker, company name, **SECTOR (ISM)** (that column only — the sheet **Industry** column is not used for `sectorIsm`), market cap, and date-of-update all come from that snapshot. **Only `currency`** is read from the existing Entry/Exit accessor (`getFieldValue(..., 'currency')`). `buildIsmSectorUniverseFromIngest` still derives which sectors exist from distinct non-empty `sectorIsm` values, normalized to stable ids with `ismSectorIdFromName`.
 
 ### 2) Official posture metrics (from Firestore)
 

@@ -55,7 +55,10 @@ export type IsmFetchStoppedReason =
 
 export interface IsmBootstrapTickResult {
   state: IsmFetchEngineState;
+  /** Provider HTTP history fetches (EODHD API) consumed in this tick. */
   callsConsumed: number;
+  /** Chunks satisfied from Firestore `eodAdjustedDaily` without provider API (debug / org policy). */
+  firestoreCacheChunksServed: number;
   stoppedReason: IsmFetchStoppedReason;
   /** True when every symbol has history bootstrap complete or blocked. */
   bootstrapAllComplete: boolean;

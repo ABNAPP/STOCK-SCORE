@@ -7,6 +7,9 @@
   },
   "functions": {
     "source": "functions",
-    "predeploy": ["npm --prefix functions run build"]
+    "predeploy": [
+      "node scripts/sync-eodhd-to-functions.mjs",
+      "npm --prefix functions run build"
+    ]
   }
 }

@@ -5,7 +5,10 @@ import {
   SectionHeader,
   MonitoringGrid,
   MonitoringTable,
+  EodAdjustedDailyInventorySection,
+  MainDataBackendSection,
 } from '../components/managementMonitoring';
+import { useAuth } from '../contexts/AuthContext';
 import { EntryExitProvider, useEntryExitValues } from '../contexts/EntryExitContext';
 import { useScoreBoardData } from '../hooks/useScoreBoardData';
 import { useBenjaminGrahamData } from '../hooks/useBenjaminGrahamData';
@@ -54,7 +57,8 @@ function deriveOverallStatus(
 
 function ManagementMonitoringPageInner() {
   const navigate = useNavigate();
-  const { canView } = useUserRole();
+  const { currentUser } = useAuth();
+  const { canView, isAdmin } = useUserRole();
   const config = managementMonitoringConfig;
   const { data: scoreData, loading: scoreLoading } = useScoreBoardData();
   const { data: benjaminGrahamData } = useBenjaminGrahamData();
@@ -271,6 +275,9 @@ function ManagementMonitoringPageInner() {
             );
           })}
         </section>
+
+        <MainDataBackendSection user={currentUser} isAdmin={isAdmin} />
+        <EodAdjustedDailyInventorySection user={currentUser} />
       </div>
     </div>
   );

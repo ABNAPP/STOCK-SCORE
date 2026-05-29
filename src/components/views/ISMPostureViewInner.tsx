@@ -18,6 +18,8 @@ export default function ISMPostureViewInner() {
     ingestRows,
     loading: ingestLoading,
     error: ingestError,
+    lastUpdated: ingestLastUpdated,
+    refetch: refetchIngest,
     getHasEntryExitRow,
   } = useIsmIngestData();
   const universe = useMemo(() => buildIsmSectorUniverseFromIngest(ingestRows), [ingestRows]);
@@ -52,6 +54,8 @@ export default function ISMPostureViewInner() {
         user={currentUser}
         sectorId={detailSector.sectorId}
         sectorDisplayName={detailSector.displayName}
+        ingestRows={ingestRows}
+        getHasEntryExitRow={getHasEntryExitRow}
         onBack={handleBackFromDetail}
       />
     );
@@ -77,14 +81,12 @@ export default function ISMPostureViewInner() {
             {debugReport && (
               <div className="mt-2 text-xs text-gray-700 dark:text-gray-200 space-y-1">
                 <p>
-                  <strong>Bootstrap:</strong> iterations={debugReport.bootstrapIterations}, calls=
-                  {debugReport.bootstrapCallsConsumed}, stop={debugReport.bootstrapStopReason}
+                  <strong>Bootstrap:</strong> iterations={debugReport.bootstrapIterations}, providerApiCalls=
+                  {debugReport.bootstrapProviderApiCalls}, firestoreChunks=
+                  {debugReport.bootstrapFirestoreCacheChunks}, stop={debugReport.bootstrapStopReason}
                 </p>
                 <p>
-                  <strong>API keys:</strong> eodhd={String(debugReport.apiKeysStatus.eodhd)}, alphaVantage=
-                  {String(debugReport.apiKeysStatus.alphaVantage)}, marketstack=
-                  {String(debugReport.apiKeysStatus.marketstack)}, finnhub=
-                  {String(debugReport.apiKeysStatus.finnhub)}
+                  <strong>API keys (ISM / EODHD):</strong> eodhd={String(debugReport.apiKeysStatus.eodhd)}
                 </p>
                 <p>
                   <strong>Mining:</strong> rows={debugReport.mining.dashboardRows}, symbolId=
@@ -128,6 +130,29 @@ export default function ISMPostureViewInner() {
           </div>
         </section>
       )}
+      <section className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void refetchIngest(true)}
+            disabled={ingestLoading}
+          >
+            {ingestLoading ? t('ism.posture.refreshingSheetData') : t('ism.posture.refreshSheetData')}
+          </Button>
+          {ingestLastUpdated && (
+            <span className="text-xs text-gray-600 dark:text-gray-400">
+              {t('ism.posture.lastSheetSnapshot', {
+                time: ingestLastUpdated.toLocaleString(undefined, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                }),
+              })}
+            </span>
+          )}
+        </div>
+      </section>
       <ISMPostureOverview
         sectors={sectors}
         expectedSectorCount={universe.length}

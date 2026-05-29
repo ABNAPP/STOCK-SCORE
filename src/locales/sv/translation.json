@@ -99,7 +99,19 @@
     "sanitySummary": "Sanity Summary",
     "statusNote": "Status Note",
     "technicalRecommendation": "Technical Recommendation",
-    "technicalRecommendationBuy": "BUY"
+    "technicalRecommendationBuy": "BUY",
+    "adjustedDailyChartTitle": "Justerat dagslut (EODHD)",
+    "adjustedDailyChartSubtitle": "Från Firestore nattlig cache; intervall utgår från sista handelsdagen i serien.",
+    "adjustedDailyRange5y": "5 år",
+    "adjustedDailyRange1y": "1 år",
+    "adjustedDailyRangeYtd": "Hittills i år",
+    "adjustedDailyRangeMtd": "Hittills i månaden",
+    "adjustedDailyChartLoading": "Laddar priser…",
+    "adjustedDailyChartLoadError": "Kunde inte ladda priser (saknad cache eller otillräckliga behörigheter).",
+    "adjustedDailyChartEmpty": "Inga staplar i detta fönster. Prova annat intervall eller vänta på nattlig cacheuppdatering.",
+    "adjustedDailyStaleGeneration": "Den här symbolens cache-generation matchar inte den globala; priser kan vara inaktuella.",
+    "adjustedDailyTooltipSeries": "Justerat slut",
+    "adjustedDailyTooltipDate": "Datum"
   },
   "stockMonitorView": {
     "tableAriaLabel": "Stock Monitor-översikt",
@@ -732,10 +744,19 @@
       "tipAllowedSizing": "Vägledning för positionsstorlek.",
       "tipCoverage": "Data building <10, Begränsad 10-29, Full 30."
     },
+    "posture": {
+      "refreshSheetData": "Uppdatera arkdata",
+      "refreshingSheetData": "Uppdaterar ark…",
+      "lastSheetSnapshot": "Senaste arkinläsning: {{time}}"
+    },
     "detail": {
       "backToOverview": "Tillbaka till översikt",
       "tradeDate": "Officiell handelsdag: {{date}}",
       "refresh": "Uppdatera",
+      "refreshRebalanceSnapshot": "Bygg om veckoutransaktion",
+      "refreshRebalanceSnapshotRunning": "Bygger om ögonblicksbild…",
+      "refreshRebalanceSnapshotSuccess": "Veckovis ombalansering sparad i Firestore.",
+      "refreshRebalanceSnapshotError": "Ögonblicksbilden sparades inte: {{detail}}",
       "loadingDetail": "Laddar officiell sektordetalj…",
       "statusBoxTitle": "Officiell status",
       "chartAria": "Sektordiagram",

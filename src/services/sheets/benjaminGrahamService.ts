@@ -9,6 +9,17 @@ import { BenjaminGrahamData } from '../../types/stock';
 import { CACHE_KEYS, DEFAULT_TTL } from '../firestoreCacheService';
 import { fetchWithFallback } from './fetchService';
 import { getValue, isValidValue, parseNumericValueNullable } from './dataTransformers';
+import {
+  asHeaderList,
+  DASHBOARD_COMPANY_NAME_COLUMNS,
+  DASHBOARD_ENTRY_F1_COLUMNS,
+  DASHBOARD_EXIT_F1_COLUMNS,
+  DASHBOARD_EXIT_F2_COLUMNS,
+  DASHBOARD_IV_FCF_COLUMNS,
+  DASHBOARD_IRR1_COLUMNS,
+  DASHBOARD_PRICE_COLUMNS,
+  DASHBOARD_TICKER_COLUMNS,
+} from './dashboardSheetContract';
 import { isBenjaminGrahamData } from '../../utils/typeGuards';
 import type { DataRow, ProgressCallback } from './types';
 
@@ -24,9 +35,9 @@ const BENJAMIN_GRAHAM_CSV_URL = `https://docs.google.com/spreadsheets/d/${BENJAM
 export function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { fields: string[] | null } }): BenjaminGrahamData[] {
   const benjaminGrahamData = results.data
     .map((row: DataRow) => {
-      const companyName = getValue(['Company Name', 'Company', 'company'], row);
-      const ticker = getValue(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
-      const priceStr = getValue(['Price', 'price', 'PRICE'], row);
+      const companyName = getValue(asHeaderList(DASHBOARD_COMPANY_NAME_COLUMNS), row);
+      const ticker = getValue(asHeaderList(DASHBOARD_TICKER_COLUMNS), row);
+      const priceStr = getValue(asHeaderList(DASHBOARD_PRICE_COLUMNS), row);
       // Only process if company name is valid (not #N/A)
       if (!isValidValue(companyName)) {
         return null;
@@ -40,21 +51,21 @@ export function transformBenjaminGrahamData(results: { data: DataRow[]; meta: { 
       // Parse Price value as number (handle #N/A)
       const price = parseNumericValueNullable(priceStr);
 
-      const entryF1Str = getValue(['ENTRY F1', 'entry f1', 'Entry F1', 'ENTRY_F1'], row);
+      const entryF1Str = getValue(asHeaderList(DASHBOARD_ENTRY_F1_COLUMNS), row);
       const entryF1 = parseNumericValueNullable(entryF1Str);
 
-      const exitF1Str = getValue(['EXIT F1', 'exit f1', 'Exit F1', 'EXIT_F1'], row);
+      const exitF1Str = getValue(asHeaderList(DASHBOARD_EXIT_F1_COLUMNS), row);
       const exitF1 = parseNumericValueNullable(exitF1Str);
 
-      const exitF2Str = getValue(['EXIT F2', 'exit f2', 'Exit F2', 'EXIT_F2'], row);
+      const exitF2Str = getValue(asHeaderList(DASHBOARD_EXIT_F2_COLUMNS), row);
       const exitF2 = parseNumericValueNullable(exitF2Str);
       
       // Parse IV (FCF) if it exists
-      const ivFcfStr = getValue(['IV (FCF)', 'IV(FCF)', 'iv fcf', 'ivfcf'], row);
+      const ivFcfStr = getValue(asHeaderList(DASHBOARD_IV_FCF_COLUMNS), row);
       const ivFcf = parseNumericValueNullable(ivFcfStr);
       
       // Parse optional sheet column (IRR1 / RR T1 label); property stays irr1
-      const irr1Str = getValue(['IRR1', 'irr1', 'IRR 1', 'irr 1', 'RR T1', 'rr t1'], row);
+      const irr1Str = getValue(asHeaderList(DASHBOARD_IRR1_COLUMNS), row);
       const irr1 = parseNumericValueNullable(irr1Str);
       
       // Include row if both company name and ticker are valid (we already checked above)

@@ -1,13 +1,17 @@
 /**
  * Chunked history backfill for fetch-engine **state only** (progress counters / resume).
- * ISM posture math (`computeDailySectorIndex`) does **not** use stored OHLC from this loop;
- * it relies on fresh per-run EODHD window fetches — see `fetchPostureEodInputs.ts`.
+ * ISM posture math (`computeDailySectorIndex`) uses `fetchPostureEodInputs` (cache first, optional EODHD).
+ * Debug sync passes `bootstrapHistorySource: 'firestore_cache_only'` so this loop never hits providers.
  */
 import type { ISMInstrumentIngest } from '../../../types/ismIngest';
 import {
   fetchIsmHistoricalDailyWithFallback,
   buildSymbolTranslationContext,
+  translateForProvider,
 } from '../marketData';
+import { metaBase, withSuccessMeta, isValidDailyBars, failedResult } from '../marketData/resultHelpers';
+import type { IsmMarketDataResult, IsmDailyBar } from '../marketData/types';
+import { tryReadAdjustedEodDailyBarsInRange } from '../dailySector/eodAdjustedFirestoreCache';
 import {
   ISM_BOOTSTRAP_MAX_SYMBOLS_PER_INVOCATION,
   ISM_DEFAULT_DAILY_CALL_BUDGET,
@@ -52,11 +56,13 @@ export async function tickIsmBootstrap(
   const ordered = state.bootstrapOrderedSymbolIds;
   const n = ordered.length;
   let callsConsumed = 0;
+  let firestoreCacheChunksServed = 0;
 
   if (n === 0) {
     return {
       state,
       callsConsumed: 0,
+      firestoreCacheChunksServed: 0,
       stoppedReason: 'bootstrap_idle',
       bootstrapAllComplete: true,
     };
@@ -66,6 +72,7 @@ export async function tickIsmBootstrap(
     return {
       state,
       callsConsumed: 0,
+      firestoreCacheChunksServed: 0,
       stoppedReason: 'bootstrap_all_complete',
       bootstrapAllComplete: true,
     };
@@ -79,6 +86,7 @@ export async function tickIsmBootstrap(
       return {
         state,
         callsConsumed,
+        firestoreCacheChunksServed,
         stoppedReason: 'budget_exhausted',
         bootstrapAllComplete: allBootstrapComplete(state, ordered),
       };
@@ -88,6 +96,7 @@ export async function tickIsmBootstrap(
       return {
         state,
         callsConsumed,
+        firestoreCacheChunksServed,
         stoppedReason: 'bootstrap_all_complete',
         bootstrapAllComplete: true,
       };
@@ -142,6 +151,7 @@ export async function tickIsmBootstrap(
       return {
         state,
         callsConsumed,
+        firestoreCacheChunksServed,
         stoppedReason: 'budget_exhausted',
         bootstrapAllComplete: allBootstrapComplete(state, ordered),
       };
@@ -152,20 +162,34 @@ export async function tickIsmBootstrap(
     state = putSymbol(state, id, sym);
 
     const ctx = buildSymbolTranslationContext(ingest.tickerRaw);
-    const res = await fetchIsmHistoricalDailyWithFallback(
-      ctx,
-      fromClamped,
-      to,
-      'bootstrap',
-      deps.pools,
-      deps.adapters,
-      signal,
-      { resume: sym.priceProviderLastSuccess }
-    );
+    const providerSymbol = translateForProvider('eodhd', ctx).symbol;
 
-    callsConsumed += 1;
+    let res: IsmMarketDataResult<IsmDailyBar[]>;
+    if (deps.bootstrapHistorySource === 'firestore_cache_only') {
+      const bars = await tryReadAdjustedEodDailyBarsInRange(ingest.tickerRaw, fromClamped, to);
+      const base = metaBase('bootstrap', ['firestore_eod_adjusted_daily']);
+      if (bars != null && isValidDailyBars(bars)) {
+        res = withSuccessMeta(base, 'eodhd', 0, 'firestore', providerSymbol, bars);
+        firestoreCacheChunksServed += 1;
+      } else {
+        res = failedResult(base, 'firestore_cache_miss', providerSymbol);
+      }
+    } else {
+      res = await fetchIsmHistoricalDailyWithFallback(
+        ctx,
+        fromClamped,
+        to,
+        'bootstrap',
+        deps.pools,
+        deps.adapters,
+        signal,
+        { resume: sym.priceProviderLastSuccess }
+      );
+      callsConsumed += 1;
+      state = { ...state, dailyCallBudgetUsed: state.dailyCallBudgetUsed + 1 };
+    }
+
     fetchChunksThisInvocation += 1;
-    state = { ...state, dailyCallBudgetUsed: state.dailyCallBudgetUsed + 1 };
 
     if (res.outcome === 'valid') {
       const addedDays = daysInclusive(fromClamped, to);
@@ -206,6 +230,7 @@ export async function tickIsmBootstrap(
       return {
         state,
         callsConsumed,
+        firestoreCacheChunksServed,
         stoppedReason: 'budget_exhausted',
         bootstrapAllComplete: allBootstrapComplete(state, ordered),
       };
@@ -216,6 +241,7 @@ export async function tickIsmBootstrap(
   return {
     state,
     callsConsumed,
+    firestoreCacheChunksServed,
     stoppedReason: bootstrapAllComplete
       ? 'bootstrap_all_complete'
       : state.dailyCallBudgetUsed >= limit

@@ -7,6 +7,7 @@ import {
 } from '../../../types/ismSymbolDocument';
 import type { IsmFetchEngineState, IsmSymbolFetchState } from '../fetchEngine/types';
 import { computeIsmRebalanceRowMetrics } from '../rebalance/ismRebalanceRowMetrics';
+import { eodSymbolFromTickerRaw } from '../dailySector/eodAdjustedCacheSymbols';
 
 function isoDateFromMillis(ms: number | null | undefined): string | null {
   if (ms === null || ms === undefined || !Number.isFinite(ms)) return null;
@@ -90,6 +91,7 @@ export function buildIsmSymbolFirestoreDoc(params: BuildIsmSymbolDocParams): Omi
     symbol_id: ingest.symbolId,
     ticker_raw: ingest.tickerRaw,
     ticker_normalized: ingest.tickerNormalized,
+    eodhd_symbol: eodSymbolFromTickerRaw(ingest.tickerRaw),
     company_name: ingest.companyName,
     sector: ingest.sectorIsm,
     local_currency: m.currencyTrimmed,

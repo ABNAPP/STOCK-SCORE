@@ -30,3 +30,13 @@ export {
   postureEodWindowFromTradeDate,
   type ConstituentIngestRef,
 } from './fetchPostureEodInputs';
+export {
+  tryReadAdjustedEodCloseSeries,
+  COLLECTION_EOD_ADJUSTED_DAILY,
+  EOD_ADJUSTED_CACHE_SCHEMA_VERSION,
+} from './eodAdjustedFirestoreCache';
+export {
+  eodSymbolFromTickerRaw,
+  buildEodSymbolUniverseForIsmIngest,
+  ISM_EOD_ADJUSTED_CACHE_BENCHMARK_TICKER_RAWS,
+} from './eodAdjustedCacheSymbols';

@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import type { ScoreBoardData } from '../../../types/stock';
-import { mergeIsmIngestRows, summarizeIsmIngest } from '../mergeIsmIngest';
+import type { DataRow } from '../../sheets/types';
+import {
+  mergeIsmIngestRows,
+  mergeIsmIngestFromDashboardRows,
+  readDashboardSectorIsm,
+  summarizeIsmIngest,
+} from '../mergeIsmIngest';
 import { ISM_READINESS_HINTS } from '../../../types/ismIngest';
 
 function mockRow(partial: Partial<ScoreBoardData> & Pick<ScoreBoardData, 'companyName' | 'ticker' | 'industry'>): ScoreBoardData {
@@ -79,6 +85,88 @@ describe('mergeIsmIngestRows', () => {
     const out = mergeIsmIngestRows(rows, () => 'USD');
     expect(out[0].quality.tickerNeedsReview).toBe(true);
     expect(out[0].readinessHints).toContain(ISM_READINESS_HINTS.TICKER_PARSE_REVIEW);
+  });
+});
+
+describe('mergeIsmIngestFromDashboardRows', () => {
+  it('uses SECTOR (ISM) only; Industry is ignored even when SECTOR (ISM) is empty', () => {
+    const row: DataRow = {
+      'Company Name': 'Contoso Mining',
+      Ticker: 'CRC',
+      Industry: 'Mining',
+      'SECTOR (ISM)': '',
+      'Market Cap': '1000000',
+      'Date of Update': '2024-06-01',
+    };
+    const out = mergeIsmIngestFromDashboardRows([row], () => 'USD');
+    expect(out).toHaveLength(1);
+    expect(out[0].sectorIsm).toBe('');
+    expect(out[0].quality.missingSector).toBe(true);
+  });
+
+  it('uses SECTOR (ISM) when set', () => {
+    const row: DataRow = {
+      'Company Name': 'OtherCo',
+      Ticker: 'NYSE:FOO',
+      Industry: 'Consumer',
+      'SECTOR (ISM)': 'Technology',
+      'Market Cap': '2000000',
+      'Date of Update': '2024-06-02',
+    };
+    const out = mergeIsmIngestFromDashboardRows([row], () => 'USD');
+    expect(out[0].sectorIsm).toBe('Technology');
+  });
+
+  it('uses SECTOR (ISM) when Industry differs (Industry ignored)', () => {
+    const row: DataRow = {
+      'Company Name': 'DualCo',
+      Ticker: 'DUAL',
+      Industry: 'Energy',
+      'SECTOR (ISM)': 'Utilities',
+      'Market Cap': '500000',
+      'Date of Update': '2024-01-15',
+    };
+    expect(readDashboardSectorIsm(row)).toBe('Utilities');
+    const out = mergeIsmIngestFromDashboardRows([row], () => 'CAD');
+    expect(out[0].sectorIsm).toBe('Utilities');
+  });
+
+  it('currency comes only from getter, not from sheet', () => {
+    const row: DataRow = {
+      'Company Name': 'CurCo',
+      Ticker: 'CUR',
+      Industry: 'X',
+      'SECTOR (ISM)': 'Materials',
+      Currency: 'JPY',
+      'Market Cap': '1',
+      'Date of Update': '2024-01-01',
+    };
+    const out = mergeIsmIngestFromDashboardRows([row], () => 'EUR');
+    expect(out[0].currency).toBe('EUR');
+  });
+
+  it('skips rows with invalid company or ticker', () => {
+    const rows: DataRow[] = [
+      {
+        'Company Name': '#N/A',
+        Ticker: 'ABC',
+        Industry: 'A',
+        'SECTOR (ISM)': 'A',
+        'Market Cap': '1',
+        'Date of Update': '2024-01-01',
+      },
+      {
+        'Company Name': 'Good',
+        Ticker: 'OK',
+        Industry: 'B',
+        'SECTOR (ISM)': 'B',
+        'Market Cap': '2',
+        'Date of Update': '2024-01-02',
+      },
+    ];
+    const out = mergeIsmIngestFromDashboardRows(rows, () => 'USD');
+    expect(out).toHaveLength(1);
+    expect(out[0].companyName).toBe('Good');
   });
 });
 

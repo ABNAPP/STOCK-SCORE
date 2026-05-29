@@ -10,6 +10,33 @@ import { ScoreBoardData, PEIndustryData } from '../../types/stock';
 import { CACHE_KEYS, DEFAULT_TTL } from '../firestoreCacheService';
 import { fetchWithFallback } from './fetchService';
 import { getValueAllowZero, isValidValue, parseNumericValueNullable, parsePercentageValueNullable } from './dataTransformers';
+import {
+  asHeaderList,
+  DASHBOARD_BUSINESS_QUALITY_SUMMARY_COLUMNS,
+  DASHBOARD_CASH_SDEBT_COLUMNS,
+  DASHBOARD_COMPANY_NAME_COLUMNS,
+  DASHBOARD_CURRENT_RATIO_COLUMNS,
+  DASHBOARD_DATE_OF_UPDATE_COLUMNS,
+  DASHBOARD_DATE_OF_VALUATION_COLUMNS,
+  DASHBOARD_FINAL_STATUS_COLUMNS,
+  DASHBOARD_FIVE_YEAR_BETA_COLUMNS,
+  DASHBOARD_FORECAST_CONFIDENCE_COLUMNS,
+  DASHBOARD_INDUSTRY_KEY_COLUMNS,
+  DASHBOARD_LEVERAGE_F2_COLUMNS,
+  DASHBOARD_MARKET_CAP_COLUMNS,
+  DASHBOARD_MUNGER_QUALITY_SCORE_COLUMNS,
+  DASHBOARD_OPERATING_PILLAR_SCORE_COLUMNS,
+  DASHBOARD_OVERALL_STRENGTH_COLUMNS,
+  DASHBOARD_PE1_COLUMNS,
+  DASHBOARD_PE2_COLUMNS,
+  DASHBOARD_PRICE_COLUMNS,
+  DASHBOARD_RISK_FLAG_COLUMNS,
+  DASHBOARD_SANITY_SUMMARY_COLUMNS,
+  DASHBOARD_STATUS_NOTE_COLUMNS,
+  DASHBOARD_TICKER_COLUMNS,
+  DASHBOARD_VALUATION_SCORE_COLUMNS,
+  DASHBOARD_VALUE_CREATION_COLUMNS,
+} from './dashboardSheetContract';
 import { fetchPEIndustryData } from './peIndustryService';
 import { fetchSMAData } from './smaService';
 import { logger } from '../../utils/logger';
@@ -38,13 +65,13 @@ export function createScoreBoardTransformer(
   return (results: { data: DataRow[]; meta: { fields: string[] | null } }): ScoreBoardData[] => {
     const scoreBoardData = results.data
       .map((row: DataRow): ScoreBoardData | null => {
-        const companyName = getValueAllowZero(['Company Name', 'Company', 'company'], row);
-        const ticker = getValueAllowZero(['Ticker', 'ticker', 'Ticket', 'ticket', 'Symbol', 'symbol'], row);
-        const mungerQualityScoreStr = getValueAllowZero(['Munger Quality Score', 'Munger Quality Score', 'munger quality score', 'MUNGER QUALITY SCORE'], row);
-        const valueCreationStr = getValueAllowZero(['VALUE CREATION', 'Value Creation', 'value creation', 'VALUE_CREATION'], row);
-        const leverageF2Str = getValueAllowZero(['Leverage F2', 'Leverage F2', 'leverage f2', 'LEVERAGE F2'], row);
-        const currentRatioStr = getValueAllowZero(['Current Ratio', 'Current Ratio', 'current ratio', 'CURRENT RATIO'], row);
-        const cashSdebtStr = getValueAllowZero(['Cash/SDebt', 'Cash/SDebt', 'cash/sdebt', 'CASH/SDEBT'], row);
+        const companyName = getValueAllowZero(asHeaderList(DASHBOARD_COMPANY_NAME_COLUMNS), row);
+        const ticker = getValueAllowZero(asHeaderList(DASHBOARD_TICKER_COLUMNS), row);
+        const mungerQualityScoreStr = getValueAllowZero(asHeaderList(DASHBOARD_MUNGER_QUALITY_SCORE_COLUMNS), row);
+        const valueCreationStr = getValueAllowZero(asHeaderList(DASHBOARD_VALUE_CREATION_COLUMNS), row);
+        const leverageF2Str = getValueAllowZero(asHeaderList(DASHBOARD_LEVERAGE_F2_COLUMNS), row);
+        const currentRatioStr = getValueAllowZero(asHeaderList(DASHBOARD_CURRENT_RATIO_COLUMNS), row);
+        const cashSdebtStr = getValueAllowZero(asHeaderList(DASHBOARD_CASH_SDEBT_COLUMNS), row);
         
         // Detect division-by-zero for Cash/SDebt (should be treated as green)
         const isCashSdebtDivZero = cashSdebtStr && 
@@ -52,127 +79,29 @@ export function createScoreBoardTransformer(
            cashSdebtStr.trim().toUpperCase() === 'INF' ||
            cashSdebtStr.trim().toUpperCase() === '∞');
         
-        const pe1Str = getValueAllowZero(['P/E1', 'P/E 1', 'pe1', 'PE1'], row);
-        const pe2Str = getValueAllowZero(['P/E2', 'P/E 2', 'pe2', 'PE2'], row);
-        const industryStr = getValueAllowZero(
-          ['SECTOR (ISM)', 'INDUSTRY', 'Industry', 'industry'],
-          row
-        );
-        const marketCapStr = getValueAllowZero(
-          ['Market Cap', 'Market cap', 'MARKET CAP', 'MarketCap', 'marketcap', 'MARKET_CAP', 'MarketCap.'],
-          row
-        );
-        const dashboardDateOfUpdateStr = getValueAllowZero(
-          ['Date of Update', 'date of update', 'DATE OF UPDATE', 'Date of update', 'DATE_OF_UPDATE'],
-          row
-        );
-        const dateOfValuationStr = getValueAllowZero(
-          [
-            'Date of Valuation',
-            'DATE OF VALUATION',
-            'date of valuation',
-            'Date_of_Valuation',
-            'DateOfValuation',
-          ],
-          row
-        );
-        const priceStr = getValueAllowZero(
-          ['Price', 'price', 'PRICE'],
-          row
-        );
-        const fiveYearBetaStr = getValueAllowZero(
-          ['5Y Beta', '5y beta', '5Y BETA', '5Y beta'],
-          row
-        );
-        const finalStatusStr = getValueAllowZero(
-          [
-            'Final Status',
-            'FINAL STATUS',
-            'final status',
-            'Final_Status',
-            'FinalStatus',
-          ],
-          row
-        );
-        const riskFlagStr = getValueAllowZero(
-          ['Risk Flag', 'RISK FLAG', 'risk flag', 'Risk_Flag', 'RiskFlag'],
-          row
-        );
-        const valuationScoreStr = getValueAllowZero(
-          [
-            'Valuation Score',
-            'VALUATION SCORE',
-            'valuation score',
-            'Valuation_Score',
-            'ValuationScore',
-          ],
-          row
-        );
-        const forecastConfidenceStr = getValueAllowZero(
-          [
-            'Forecast Confidence Verdict',
-            'FORECAST CONFIDENCE VERDICT',
-            'forecast confidence verdict',
-            'Forecast Confidence',
-            'FORECAST CONFIDENCE',
-            'Forecast_Confidence_Verdict',
-            'ForecastConfidenceVerdict',
-          ],
-          row
-        );
-        const sanitySummaryStr = getValueAllowZero(
-          [
-            'Sanity Summary',
-            'SANITY SUMMARY',
-            'sanity summary',
-            'Sanity_Summary',
-            'SanitySummary',
-          ],
-          row
-        );
+        const pe1Str = getValueAllowZero(asHeaderList(DASHBOARD_PE1_COLUMNS), row);
+        const pe2Str = getValueAllowZero(asHeaderList(DASHBOARD_PE2_COLUMNS), row);
+        const industryStr = getValueAllowZero(asHeaderList(DASHBOARD_INDUSTRY_KEY_COLUMNS), row);
+        const marketCapStr = getValueAllowZero(asHeaderList(DASHBOARD_MARKET_CAP_COLUMNS), row);
+        const dashboardDateOfUpdateStr = getValueAllowZero(asHeaderList(DASHBOARD_DATE_OF_UPDATE_COLUMNS), row);
+        const dateOfValuationStr = getValueAllowZero(asHeaderList(DASHBOARD_DATE_OF_VALUATION_COLUMNS), row);
+        const priceStr = getValueAllowZero(asHeaderList(DASHBOARD_PRICE_COLUMNS), row);
+        const fiveYearBetaStr = getValueAllowZero(asHeaderList(DASHBOARD_FIVE_YEAR_BETA_COLUMNS), row);
+        const finalStatusStr = getValueAllowZero(asHeaderList(DASHBOARD_FINAL_STATUS_COLUMNS), row);
+        const riskFlagStr = getValueAllowZero(asHeaderList(DASHBOARD_RISK_FLAG_COLUMNS), row);
+        const valuationScoreStr = getValueAllowZero(asHeaderList(DASHBOARD_VALUATION_SCORE_COLUMNS), row);
+        const forecastConfidenceStr = getValueAllowZero(asHeaderList(DASHBOARD_FORECAST_CONFIDENCE_COLUMNS), row);
+        const sanitySummaryStr = getValueAllowZero(asHeaderList(DASHBOARD_SANITY_SUMMARY_COLUMNS), row);
         const businessQualitySummaryStr = getValueAllowZero(
-          [
-            'Business Quality Summary',
-            'BUSINESS QUALITY SUMMARY',
-            'business quality summary',
-            'Business_Quality_Summary',
-            'BusinessQualitySummary',
-          ],
+          asHeaderList(DASHBOARD_BUSINESS_QUALITY_SUMMARY_COLUMNS),
           row
         );
         const operatingPillarScoreStr = getValueAllowZero(
-          [
-            'Operating Pillar Score',
-            'OPERATING PILLAR SCORE',
-            'operating pillar score',
-            'Operating_Pillar_Score',
-            'OperatingPillarScore',
-          ],
+          asHeaderList(DASHBOARD_OPERATING_PILLAR_SCORE_COLUMNS),
           row
         );
-        const overallStrengthStr = getValueAllowZero(
-          [
-            'Overall Strength',
-            'OVERALL STRENGTH',
-            'overall strength',
-            'Overall_Strength',
-            'OverallStrength',
-          ],
-          row
-        );
-        const statusNoteStr = getValueAllowZero(
-          [
-            'Status Note',
-            'STATUS NOTE',
-            'status note',
-            'Short note',
-            'SHORT NOTE',
-            'short note',
-            'Status_Note',
-            'StatusNote',
-          ],
-          row
-        );
+        const overallStrengthStr = getValueAllowZero(asHeaderList(DASHBOARD_OVERALL_STRENGTH_COLUMNS), row);
+        const statusNoteStr = getValueAllowZero(asHeaderList(DASHBOARD_STATUS_NOTE_COLUMNS), row);
 
         // Filter out rows where Company Name or Ticker is N/A (same rule as Benjamin Graham)
         if (!isValidValue(companyName) || !isValidValue(ticker)) {
