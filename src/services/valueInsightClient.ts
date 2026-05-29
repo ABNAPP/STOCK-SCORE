@@ -6,6 +6,7 @@
 import type { User } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import type { MainDataApiErrorBody, MainDataApiResponse } from '../types/mainDataApi';
+import type { SmaDataApiResponse } from '../types/smaDataApi';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -87,4 +88,16 @@ export async function fetchMainData(): Promise<MainDataApiResponse> {
 /** POST /main-data/refresh — force refresh (admin Firebase ID token required). */
 export async function refreshMainData(user?: User): Promise<MainDataApiResponse> {
   return valueInsightPost<MainDataApiResponse>('/main-data/refresh', 'main-data', { user });
+}
+
+// --- SMA data (SMA sheet cache) ---
+
+/** GET /sma-data — cached SMA sheet (server refreshes when stale). */
+export async function fetchSmaData(): Promise<SmaDataApiResponse> {
+  return valueInsightGet<SmaDataApiResponse>('/sma-data', 'sma-data');
+}
+
+/** POST /sma-data/refresh — force refresh (admin Firebase ID token required). */
+export async function refreshSmaData(user?: User): Promise<SmaDataApiResponse> {
+  return valueInsightPost<SmaDataApiResponse>('/sma-data/refresh', 'sma-data', { user });
 }

@@ -19,7 +19,7 @@ import {
   getPollIntervalMs,
 } from '../services/deltaSyncService';
 import { usePageVisibility } from './usePageVisibility';
-import { getSheetSnapshot } from '../services/sheets/sheetSnapshotService';
+import { getMainData } from '../services/mainDataService';
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
 const CACHE_KEY = CACHE_KEYS.PE_INDUSTRY;
@@ -83,21 +83,17 @@ export function usePEIndustryData() {
         isBackground 
       });
 
-      const snapshotResult = await getSheetSnapshot('DashBoard', {
-        forceRefresh,
-        preferCache: !forceRefresh,
-      });
+      const mainData = await getMainData();
       const fetchedData = transformPEIndustryData({
-        data: snapshotResult.data.rows,
-        meta: { fields: snapshotResult.data.headers },
+        data: mainData.rows,
+        meta: { fields: mainData.headers },
       });
 
-      logger.info('P/E sector (ISM) data transformed from snapshot successfully', { 
+      logger.info('P/E sector (ISM) data transformed successfully', { 
         component: 'usePEIndustryData', 
         operation: 'loadData',
         entryCount: fetchedData.length,
         forceRefresh,
-        source: snapshotResult.source,
       });
       
       // Detect data changes
@@ -118,7 +114,7 @@ export function usePEIndustryData() {
       setData(fetchedData);
       previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
-      currentVersionRef.current = snapshotResult.data.version ?? currentVersionRef.current;
+      currentVersionRef.current = mainData.version ?? currentVersionRef.current;
       setViewData('fundamental-pe-industry', { peIndustry: fetchedData }, { source: 'client-refresh' }).catch((e) =>
         logger.warn('Failed to write viewData', { component: 'usePEIndustryData', error: e })
       );
@@ -182,13 +178,10 @@ export function usePEIndustryData() {
     }
 
     try {
-      const snapshotResult = await getSheetSnapshot('DashBoard', {
-        forceRefresh: true,
-        preferCache: false,
-      });
+      const mainData = await getMainData();
       const transformedData = transformPEIndustryData({
-        data: snapshotResult.data.rows,
-        meta: { fields: snapshotResult.data.headers },
+        data: mainData.rows,
+        meta: { fields: mainData.headers },
       });
       setViewData('fundamental-pe-industry', { peIndustry: transformedData }, { source: 'client-refresh' }).catch((e) =>
         logger.warn('Failed to write viewData', { component: 'usePEIndustryData', error: e })
@@ -202,7 +195,7 @@ export function usePEIndustryData() {
 
       setData(transformedData);
       previousDataRef.current = transformedData;
-      currentVersionRef.current = snapshotResult.data.version ?? currentVersionRef.current;
+      currentVersionRef.current = mainData.version ?? currentVersionRef.current;
       setLastUpdated(new Date());
 
       if (dataChanges.hasSignificantChanges) {

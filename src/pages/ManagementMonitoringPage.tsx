@@ -7,6 +7,7 @@ import {
   MonitoringTable,
   EodAdjustedDailyInventorySection,
   MainDataBackendSection,
+  SmaDataBackendSection,
 } from '../components/managementMonitoring';
 import { useAuth } from '../contexts/AuthContext';
 import { EntryExitProvider, useEntryExitValues } from '../contexts/EntryExitContext';
@@ -18,42 +19,7 @@ import {
   isEntry2GreenForCell,
 } from '../utils/colorThresholds/entryExitCellColors';
 import type { MonitoringTableConfig } from '../types/managementMonitoring';
-import { useCentralDataServiceStatus } from '../hooks/useCentralDataServiceStatus';
 import { useUserRole } from '../hooks/useUserRole';
-import type { MonitoringStatusBadge } from '../types/managementMonitoring';
-
-function formatStatusTimestamp(value: number | null): string {
-  if (!value) return '—';
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return '—';
-  return dt.toLocaleString();
-}
-
-function formatStatusValue(value: string | number | boolean | null | undefined): string {
-  if (value === null || value === undefined || value === '') return '—';
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  return String(value);
-}
-
-function mapStatusBadge(value: string | null | undefined): MonitoringStatusBadge {
-  const normalized = (value || '').toLowerCase();
-  if (normalized === 'ready' || normalized === 'loading' || normalized === 'stale' || normalized === 'error' || normalized === 'idle') {
-    return normalized as MonitoringStatusBadge;
-  }
-  return 'idle';
-}
-
-function deriveOverallStatus(
-  dashboardStatus: MonitoringStatusBadge,
-  smaStatus: MonitoringStatusBadge
-): MonitoringStatusBadge {
-  const statuses = [dashboardStatus, smaStatus];
-  if (statuses.includes('error')) return 'error';
-  if (statuses.includes('loading')) return 'loading';
-  if (statuses.includes('stale')) return 'stale';
-  if (statuses.every((s) => s === 'ready')) return 'ready';
-  return 'idle';
-}
 
 function ManagementMonitoringPageInner() {
   const navigate = useNavigate();
@@ -63,8 +29,6 @@ function ManagementMonitoringPageInner() {
   const { data: scoreData, loading: scoreLoading } = useScoreBoardData();
   const { data: benjaminGrahamData } = useBenjaminGrahamData();
   const { getEntryExitValue, initializeFromData } = useEntryExitValues();
-  const centralStatus = useCentralDataServiceStatus();
-
   // Initialize EntryExitContext with Score Board list (values loaded from Firestore by provider)
   useEffect(() => {
     if (scoreData && scoreData.length > 0) {
@@ -169,67 +133,16 @@ function ManagementMonitoringPageInner() {
           onClick: () => navigate('/management-monitoring/score-model-settings'),
         };
       }
-      if (card.id !== 'central-data-service') {
-        return card;
+      if (card.id === 'central-data-service') {
+        return {
+          ...card,
+          interactive: true,
+          onClick: () => navigate('/management-monitoring/central-data-service'),
+        };
       }
-
-      const dash = centralStatus.DashBoard;
-      const sma = centralStatus.SMA;
-      const dashboardStatus = mapStatusBadge(dash.status);
-      const smaStatus = mapStatusBadge(sma.status);
-      const overallStatus = deriveOverallStatus(dashboardStatus, smaStatus);
-      const combinedLastSync = [dash.lastSuccessfulSync, sma.lastSuccessfulSync]
-        .filter((v): v is number => typeof v === 'number' && v > 0)
-        .sort((a, b) => b - a)[0] ?? null;
-      const combinedError = [dash.lastError, sma.lastError]
-        .find((err) => err && err.trim().length > 0) || 'No errors';
-      return {
-        ...card,
-        interactive: true,
-        onClick: () => navigate('/management-monitoring/central-data-service'),
-        statusCard: {
-          summaryTitle: 'Overall status',
-          overallStatus,
-          dashboardStatus,
-          smaStatus,
-          lastSuccessfulSync: formatStatusTimestamp(combinedLastSync),
-          subtitle: 'Shows the status of the shared Google Sheets snapshot layer used by the app.',
-          sections: [
-            {
-              title: 'Snapshot Status',
-              rows: [
-                { label: 'DashBoard lastAttemptAt', value: formatStatusTimestamp(dash.lastAttemptAt) },
-                { label: 'SMA lastAttemptAt', value: formatStatusTimestamp(sma.lastAttemptAt) },
-                { label: 'In flight', value: `DashBoard ${formatStatusValue(dash.inFlight)} / SMA ${formatStatusValue(sma.inFlight)}` },
-              ],
-            },
-            {
-              title: 'Data Volume',
-              rows: [
-                { label: 'DashBoard rowCount', value: formatStatusValue(dash.rowCount) },
-                { label: 'SMA rowCount', value: formatStatusValue(sma.rowCount) },
-                { label: 'Unique companies', value: formatStatusValue(dash.uniqueCompanyCount) },
-              ],
-            },
-            {
-              title: 'Cache & Network',
-              rows: [
-                { label: 'DashBoard cacheHits/cacheMisses', value: `${formatStatusValue(dash.cacheHits)}/${formatStatusValue(dash.cacheMisses)}` },
-                { label: 'SMA cacheHits/cacheMisses', value: `${formatStatusValue(sma.cacheHits)}/${formatStatusValue(sma.cacheMisses)}` },
-                { label: 'Apps Script calls', value: `DashBoard ${formatStatusValue(dash.appsScriptCalls)} / SMA ${formatStatusValue(sma.appsScriptCalls)}` },
-              ],
-            },
-            {
-              title: 'Errors',
-              rows: [
-                { label: 'Last error', value: formatStatusValue(combinedError) },
-              ],
-            },
-          ],
-        },
-      };
+      return card;
     });
-  }, [config.cards, centralStatus, navigate, canView]);
+  }, [config.cards, navigate, canView]);
 
   return (
     <div
@@ -277,6 +190,7 @@ function ManagementMonitoringPageInner() {
         </section>
 
         <MainDataBackendSection user={currentUser} isAdmin={isAdmin} />
+        <SmaDataBackendSection user={currentUser} isAdmin={isAdmin} />
         <EodAdjustedDailyInventorySection user={currentUser} />
       </div>
     </div>

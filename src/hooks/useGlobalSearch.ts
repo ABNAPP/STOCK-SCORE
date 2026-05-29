@@ -3,7 +3,8 @@ import { createScoreBoardTransformer, type SMADataMapEntry } from '../services/s
 import { transformBenjaminGrahamData } from '../services/sheets/benjaminGrahamService';
 import { transformPEIndustryData } from '../services/sheets/peIndustryService';
 import { transformSMAData } from '../services/sheets/smaService';
-import { getSheetSnapshot } from '../services/sheets/sheetSnapshotService';
+import { getMainData } from '../services/mainDataService';
+import { getSmaData } from '../services/smaDataService';
 import type { ScoreBoardData, BenjaminGrahamData, PEIndustryData } from '../types/stock';
 import { ViewId } from '../types/navigation';
 import { logger } from '../utils/logger';
@@ -29,14 +30,11 @@ export function useGlobalSearch() {
 
     const loadSearchData = async () => {
       try {
-        const [dashboardSnapshot, smaSnapshot] = await Promise.all([
-          getSheetSnapshot('DashBoard'),
-          getSheetSnapshot('SMA'),
-        ]);
+        const [mainData, smaSheet] = await Promise.all([getMainData(), getSmaData()]);
 
         const peData = transformPEIndustryData({
-          data: dashboardSnapshot.data.rows,
-          meta: { fields: dashboardSnapshot.data.headers },
+          data: mainData.rows,
+          meta: { fields: mainData.headers },
         });
 
         const industryPe1Map = new Map<string, number>();
@@ -47,8 +45,8 @@ export function useGlobalSearch() {
         });
 
         const smaData = transformSMAData({
-          data: smaSnapshot.data.rows,
-          meta: { fields: smaSnapshot.data.headers },
+          data: smaSheet.rows,
+          meta: { fields: smaSheet.headers },
         });
         const smaDataMap = new Map<string, SMADataMapEntry>();
         smaData.forEach((sma) => {
@@ -66,13 +64,13 @@ export function useGlobalSearch() {
           smaDataMap
         );
         const scoreData = scoreBoardTransformer({
-          data: dashboardSnapshot.data.rows,
-          meta: { fields: dashboardSnapshot.data.headers },
+          data: mainData.rows,
+          meta: { fields: mainData.headers },
         });
 
         const bgData = transformBenjaminGrahamData({
-          data: dashboardSnapshot.data.rows,
-          meta: { fields: dashboardSnapshot.data.headers },
+          data: mainData.rows,
+          meta: { fields: mainData.headers },
         });
 
         if (!mounted) return;

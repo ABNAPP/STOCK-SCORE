@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  getCachedSheetSnapshot,
-  type SheetSnapshotData,
-  type SupportedSheetName,
-} from '../services/sheets/sheetSnapshotService';
+import { getMainData, type MainData } from '../services/mainDataService';
+import { getSmaData, type SmaSheetData } from '../services/smaDataService';
 import TableSearchBar from '../components/TableSearchBar';
 import { useDebounce } from '../hooks/useDebounce';
 import { sanitizeSearchQuery } from '../utils/inputValidator';
@@ -102,9 +99,11 @@ function tryFormatDateOfValuation(value: unknown): string | null {
   return null;
 }
 
+type CentralDataTab = 'main-data' | 'SMA';
+
 function formatSnapshotCell(
   value: unknown,
-  sheetName: SupportedSheetName,
+  tab: CentralDataTab,
   headerName: string
 ): string {
   if (value === null || value === undefined || value === '') return '—';
@@ -112,7 +111,7 @@ function formatSnapshotCell(
   const headerNorm = headerName.trim().toLowerCase();
 
   if (
-    sheetName === 'DashBoard' &&
+    tab === 'main-data' &&
     headerNorm === 'date of update'
   ) {
     const dateValue = value instanceof Date ? value : new Date(String(value));
@@ -230,14 +229,12 @@ function formatGeneratedAt(value: string | null): string {
 }
 
 export default function CentralDataServicePage() {
-  const [activeTab, setActiveTab] = useState<SupportedSheetName>('DashBoard');
-  const [snapshotData, setSnapshotData] = useState<Record<SupportedSheetName, SheetSnapshotData | null>>({
-    DashBoard: null,
-    SMA: null,
-  });
+  const [activeTab, setActiveTab] = useState<CentralDataTab>('main-data');
+  const [mainData, setMainData] = useState<MainData | null>(null);
+  const [smaData, setSmaData] = useState<SmaSheetData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [visibleRows, setVisibleRows] = useState<Record<SupportedSheetName, number>>({
-    DashBoard: INITIAL_VISIBLE_ROWS,
+  const [visibleRows, setVisibleRows] = useState<Record<CentralDataTab, number>>({
+    'main-data': INITIAL_VISIBLE_ROWS,
     SMA: INITIAL_VISIBLE_ROWS,
   });
   const [searchValue, setSearchValue] = useState('');
@@ -246,18 +243,13 @@ export default function CentralDataServicePage() {
   useEffect(() => {
     let isMounted = true;
 
-    const loadCachedSnapshots = async () => {
+    const loadData = async () => {
       setLoading(true);
       try {
-        const [dashboardCached, smaCached] = await Promise.all([
-          getCachedSheetSnapshot('DashBoard'),
-          getCachedSheetSnapshot('SMA'),
-        ]);
+        const [main, sma] = await Promise.all([getMainData(), getSmaData()]);
         if (!isMounted) return;
-        setSnapshotData({
-          DashBoard: dashboardCached,
-          SMA: smaCached,
-        });
+        setMainData(main);
+        setSmaData(sma);
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -265,7 +257,7 @@ export default function CentralDataServicePage() {
       }
     };
 
-    void loadCachedSnapshots();
+    void loadData();
 
     return () => {
       isMounted = false;
@@ -280,7 +272,8 @@ export default function CentralDataServicePage() {
     }));
   }, [activeTab]);
 
-  const activeSnapshot = snapshotData[activeTab];
+  const activeSnapshot: MainData | SmaSheetData | null =
+    activeTab === 'main-data' ? mainData : smaData;
   const activeHeaders = activeSnapshot?.headers ?? [];
   const activeRows = useMemo(() => {
     const rows = activeSnapshot?.rows ?? [];
@@ -355,24 +348,29 @@ export default function CentralDataServicePage() {
           <div className="mb-4 flex-shrink-0">
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Central Data Service</h1>
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-              Read-only mirror of the cached Google Sheets snapshot used by the app.
+              Read-only mirror of app data from value-insight-be (main data and SMA).
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-3 flex-shrink-0 w-full">
             <div className="flex flex-wrap items-center gap-2">
-              {(['DashBoard', 'SMA'] as SupportedSheetName[]).map((tab) => (
+              {(
+                [
+                  { id: 'main-data' as const, label: 'Main data' },
+                  { id: 'SMA' as const, label: 'SMA' },
+                ] as const
+              ).map((tab) => (
                 <button
-                  key={tab}
+                  key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`px-3 py-1.5 rounded-md text-sm border ${
-                    activeTab === tab
+                    activeTab === tab.id
                       ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200'
                       : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'
                   }`}
                 >
-                  {tab}
+                  {tab.label}
                 </button>
               ))}
             </div>
@@ -389,11 +387,11 @@ export default function CentralDataServicePage() {
           </div>
 
           {loading ? (
-            <div className="text-sm text-gray-500 dark:text-gray-400">Loading cached snapshot...</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Loading snapshot...</div>
           ) : !activeSnapshot ? (
-            <div className="text-sm text-gray-500 dark:text-gray-400">No cached snapshot</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">No snapshot loaded</div>
           ) : activeHeaders.length === 0 || activeRows.length === 0 ? (
-            <div className="text-sm text-gray-500 dark:text-gray-400">Cached snapshot is empty</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Snapshot is empty</div>
           ) : (
             <div className="flex flex-col flex-1 min-h-0 gap-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-sm flex-shrink-0">

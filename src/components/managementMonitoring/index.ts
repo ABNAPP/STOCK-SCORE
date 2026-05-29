@@ -4,4 +4,5 @@ export { default as MonitoringGrid } from './MonitoringGrid';
 export { default as MonitoringTable } from './MonitoringTable';
 export { default as EodAdjustedDailyInventorySection } from './EodAdjustedDailyInventorySection';
 export { default as MainDataBackendSection } from './MainDataBackendSection';
+export { default as SmaDataBackendSection } from './SmaDataBackendSection';
 export { default as ConnectionArrow } from './ConnectionArrow';

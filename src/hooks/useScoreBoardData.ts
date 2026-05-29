@@ -22,7 +22,8 @@ import {
 } from '../services/deltaSyncService';
 import { usePageVisibility } from './usePageVisibility';
 import { useTranslation } from 'react-i18next';
-import { getSheetSnapshot, type SheetSnapshotResult } from '../services/sheets/sheetSnapshotService';
+import { getMainData, type MainData } from '../services/mainDataService';
+import { getSmaData } from '../services/smaDataService';
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
 const CACHE_KEY = CACHE_KEYS.SCORE_BOARD;
@@ -80,40 +81,29 @@ export function useScoreBoardData() {
   const cacheLoadedRef = useRef<boolean>(false);
 
   // Helper function to fetch P/E sector (ISM) sheet and SMA data and create maps
-  const fetchDependenciesAndCreateTransformer = useCallback(async (forceRefresh: boolean = false) => {
-    // Fetch DashBoard and SMA snapshots in parallel (they are independent)
-    const [dashboardSnapshotResult, smaSnapshotResult] = await Promise.allSettled([
-      getSheetSnapshot('DashBoard', {
-        forceRefresh,
-        preferCache: !forceRefresh,
-      }),
-      getSheetSnapshot('SMA', {
-        forceRefresh,
-        preferCache: !forceRefresh,
-      }),
+  const fetchDependenciesAndCreateTransformer = useCallback(async (_forceRefresh: boolean = false) => {
+    const [mainDataResult, smaDataResult] = await Promise.allSettled([
+      getMainData(),
+      getSmaData(),
     ]);
 
-    const dashboardSnapshot: SheetSnapshotResult | null =
-      dashboardSnapshotResult.status === 'fulfilled' ? dashboardSnapshotResult.value : null;
-    const smaSnapshot: SheetSnapshotResult | null =
-      smaSnapshotResult.status === 'fulfilled' ? smaSnapshotResult.value : null;
+    const mainData: MainData | null =
+      mainDataResult.status === 'fulfilled' ? mainDataResult.value : null;
+    const smaSheet =
+      smaDataResult.status === 'fulfilled' ? smaDataResult.value : null;
 
-    // Process PEIndustryData from DashBoard snapshot
     let peIndustryData: PEIndustryData[] = [];
-    if (dashboardSnapshot) {
+    if (mainData) {
       peIndustryData = transformPEIndustryData({
-        data: dashboardSnapshot.data.rows,
-        meta: { fields: dashboardSnapshot.data.headers },
+        data: mainData.rows,
+        meta: { fields: mainData.headers },
       });
-    } else if (dashboardSnapshotResult.status === 'rejected') {
-      logger.warn(
-        'Failed to load DashBoard snapshot for P/E1/P/E2 median calculation',
-        {
-          component: 'useScoreBoardData',
-          operation: 'fetchDependenciesAndCreateTransformer',
-          error: dashboardSnapshotResult.reason,
-        }
-      );
+    } else if (mainDataResult.status === 'rejected') {
+      logger.warn('Failed to load main data for P/E1/P/E2 median calculation', {
+        component: 'useScoreBoardData',
+        operation: 'fetchDependenciesAndCreateTransformer',
+        error: mainDataResult.reason,
+      });
     }
 
     // Create maps for quick lookup: industry -> pe1 and pe2 (median)
@@ -128,26 +118,22 @@ export function useScoreBoardData() {
       }
     });
 
-    // Process SMAData results from SMA snapshot (SMA colors computed in view from price vs SMA values)
     let smaDataMap = new Map<string, SMADataMapEntry>();
-    if (smaSnapshot) {
-      const smaData = transformSMAData({
-        data: smaSnapshot.data.rows,
-        meta: { fields: smaSnapshot.data.headers },
+    if (smaSheet) {
+      const smaRows = transformSMAData({
+        data: smaSheet.rows,
+        meta: { fields: smaSheet.headers },
       });
-      smaData.forEach((sma) => {
+      smaRows.forEach((sma) => {
         const tickerKey = sma.ticker.toLowerCase().trim();
         smaDataMap.set(tickerKey, { sma9: sma.sma9, sma21: sma.sma21, sma55: sma.sma55, sma200: sma.sma200 });
       });
-    } else if (smaSnapshotResult.status === 'rejected') {
-      logger.warn(
-        'Failed to load SMA snapshot for Score Board',
-        {
-          component: 'useScoreBoardData',
-          operation: 'fetchDependenciesAndCreateTransformer',
-          error: smaSnapshotResult.reason,
-        }
-      );
+    } else if (smaDataResult.status === 'rejected') {
+      logger.warn('Failed to load SMA data for Score Board', {
+        component: 'useScoreBoardData',
+        operation: 'fetchDependenciesAndCreateTransformer',
+        error: smaDataResult.reason,
+      });
     }
 
     // Create transformer with the maps
@@ -174,8 +160,7 @@ export function useScoreBoardData() {
         industryPe2Map: industryPe2MapObj,
         smaDataMap: smaDataMapObj,
       },
-      dashboardSnapshot,
-      smaSnapshot,
+      mainData,
     };
   }, []);
 
@@ -226,26 +211,20 @@ export function useScoreBoardData() {
         isBackground 
       });
 
-      // Build transformer from snapshot-derived dependencies (reuse DashBoard snapshot — no second fetch)
-      const { transformer, dashboardSnapshot: dashboardFromDeps } =
+      const { transformer, mainData: mainDataFromDeps } =
         await fetchDependenciesAndCreateTransformer(forceRefresh);
-      const dashboardSnapshot =
-        dashboardFromDeps ??
-        (await getSheetSnapshot('DashBoard', {
-          forceRefresh,
-          preferCache: !forceRefresh,
-        }));
+      const mainData =
+        mainDataFromDeps ?? (await getMainData());
       const fetchedData = transformer({
-        data: dashboardSnapshot.data.rows,
-        meta: { fields: dashboardSnapshot.data.headers },
+        data: mainData.rows,
+        meta: { fields: mainData.headers },
       });
 
-      logger.info('Score Board data transformed from snapshots successfully', { 
+      logger.info('Score Board data transformed successfully', { 
         component: 'useScoreBoardData', 
         operation: 'loadData',
         entryCount: fetchedData.length,
         forceRefresh,
-        source: dashboardSnapshot.source,
       });
       
       // Detect data changes
@@ -268,7 +247,7 @@ export function useScoreBoardData() {
       previousDataRef.current = fetchedData;
       setLastUpdated(new Date());
       setDataSource('network');
-      currentVersionRef.current = dashboardSnapshot.data.version ?? currentVersionRef.current;
+      currentVersionRef.current = mainData.version ?? currentVersionRef.current;
       setViewData('score-board', { scoreBoard: fetchedData }, { source: 'client-refresh' }).catch((e) =>
         logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
       );
@@ -344,17 +323,12 @@ export function useScoreBoardData() {
 
     try {
       // Minimal-risk polling update: force-refresh central snapshots and re-transform
-      const { transformer, dashboardSnapshot: dashboardFromDeps } =
+      const { transformer, mainData: mainDataFromDeps } =
         await fetchDependenciesAndCreateTransformer(true);
-      const dashboardSnapshot =
-        dashboardFromDeps ??
-        (await getSheetSnapshot('DashBoard', {
-          forceRefresh: true,
-          preferCache: false,
-        }));
+      const mainData = mainDataFromDeps ?? (await getMainData());
       const transformedData = transformer({
-        data: dashboardSnapshot.data.rows,
-        meta: { fields: dashboardSnapshot.data.headers },
+        data: mainData.rows,
+        meta: { fields: mainData.headers },
       });
       setViewData('score-board', { scoreBoard: transformedData }, { source: 'client-refresh' }).catch((e) =>
         logger.warn('Failed to write viewData', { component: 'useScoreBoardData', error: e })
@@ -371,7 +345,7 @@ export function useScoreBoardData() {
 
       setData(transformedData);
       previousDataRef.current = transformedData;
-      currentVersionRef.current = dashboardSnapshot.data.version ?? currentVersionRef.current;
+      currentVersionRef.current = mainData.version ?? currentVersionRef.current;
       setLastUpdated(new Date());
 
       if (dataChanges.hasSignificantChanges) {
@@ -429,7 +403,7 @@ export function useScoreBoardData() {
           const delta = await getDeltaCacheEntry<ScoreBoardData[]>(CACHE_KEY);
           currentVersionRef.current = delta?.version ?? 0;
           setLoading(false);
-          // viewData / appCache may predate new ScoreBoard columns; refresh from DashBoard snapshot in background
+          // viewData / appCache may predate new ScoreBoard columns; refresh main data in background
           if (typeof navigator !== 'undefined' && navigator.onLine) {
             void loadData(false, true);
           }
