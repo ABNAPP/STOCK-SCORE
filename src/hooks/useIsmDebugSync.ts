@@ -37,7 +37,7 @@ import {
   ISM_POSTURE_EOD_FETCH_BATCH_SIZE,
   postureEodWindowFromTradeDate,
 } from '../services/ism/dailySector/fetchPostureEodInputs';
-import { tryReadAdjustedEodDailyBarsInRange } from '../services/ism/dailySector/eodAdjustedFirestoreCache';
+import { tryReadAdjustedEodDailyBarsInRange } from '../services/eodAdjustedDataService';
 
 type StepStatus = 'ok' | 'failed' | 'warn';
 
@@ -94,7 +94,7 @@ export type IsmDebugRunReport = {
   bootstrapIterations: number;
   /** EODHD HTTP calls from bootstrap (always 0 when using Firestore cache only). */
   bootstrapProviderApiCalls: number;
-  /** History chunks read from `eodAdjustedDaily` during bootstrap. */
+  /** History chunks read from value-insight-be `/eod-adjusted-daily` during bootstrap. */
   bootstrapFirestoreCacheChunks: number;
   bootstrapStopReason: 'all_complete' | 'max_calls_reached' | 'no_progress';
   apiKeysStatus: {
@@ -423,7 +423,7 @@ export function useIsmDebugSync(
           : 'Mining sector not present in weekly run result',
       });
 
-      // 6) runDailyIsmSectorIndex for sectors with active snapshot (Firestore `eodAdjustedDaily` only in debug)
+      // 6) runDailyIsmSectorIndex for sectors with active snapshot (backend EOD cache only in debug)
       const bySector = new Map<string, ISMInstrumentIngest[]>();
       for (const row of ingestRows) {
         const sectorId = ismSectorIdFromName(row.sectorIsm);
@@ -451,7 +451,7 @@ export function useIsmDebugSync(
           step: 'runDailyIsmSectorIndex',
           status: 'warn',
           detail:
-            'SPY window empty in Firestore `eodAdjustedDaily` (debug sync uses cache only; nightly cloud function fills this collection).',
+            'SPY window empty in value-insight-be EOD cache (debug sync uses /eod-adjusted-daily only).',
         });
       }
 

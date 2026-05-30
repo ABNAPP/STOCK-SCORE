@@ -10,7 +10,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useTheme } from '../contexts/ThemeContext';
-import { fetchEodAdjustedDailyPriceSeriesForAppTicker } from '../services/ism/dailySector/eodAdjustedFirestoreCache';
+import { fetchEodAdjustedDailyPriceSeriesForAppTicker } from '../services/eodAdjustedDataService';
 import {
   filterEodPointsByPreset,
   type EodAdjustedDailyRangePreset,
