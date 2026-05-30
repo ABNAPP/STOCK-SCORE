@@ -7,6 +7,7 @@ import type { User } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import type { MainDataApiErrorBody, MainDataApiResponse } from '../types/mainDataApi';
 import type { SmaDataApiResponse } from '../types/smaDataApi';
+import type { EodAdjustedDailyApiResponse } from '../types/eodAdjustedDailyApi';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -100,4 +101,26 @@ export async function fetchSmaData(): Promise<SmaDataApiResponse> {
 /** POST /sma-data/refresh — force refresh (admin Firebase ID token required). */
 export async function refreshSmaData(user?: User): Promise<SmaDataApiResponse> {
   return valueInsightPost<SmaDataApiResponse>('/sma-data/refresh', 'sma-data', { user });
+}
+
+// --- EOD adjusted daily (EODHD cache) ---
+
+export type FetchEodAdjustedDailyOptions = {
+  includeBars?: boolean;
+  eodSymbol?: string;
+};
+
+/** GET /eod-adjusted-daily — adjusted EOD cache (server refreshes when stale). */
+export async function fetchEodAdjustedDaily(
+  options: FetchEodAdjustedDailyOptions = {}
+): Promise<EodAdjustedDailyApiResponse> {
+  const params = new URLSearchParams();
+  params.set('includeBars', options.includeBars === true ? 'true' : 'false');
+  if (options.eodSymbol?.trim()) {
+    params.set('eodSymbol', options.eodSymbol.trim());
+  }
+  return valueInsightGet<EodAdjustedDailyApiResponse>(
+    `/eod-adjusted-daily?${params.toString()}`,
+    'eod-adjusted-daily'
+  );
 }

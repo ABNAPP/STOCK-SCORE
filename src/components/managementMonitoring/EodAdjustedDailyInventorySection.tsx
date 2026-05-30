@@ -7,8 +7,9 @@ import Button from '../ui/Button';
 const COLUMNS = [
   { key: 'no', label: 'NO.' },
   { key: 'eodSymbol', label: 'EOD symbol' },
-  { key: 'docGeneration', label: 'Doc generation' },
-  { key: 'matchesGlobal', label: 'Matches global gen.' },
+  { key: 'source', label: 'Source' },
+  { key: 'docGeneration', label: 'Generation' },
+  { key: 'matchesGlobal', label: 'Matches global' },
   { key: 'rangeFrom', label: 'Range from' },
   { key: 'rangeTo', label: 'Range to' },
   { key: 'barCount', label: 'Bars' },
@@ -17,12 +18,28 @@ const COLUMNS = [
   { key: 'fetchedAt', label: 'Fetched at' },
 ] as const;
 
+const FAILED_COLUMNS = [
+  { key: 'no', label: 'NO.' },
+  { key: 'eodSymbol', label: 'EOD symbol' },
+  { key: 'reason', label: 'Failure reason' },
+] as const;
+
 type EodAdjustedDailyInventorySectionProps = {
   user: User | null;
 };
 
 export default function EodAdjustedDailyInventorySection({ user }: EodAdjustedDailyInventorySectionProps) {
-  const { rows, loading, error, globalGeneration, docCount, refresh } = useEodAdjustedDailyInventory(user);
+  const {
+    rows,
+    failedRows,
+    loading,
+    error,
+    globalGeneration,
+    docCount,
+    failedCount,
+    targetSessionDate,
+    refresh,
+  } = useEodAdjustedDailyInventory(user);
 
   useEffect(() => {
     void refresh();
@@ -34,18 +51,32 @@ export default function EodAdjustedDailyInventorySection({ user }: EodAdjustedDa
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Daily history data</h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 max-w-3xl">
-            Documents in Firestore <code className="text-xs bg-gray-200 dark:bg-gray-700 px-1 rounded">eodAdjustedDaily</code>{' '}
-            (EODHD adjusted daily cache). Global generation comes from{' '}
-            <code className="text-xs bg-gray-200 dark:bg-gray-700 px-1 rounded">system/eodAdjustedCache</code>.
+            Adjusted EOD prices from value-insight-be (
+            <code className="text-xs bg-gray-200 dark:bg-gray-700 px-1 rounded">GET /eod-adjusted-daily</code>
+            , metadata only).
             {user && !loading && (
               <span className="block mt-1">
-                {globalGeneration != null && (
+                {targetSessionDate && (
                   <>
-                    Current global generation: <strong>{globalGeneration}</strong>
+                    Session date: <strong>{targetSessionDate}</strong>
                     {' · '}
                   </>
                 )}
-                {docCount} symbol doc(s) in collection
+                {globalGeneration != null && (
+                  <>
+                    Generation: <strong>{globalGeneration}</strong>
+                    {' · '}
+                  </>
+                )}
+                {docCount} symbol(s)
+                {failedCount > 0 && (
+                  <>
+                    {' · '}
+                    <span className="text-error-600 dark:text-error-400">
+                      {failedCount} failed retrieval
+                    </span>
+                  </>
+                )}
               </span>
             )}
           </p>
@@ -58,24 +89,32 @@ export default function EodAdjustedDailyInventorySection({ user }: EodAdjustedDa
       {error && (
         <p className="mb-3 text-sm text-error-600 dark:text-error-400" role="alert">
           {error}
-          {/permission|insufficient/i.test(error)
-            ? ' — Ensure your account has the Management Monitoring, SCORE BOARD, ISM Posture, or legacy Score Board permission, and deploy the latest Firestore rules if you just updated them.'
-            : ''}
         </p>
       )}
 
       {!user ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">Sign in to load cache inventory.</p>
-      ) : loading && rows.length === 0 ? (
+      ) : loading && rows.length === 0 && failedRows.length === 0 ? (
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-6 text-sm text-gray-500 dark:text-gray-400">
-          Loading eodAdjustedDaily…
+          Loading EOD adjusted daily inventory…
         </div>
-      ) : rows.length === 0 && !error ? (
+      ) : rows.length === 0 && failedRows.length === 0 && !error ? (
         <p className="text-sm text-gray-500 dark:text-gray-400 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-6">
-          No documents found in <code className="text-xs">eodAdjustedDaily</code>.
+          No symbols returned from the backend.
         </p>
       ) : (
-        <MonitoringTable title="eodAdjustedDaily — symbol documents" columns={[...COLUMNS]} rows={rows} />
+        <div className="space-y-6">
+          {rows.length > 0 && (
+            <MonitoringTable title="EOD adjusted daily — symbols" columns={[...COLUMNS]} rows={rows} />
+          )}
+          {failedRows.length > 0 && (
+            <MonitoringTable
+              title="EOD adjusted daily — failed price retrieval"
+              columns={[...FAILED_COLUMNS]}
+              rows={failedRows}
+            />
+          )}
+        </div>
       )}
     </section>
   );

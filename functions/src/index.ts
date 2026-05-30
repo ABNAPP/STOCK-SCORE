@@ -1,10 +1,6 @@
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 export { pmiFredProxy } from './pmiFredProxy';
-import { eodAdjustedCacheNightly, runEodAdjustedCacheNightlyJob } from './eodAdjustedCache';
-
-export { eodAdjustedCacheNightly };
-
 admin.initializeApp();
 
 // Middleware för att verifiera admin-autentisering
@@ -57,12 +53,6 @@ export const claimViewerRole = functions.https.onCall(async (_data, context) => 
   }
 });
 
-
-/** Admin-only: bump adjusted EOD cache generation and warm symbols (same as nightly job). */
-export const adminWarmEodAdjustedCache = functions.https.onCall(async (_data, context) => {
-  await verifyAdmin(context);
-  return runEodAdjustedCacheNightlyJob();
-});
 
 // Admin refresh cache - fetches from Apps Script, writes to viewData
 export const adminRefreshCache = functions.https.onCall(async (data, context) => {

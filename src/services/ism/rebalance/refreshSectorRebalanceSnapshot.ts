@@ -2,7 +2,7 @@
  * On-demand recompute + persist of the active weekly rebalance snapshot for one sector
  * (same motor path as `runWeeklyIsmSectorRebalances`, single sector).
  *
- * Merges `eodAdjustedDaily` cache signals into fetch-engine slices for this run so row
+ * Merges value-insight-be EOD adjusted cache into fetch-engine slices for this run so row
  * qualification is not blocked solely by stale `historyDaysFetched` in Firestore.
  */
 
@@ -14,7 +14,7 @@ import { getExchangeRate } from '../../currencyService';
 import {
   tryReadAdjustedEodCachedRangeCalendarSpanDays,
   tryReadAdjustedEodDailyBarsInRange,
-} from '../dailySector/eodAdjustedFirestoreCache';
+} from '../../eodAdjustedDataService';
 import { loadActiveSectorRebalanceSnapshot } from '../dailySector/ismDailySectorFirestorePersistence';
 import { alignIsmFetchEngineToIngest, loadOfficialIsmFetchEngineState } from '../fetchEngine';
 import { ISM_HISTORY_TARGET_DAYS } from '../fetchEngine/constants';

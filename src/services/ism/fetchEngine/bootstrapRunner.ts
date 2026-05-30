@@ -11,7 +11,7 @@ import {
 } from '../marketData';
 import { metaBase, withSuccessMeta, isValidDailyBars, failedResult } from '../marketData/resultHelpers';
 import type { IsmMarketDataResult, IsmDailyBar } from '../marketData/types';
-import { tryReadAdjustedEodDailyBarsInRange } from '../dailySector/eodAdjustedFirestoreCache';
+import { tryReadAdjustedEodDailyBarsInRange } from '../../eodAdjustedDataService';
 import {
   ISM_BOOTSTRAP_MAX_SYMBOLS_PER_INVOCATION,
   ISM_DEFAULT_DAILY_CALL_BUDGET,
@@ -167,12 +167,12 @@ export async function tickIsmBootstrap(
     let res: IsmMarketDataResult<IsmDailyBar[]>;
     if (deps.bootstrapHistorySource === 'firestore_cache_only') {
       const bars = await tryReadAdjustedEodDailyBarsInRange(ingest.tickerRaw, fromClamped, to);
-      const base = metaBase('bootstrap', ['firestore_eod_adjusted_daily']);
+      const base = metaBase('bootstrap', ['backend_eod_adjusted_daily']);
       if (bars != null && isValidDailyBars(bars)) {
-        res = withSuccessMeta(base, 'eodhd', 0, 'firestore', providerSymbol, bars);
+        res = withSuccessMeta(base, 'eodhd', 0, 'backend', providerSymbol, bars);
         firestoreCacheChunksServed += 1;
       } else {
-        res = failedResult(base, 'firestore_cache_miss', providerSymbol);
+        res = failedResult(base, 'backend_cache_miss', providerSymbol);
       }
     } else {
       res = await fetchIsmHistoricalDailyWithFallback(

@@ -32,9 +32,8 @@ export {
 } from './fetchPostureEodInputs';
 export {
   tryReadAdjustedEodCloseSeries,
-  COLLECTION_EOD_ADJUSTED_DAILY,
   EOD_ADJUSTED_CACHE_SCHEMA_VERSION,
-} from './eodAdjustedFirestoreCache';
+} from '../../eodAdjustedDataService';
 export {
   eodSymbolFromTickerRaw,
   buildEodSymbolUniverseForIsmIngest,

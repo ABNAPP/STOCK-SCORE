@@ -9,7 +9,7 @@ export type IsmFetchMarketDeps = {
   /** Overrides `ISM_DEFAULT_DAILY_CALL_BUDGET` when set. */
   dailyCallBudgetLimit?: number;
   /**
-   * `firestore_cache_only`: bootstrap reads `eodAdjustedDaily` only (no HTTP to providers).
+   * `firestore_cache_only`: bootstrap reads value-insight-be `/eod-adjusted-daily` only (no HTTP to providers).
    * Default / omit: use provider adapters (EODHD chain).
    */
   bootstrapHistorySource?: 'provider' | 'firestore_cache_only';

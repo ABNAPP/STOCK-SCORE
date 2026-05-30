@@ -1,5 +1,5 @@
 /**
- * EOD closes for ISM posture (`computeDailySectorIndex`): prefers `eodAdjustedDaily` Firestore cache, then EODHD
+ * EOD closes for ISM posture (`computeDailySectorIndex`): prefers value-insight-be EOD cache, then EODHD
  * unless `cacheOnly` (ISM admin debug sync — no browser API calls).
  */
 
@@ -12,7 +12,7 @@ import {
 } from '../marketData';
 import type { IsmDailyBar } from '../marketData/types';
 import { addCalendarDays } from '../fetchEngine/dateUtils';
-import { tryReadAdjustedEodCloseSeries } from './eodAdjustedFirestoreCache';
+import { tryReadAdjustedEodCloseSeries } from '../../eodAdjustedDataService';
 
 /** Five calendar years of daily bars (aligned with legacy bootstrap horizon). */
 export const ISM_POSTURE_EOD_LOOKBACK_CALENDAR_DAYS = 5 * 365;
@@ -32,7 +32,7 @@ function closesOldestFirstFromBars(bars: IsmDailyBar[]): number[] {
 }
 
 export type FetchEodCloseSeriesOptions = {
-  /** When true, only `eodAdjustedDaily` Firestore cache — no provider HTTP (use from ISM admin debug sync). */
+  /** When true, only value-insight-be `/eod-adjusted-daily` cache — no provider HTTP (ISM admin debug sync). */
   cacheOnly?: boolean;
 };
 
