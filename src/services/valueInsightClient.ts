@@ -8,6 +8,7 @@ import { auth } from '../config/firebase';
 import type { MainDataApiErrorBody, MainDataApiResponse } from '../types/mainDataApi';
 import type { SmaDataApiResponse } from '../types/smaDataApi';
 import type { EodAdjustedDailyApiResponse } from '../types/eodAdjustedDailyApi';
+import type { IsmSectorDetailApiResponse } from '../types/ismSectorApi';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -123,4 +124,12 @@ export async function fetchEodAdjustedDaily(
     `/eod-adjusted-daily?${params.toString()}`,
     'eod-adjusted-daily'
   );
+}
+
+// --- ISM sector detail ---
+
+/** GET /ism/sectors/:sectorId — latest daily index + active rebalance constituents. */
+export async function fetchIsmSectorDetailFromApi(sectorId: string): Promise<IsmSectorDetailApiResponse> {
+  const encoded = encodeURIComponent(sectorId.trim());
+  return valueInsightGet<IsmSectorDetailApiResponse>(`/ism/sectors/${encoded}`, 'ism-sector-detail');
 }

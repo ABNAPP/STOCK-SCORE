@@ -169,7 +169,7 @@ export default function ISMPostureSectorDetail({
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [rebalanceRefreshing, setRebalanceRefreshing] = useState(false);
   const { daily, docTradeDate, missingDailyDoc, constituents, activeSnapshotDiagnostics, loading, error, refetch } =
-    useIsmSectorDetailData(sectorId, user);
+    useIsmSectorDetailData(sectorId);
 
   const buildingUx = isDataBuildingUx(missingDailyDoc, daily);
 
