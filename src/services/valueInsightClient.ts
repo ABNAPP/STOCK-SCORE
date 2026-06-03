@@ -13,6 +13,7 @@ import type { IsmComputeApiResponse } from '../types/ismComputeApi';
 import type { IsmSectorOverviewApiResponse } from '../types/ismSectorOverviewApi';
 import type { IsmSectorDailySeriesApiResponse } from '../types/ismDailySeriesApi';
 import type { IsmIngestApiResponse } from '../types/ismIngestApi';
+import type { EntryExitApiResponse, EntryExitUpdateApiRequest, EntryExitUpdateApiResponse } from '../types/entryExitApi';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -74,13 +75,39 @@ async function valueInsightPost<T>(
   apiLabel: string,
   options: { user?: User; authRequired?: boolean }
 ): Promise<T> {
+  return valueInsightWrite<T>(path, apiLabel, 'POST', undefined, options);
+}
+
+async function valueInsightPut<T>(
+  path: string,
+  apiLabel: string,
+  body: unknown,
+  options: { user?: User; authRequired?: boolean }
+): Promise<T> {
+  return valueInsightWrite<T>(path, apiLabel, 'PUT', body, options);
+}
+
+async function valueInsightWrite<T>(
+  path: string,
+  apiLabel: string,
+  method: 'POST' | 'PUT',
+  body: unknown | undefined,
+  options: { user?: User; authRequired?: boolean }
+): Promise<T> {
   const base = getValueInsightApiBaseUrl();
   const headers: Record<string, string> = { Accept: 'application/json' };
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
   if (options.authRequired !== false) {
     const token = await getValueInsightFirebaseIdToken(options.user);
     headers.Authorization = `Bearer ${token}`;
   }
-  const res = await fetch(`${base}${path}`, { method: 'POST', headers });
+  const res = await fetch(`${base}${path}`, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
   return parseJsonResponse<T>(res, apiLabel);
 }
 
@@ -136,6 +163,21 @@ export async function fetchEodAdjustedDaily(
     `/eod-adjusted-daily?${params.toString()}`,
     'eod-adjusted-daily'
   );
+}
+
+// --- Entry / exit ---
+
+/** GET /entry-exit — all entiryExit rows (server-side Firestore read, 60s cache). */
+export async function fetchEntryExitFromApi(): Promise<EntryExitApiResponse> {
+  return valueInsightGet<EntryExitApiResponse>('/entry-exit', 'entry-exit');
+}
+
+/** PUT /entry-exit — upsert entry/exit rows (Firebase auth required). */
+export async function updateEntryExitFromApi(
+  body: EntryExitUpdateApiRequest,
+  user?: User
+): Promise<EntryExitUpdateApiResponse> {
+  return valueInsightPut<EntryExitUpdateApiResponse>('/entry-exit', 'entry-exit', body, { user });
 }
 
 // --- ISM sector detail ---
