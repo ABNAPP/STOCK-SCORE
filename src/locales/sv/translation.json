@@ -787,6 +787,7 @@
       "regimeUnknown": "Regim —",
       "regimeNotAvailableYet": "Officiell regim ej tillgänglig än",
       "awaitingDailyDoc": "Inget officiellt sector_index_daily-dokument för denna sektor i det senaste fönstret.",
+      "staleDailyDocBanner": "Officiellt dagligt index saknas i det senaste fönstret. Diagram använder senast sparade historik ({{date}}). Använd Uppdatera för att räkna om dagens rad.",
       "coverageTooLow": "Täckningen är för låg för officiell regim (qualified under tröskel).",
       "na": "—",
       "above": "Över",

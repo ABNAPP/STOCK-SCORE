@@ -5,7 +5,7 @@
 import type { IsmOverviewSectorRow } from '../../../types/ismSectorOverview';
 import type { ISMAllowedSizing, ISMRegime, ISMSectorCoverageStatus } from '../../../types/ismPosturePositioning';
 
-export const SECTOR_INDEX_DAILY_LOOKBACK_DAYS = 14;
+export const SECTOR_INDEX_DAILY_LOOKBACK_DAYS = 45;
 
 /** Full parsed official daily doc used by overview + detail. */
 export type ParsedSectorIndexDaily = {

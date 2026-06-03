@@ -787,6 +787,7 @@
       "regimeUnknown": "Regime —",
       "regimeNotAvailableYet": "Official regime not available yet",
       "awaitingDailyDoc": "No official sector_index_daily document for this sector in the recent window.",
+      "staleDailyDocBanner": "Official daily index is missing for the recent window. Charts use the latest stored history ({{date}}). Use Refresh to recompute today's row.",
       "coverageTooLow": "Coverage too low for official regime (qualified count under threshold).",
       "na": "—",
       "above": "Above",

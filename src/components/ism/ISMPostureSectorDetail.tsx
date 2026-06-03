@@ -167,10 +167,23 @@ export default function ISMPostureSectorDetail({
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [rebalanceRefreshing, setRebalanceRefreshing] = useState(false);
   const [detailRefreshing, setDetailRefreshing] = useState(false);
-  const { daily, docTradeDate, missingDailyDoc, constituents, activeSnapshotDiagnostics, loading, error, refetch } =
-    useIsmSectorDetailData(sectorId);
+  const {
+    daily,
+    docTradeDate,
+    missingDailyDoc,
+    usingStaleDaily,
+    constituents,
+    activeSnapshotDiagnostics,
+    loading,
+    error,
+    refetch,
+  } = useIsmSectorDetailData(sectorId);
 
-  const buildingUx = isDataBuildingUx(missingDailyDoc, daily);
+  const hasAnalyticsShell = daily != null;
+  const showOfficialStatus = hasAnalyticsShell && !missingDailyDoc;
+  const showDegradedOnly = !loading && missingDailyDoc && !hasAnalyticsShell;
+
+  const buildingUx = isDataBuildingUx(missingDailyDoc && !usingStaleDaily, daily);
 
   const handleRefreshDetail = async () => {
     if (detailRefreshing || rebalanceRefreshing) return;
@@ -279,13 +292,13 @@ export default function ISMPostureSectorDetail({
 
         {loading && <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('ism.detail.loadingDetail')}</p>}
 
-        {!loading && missingDailyDoc && <SectorDetailStatusBoxPlaceholder />}
+        {showDegradedOnly && <SectorDetailStatusBoxPlaceholder />}
 
-        {!loading && missingDailyDoc && (
+        {showDegradedOnly && (
           <IsmSectorConstituentsSection constituents={constituents} footer={null} formatNum={formatNum} />
         )}
 
-        {!loading && daily && (
+        {!loading && hasAnalyticsShell && daily && (
           <IsmSectorDetailLocalProvider sectorId={sectorId} daily={daily} constituents={constituents}>
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <Button type="button" variant="outline" size="sm" onClick={() => setIsDiagnosticsOpen(true)}>
@@ -293,6 +306,11 @@ export default function ISMPostureSectorDetail({
               </Button>
               <IsmDetailLocalNavExtras />
             </div>
+            {usingStaleDaily && (
+              <p className="text-sm text-amber-800 dark:text-amber-300 mb-3" role="status">
+                {t('ism.detail.staleDailyDocBanner', { date: docTradeDate ?? '—' })}
+              </p>
+            )}
             <IsmRebalanceChangeSummary
               addedCount={activeSnapshotDiagnostics.addedCount}
               removedCount={activeSnapshotDiagnostics.removedCount}
@@ -300,14 +318,22 @@ export default function ISMPostureSectorDetail({
               usingPreviousActiveSnapshot={activeSnapshotDiagnostics.usingPreviousActiveSnapshot}
             />
 
-            <SectorDetailStatusBox daily={daily} buildingUx={buildingUx} />
+            {showOfficialStatus ? (
+              <SectorDetailStatusBox daily={daily} buildingUx={buildingUx} />
+            ) : (
+              <SectorDetailStatusBoxPlaceholder />
+            )}
 
-            {!missingDailyDoc && (
-              <>
-                <IsmSectorAnalysisSettingsPanel />
-                <IsmSectorDetailChart constituents={constituents} />
-                <IsmSectorConstituentBasketTable footer={<IsmConstituentsLocalBreadthFooter />} />
-              </>
+            <IsmSectorAnalysisSettingsPanel />
+            <IsmSectorDetailChart constituents={constituents} />
+            {showOfficialStatus ? (
+              <IsmSectorConstituentBasketTable footer={<IsmConstituentsLocalBreadthFooter />} />
+            ) : (
+              <IsmSectorConstituentsSection
+                constituents={constituents}
+                footer={<IsmConstituentsLocalBreadthFooter />}
+                formatNum={formatNum}
+              />
             )}
             <IsmDiagnosticsDrawerShell
               open={isDiagnosticsOpen}

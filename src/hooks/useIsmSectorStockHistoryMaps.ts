@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { buildDefaultProviderKeyPools, defaultIsmMarketAdapters } from '../services/ism/marketData/defaultRegistry';
-import { buildSymbolTranslationContext } from '../services/ism/marketData/translationContext';
-import { fetchIsmHistoricalDailyWithFallback } from '../services/ism/marketData/orchestratePrice';
+import {
+  prefetchEodAdjustedForTickers,
+  tryReadAdjustedEodDailyBarsInRange,
+} from '../services/eodAdjustedDataService';
+import type { IsmDailyBar } from '../services/ism/marketData/types';
 
 export type StockPick = { symbolId: string; tickerRaw: string };
 
@@ -20,6 +22,9 @@ export type UseIsmSectorStockHistoryMapsResult = {
   refetch: () => Promise<void>;
 };
 
+/**
+ * Constituent daily closes via value-insight-be `/eod-adjusted-daily` only (no browser EODHD).
+ */
 export function useIsmSectorStockHistoryMaps(
   picks: StockPick[],
   fromIso: string,
@@ -42,17 +47,12 @@ export function useIsmSectorStockHistoryMaps(
     setLoading(true);
     setError(null);
     try {
-      const pools = buildDefaultProviderKeyPools();
-      const adapters = defaultIsmMarketAdapters;
+      await prefetchEodAdjustedForTickers(picks.map((p) => p.tickerRaw));
+
       const next = new Map<string, Map<string, number>>();
       for (const p of picks) {
-        const ctx = buildSymbolTranslationContext(p.tickerRaw);
-        const res = await fetchIsmHistoricalDailyWithFallback(ctx, fromIso, toIso, 'daily', pools, adapters);
-        if (res.outcome !== 'valid' || !res.data?.length) {
-          next.set(p.symbolId, new Map());
-          continue;
-        }
-        next.set(p.symbolId, barsToCloseByDate(res.data));
+        const bars: IsmDailyBar[] | null = await tryReadAdjustedEodDailyBarsInRange(p.tickerRaw, fromIso, toIso);
+        next.set(p.symbolId, bars?.length ? barsToCloseByDate(bars) : new Map());
       }
       setCloseBySymbolId(next);
     } catch (e) {

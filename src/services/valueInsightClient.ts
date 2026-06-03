@@ -112,7 +112,10 @@ export async function refreshSmaData(user?: User): Promise<SmaDataApiResponse> {
 
 export type FetchEodAdjustedDailyOptions = {
   includeBars?: boolean;
+  /** @deprecated Use eodSymbols */
   eodSymbol?: string;
+  /** Comma-separated list sent as eodSymbols= (max 64 server-side). */
+  eodSymbols?: string[];
 };
 
 /** GET /eod-adjusted-daily — adjusted EOD cache (server refreshes when stale). */
@@ -121,8 +124,13 @@ export async function fetchEodAdjustedDaily(
 ): Promise<EodAdjustedDailyApiResponse> {
   const params = new URLSearchParams();
   params.set('includeBars', options.includeBars === true ? 'true' : 'false');
-  if (options.eodSymbol?.trim()) {
-    params.set('eodSymbol', options.eodSymbol.trim());
+  const symbols = options.eodSymbols?.length
+    ? options.eodSymbols
+    : options.eodSymbol?.trim()
+      ? [options.eodSymbol.trim()]
+      : [];
+  if (symbols.length > 0) {
+    params.set('eodSymbols', [...new Set(symbols.map((s) => s.trim()).filter(Boolean))].join(','));
   }
   return valueInsightGet<EodAdjustedDailyApiResponse>(
     `/eod-adjusted-daily?${params.toString()}`,
