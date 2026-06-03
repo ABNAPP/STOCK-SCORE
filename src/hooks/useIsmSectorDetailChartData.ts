@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchSectorIndexDailyInRange } from '../services/ism/dailySector/fetchSectorIndexDailySeries';
+import { fetchIsmSectorDailySeriesFromApi } from '../services/valueInsightClient';
 import { addCalendarDays, isoTodayUtc } from '../services/ism/fetchEngine/dateUtils';
 import { dailyRowsToChartPoints, type IsmSectorChartPoint } from '../components/ism/ismSectorChartModel';
+import type { ParsedSectorIndexDaily } from '../services/ism/dailySector/readSectorIndexDaily';
 
 export type IsmChartTimeframeYears = 1 | 2 | 3 | 4 | 5;
 
@@ -39,8 +40,8 @@ export function useIsmSectorDetailChartData(
     setLoading(true);
     setError(null);
     try {
-      const daily = await fetchSectorIndexDailyInRange(sectorId, fromIso, toIso);
-      setRows(dailyRowsToChartPoints(daily));
+      const body = await fetchIsmSectorDailySeriesFromApi(sectorId, fromIso, toIso);
+      setRows(dailyRowsToChartPoints(body.rows as ParsedSectorIndexDaily[]));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);

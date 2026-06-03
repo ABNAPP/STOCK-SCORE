@@ -20,7 +20,6 @@ export default function ISMPostureViewInner() {
     error: ingestError,
     lastUpdated: ingestLastUpdated,
     refetch: refetchIngest,
-    getHasEntryExitRow,
   } = useIsmIngestData();
   const universe = useMemo(() => buildIsmSectorUniverseFromIngest(ingestRows), [ingestRows]);
   const { sectors, firestoreLoading, firestoreError } = useIsmSectorOverviewData(ingestRows, ingestLoading);
@@ -29,7 +28,7 @@ export default function ISMPostureViewInner() {
     report: debugReport,
     error: debugError,
     runDebugSync,
-  } = useIsmDebugSync(currentUser, ingestRows, getHasEntryExitRow);
+  } = useIsmDebugSync(currentUser, ingestRows);
   const [detailSector, setDetailSector] = useState<{ sectorId: string; displayName: string } | null>(null);
 
   const handleOpenSector = useCallback((row: IsmOverviewSectorRow) => {
@@ -55,7 +54,6 @@ export default function ISMPostureViewInner() {
         sectorId={detailSector.sectorId}
         sectorDisplayName={detailSector.displayName}
         ingestRows={ingestRows}
-        getHasEntryExitRow={getHasEntryExitRow}
         onBack={handleBackFromDetail}
       />
     );
@@ -136,7 +134,7 @@ export default function ISMPostureViewInner() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => void refetchIngest(true)}
+            onClick={() => void refetchIngest()}
             disabled={ingestLoading}
           >
             {ingestLoading ? t('ism.posture.refreshingSheetData') : t('ism.posture.refreshSheetData')}

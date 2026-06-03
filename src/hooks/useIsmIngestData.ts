@@ -1,17 +1,9 @@
 /**
- * ISM ingest: main data from value-insight-be + ENTRY/EXIT currency only.
- * Must render under `EntryExitProvider`.
+ * ISM ingest: merged rows from value-insight-be GET /ism/ingest (no client Firestore).
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useEntryExitValues } from '../contexts/EntryExitContext';
-import type { DataRow } from '../services/sheets/types';
-import { getMainData } from '../services/mainDataService';
-import {
-  buildEntryExitStubsFromDashboardRows,
-  mergeIsmIngestFromDashboardRows,
-  summarizeIsmIngest,
-} from '../services/ism/mergeIsmIngest';
+import { useCallback, useEffect, useState } from 'react';
+import { fetchIsmIngestFromApi } from '../services/valueInsightClient';
 import type { ISMInstrumentIngest, ISMIngestSummary } from '../types/ismIngest';
 import { logger } from '../utils/logger';
 
@@ -26,29 +18,45 @@ export interface UseIsmIngestDataResult {
 }
 
 export function useIsmIngestData(): UseIsmIngestDataResult {
-  const [dashboardRows, setDashboardRows] = useState<DataRow[]>([]);
+  const [ingestRows, setIngestRows] = useState<ISMInstrumentIngest[]>([]);
+  const [summary, setSummary] = useState<ISMIngestSummary>({
+    rowCount: 0,
+    withMissingCurrency: 0,
+    withMissingMarketCap: 0,
+    withMissingSector: 0,
+    withTickerNeedsReview: 0,
+  });
+  const [entryExitCompanyNames, setEntryExitCompanyNames] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const { getFieldValue, getEntryExitValue, initializeFromData } = useEntryExitValues();
 
-  const loadDashboard = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const mainData = await getMainData();
-      setDashboardRows(mainData.rows);
-      const ts = mainData.generatedAt;
-      setLastUpdated(ts ? new Date(ts) : new Date());
+      const body = await fetchIsmIngestFromApi();
+      setIngestRows(body.rows);
+      setSummary(body.summary);
+      setEntryExitCompanyNames(new Set(body.entryExitCompanyNames));
+      setLastUpdated(new Date());
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      logger.warn('ISM main data load failed', {
+      logger.warn('ISM ingest load failed', {
         component: 'useIsmIngestData',
-        operation: 'loadDashboard',
+        operation: 'load',
         error: msg,
       });
       setError(msg);
-      setDashboardRows([]);
+      setIngestRows([]);
+      setSummary({
+        rowCount: 0,
+        withMissingCurrency: 0,
+        withMissingMarketCap: 0,
+        withMissingSector: 0,
+        withTickerNeedsReview: 0,
+      });
+      setEntryExitCompanyNames(new Set());
       setLastUpdated(null);
     } finally {
       setLoading(false);
@@ -56,31 +64,16 @@ export function useIsmIngestData(): UseIsmIngestDataResult {
   }, []);
 
   useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
-
-  useEffect(() => {
-    if (dashboardRows.length === 0) return;
-    initializeFromData(buildEntryExitStubsFromDashboardRows(dashboardRows));
-  }, [dashboardRows, initializeFromData]);
-
-  const ingestRows = useMemo(
-    () =>
-      mergeIsmIngestFromDashboardRows(dashboardRows, (ticker, companyName) =>
-        getFieldValue(ticker, companyName, 'currency')
-      ),
-    [dashboardRows, getFieldValue]
-  );
-
-  const summary = useMemo(() => summarizeIsmIngest(ingestRows), [ingestRows]);
+    void load();
+  }, [load]);
 
   const refetch = useCallback(async () => {
-    await loadDashboard();
-  }, [loadDashboard]);
+    await load();
+  }, [load]);
 
   const getHasEntryExitRow = useCallback(
-    (ticker: string, companyName: string) => getEntryExitValue(ticker, companyName) != null,
-    [getEntryExitValue]
+    (_ticker: string, companyName: string) => entryExitCompanyNames.has(companyName),
+    [entryExitCompanyNames]
   );
 
   return {

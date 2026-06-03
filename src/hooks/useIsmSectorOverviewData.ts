@@ -1,5 +1,5 @@
 /**
- * Loads latest official `sector_index_daily` per sector (read-only; no client-side motor).
+ * Loads latest official sector index overview via value-insight-be (no client Firestore).
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import type { ISMInstrumentIngest } from '../types/ismIngest';
 import type { IsmOverviewSectorRow } from '../types/ismSectorOverview';
 import { ismSectorIdFromName } from '../services/ism/rebalance/sectorSlug';
-import { fetchLatestSectorIndexDailyDoc, parsedToOverviewRow } from '../services/ism/dailySector/readSectorIndexDaily';
+import { fetchIsmSectorOverviewFromApi } from '../services/valueInsightClient';
 
 export type { IsmOverviewSectorRow } from '../types/ismSectorOverview';
 
@@ -37,6 +37,7 @@ export function useIsmSectorOverviewData(
 ): UseIsmSectorOverviewDataResult {
   const { currentUser } = useAuth();
   const universe = useMemo(() => buildIsmSectorUniverseFromIngest(ingestRows), [ingestRows]);
+  const sectorIds = useMemo(() => universe.map((u) => u.sectorId), [universe]);
   const [sectors, setSectors] = useState<IsmOverviewSectorRow[]>([]);
   const [firestoreLoading, setFirestoreLoading] = useState(false);
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
@@ -49,23 +50,18 @@ export function useIsmSectorOverviewData(
       return;
     }
     if (ingestLoading) return;
-    if (universe.length === 0) {
-      setSectors([]);
-      setFirestoreError(null);
-      setFirestoreLoading(false);
-      return;
-    }
 
     setFirestoreLoading(true);
     setFirestoreError(null);
     try {
-      const results = await Promise.all(
-        universe.map(async ({ sectorId, displayName }) => {
-          const hit = await fetchLatestSectorIndexDailyDoc(sectorId);
-          return parsedToOverviewRow(sectorId, displayName, hit);
-        })
+      const body = await fetchIsmSectorOverviewFromApi(sectorIds.length > 0 ? sectorIds : undefined);
+      const displayById = new Map(universe.map((u) => [u.sectorId, u.displayName]));
+      setSectors(
+        body.sectors.map((row) => ({
+          ...row,
+          sectorDisplayName: displayById.get(row.sectorId) ?? row.sectorDisplayName,
+        }))
       );
-      setSectors(results);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setFirestoreError(msg);
@@ -73,7 +69,7 @@ export function useIsmSectorOverviewData(
     } finally {
       setFirestoreLoading(false);
     }
-  }, [currentUser, ingestLoading, universe]);
+  }, [currentUser, ingestLoading, sectorIds, universe]);
 
   useEffect(() => {
     void load();

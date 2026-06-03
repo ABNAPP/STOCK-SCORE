@@ -9,6 +9,10 @@ import type { MainDataApiErrorBody, MainDataApiResponse } from '../types/mainDat
 import type { SmaDataApiResponse } from '../types/smaDataApi';
 import type { EodAdjustedDailyApiResponse } from '../types/eodAdjustedDailyApi';
 import type { IsmSectorDetailApiResponse } from '../types/ismSectorApi';
+import type { IsmComputeApiResponse } from '../types/ismComputeApi';
+import type { IsmSectorOverviewApiResponse } from '../types/ismSectorOverviewApi';
+import type { IsmSectorDailySeriesApiResponse } from '../types/ismDailySeriesApi';
+import type { IsmIngestApiResponse } from '../types/ismIngestApi';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -128,8 +132,103 @@ export async function fetchEodAdjustedDaily(
 
 // --- ISM sector detail ---
 
+/** GET /ism/sectors/overview — latest daily index row per ISM sector. */
+export async function fetchIsmSectorOverviewFromApi(sectorIds?: string[]): Promise<IsmSectorOverviewApiResponse> {
+  const params = new URLSearchParams();
+  if (sectorIds && sectorIds.length > 0) {
+    params.set('sectorIds', sectorIds.join(','));
+  }
+  const qs = params.toString();
+  return valueInsightGet<IsmSectorOverviewApiResponse>(
+    `/ism/sectors/overview${qs ? `?${qs}` : ''}`,
+    'ism-sector-overview'
+  );
+}
+
+/** GET /ism/sectors/:sectorId/daily-series — chart time series. */
+export async function fetchIsmSectorDailySeriesFromApi(
+  sectorId: string,
+  fromIso: string,
+  toIso: string
+): Promise<IsmSectorDailySeriesApiResponse> {
+  const encoded = encodeURIComponent(sectorId.trim());
+  const params = new URLSearchParams({ from: fromIso, to: toIso });
+  return valueInsightGet<IsmSectorDailySeriesApiResponse>(
+    `/ism/sectors/${encoded}/daily-series?${params.toString()}`,
+    'ism-sector-daily-series'
+  );
+}
+
+/** GET /ism/ingest — merged dashboard + ENTRY/EXIT ingest rows. */
+export async function fetchIsmIngestFromApi(): Promise<IsmIngestApiResponse> {
+  return valueInsightGet<IsmIngestApiResponse>('/ism/ingest', 'ism-ingest');
+}
+
 /** GET /ism/sectors/:sectorId — latest daily index + active rebalance constituents. */
 export async function fetchIsmSectorDetailFromApi(sectorId: string): Promise<IsmSectorDetailApiResponse> {
   const encoded = encodeURIComponent(sectorId.trim());
   return valueInsightGet<IsmSectorDetailApiResponse>(`/ism/sectors/${encoded}`, 'ism-sector-detail');
+}
+
+// --- ISM compute (admin POST) ---
+
+function ismQueryString(params: Record<string, string | undefined>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v?.trim()) q.set(k, v.trim());
+  }
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
+
+/** POST /ism/sectors/:sectorId/rebalance — weekly basket recompute (admin). */
+export async function postIsmSectorRebalance(
+  sectorId: string,
+  user?: User,
+  rebalanceDate?: string
+): Promise<IsmComputeApiResponse> {
+  const encoded = encodeURIComponent(sectorId.trim());
+  const qs = ismQueryString({ rebalanceDate });
+  return valueInsightPost<IsmComputeApiResponse>(`/ism/sectors/${encoded}/rebalance${qs}`, 'ism-rebalance', {
+    user,
+  });
+}
+
+/** POST /ism/sectors/:sectorId/daily-index — daily index row (admin). */
+export async function postIsmSectorDailyIndex(
+  sectorId: string,
+  user?: User,
+  tradeDate?: string
+): Promise<IsmComputeApiResponse> {
+  const encoded = encodeURIComponent(sectorId.trim());
+  const qs = ismQueryString({ tradeDate });
+  return valueInsightPost<IsmComputeApiResponse>(`/ism/sectors/${encoded}/daily-index${qs}`, 'ism-daily-index', {
+    user,
+  });
+}
+
+/** POST /ism/rebalance/run-all — rebalance all ISM sectors (admin). */
+export async function postIsmRebalanceRunAll(user?: User, rebalanceDate?: string): Promise<IsmComputeApiResponse> {
+  const qs = ismQueryString({ rebalanceDate });
+  return valueInsightPost<IsmComputeApiResponse>(`/ism/rebalance/run-all${qs}`, 'ism-rebalance-run-all', { user });
+}
+
+/** POST /ism/daily-index/run-all — daily index for sectors with active snapshot (admin). */
+export async function postIsmDailyIndexRunAll(user?: User, tradeDate?: string): Promise<IsmComputeApiResponse> {
+  const qs = ismQueryString({ tradeDate });
+  return valueInsightPost<IsmComputeApiResponse>(`/ism/daily-index/run-all${qs}`, 'ism-daily-index-run-all', { user });
+}
+
+/** POST /ism/symbols/sync — upsert symbols registry from ingest (admin). */
+export async function postIsmSymbolsSync(user?: User): Promise<IsmComputeApiResponse> {
+  return valueInsightPost<IsmComputeApiResponse>('/ism/symbols/sync', 'ism-symbols-sync', { user });
+}
+
+/** GET /ism/symbols/:symbolId — read one symbol registry doc. */
+export async function fetchIsmSymbolFromApi(symbolId: string): Promise<{ symbolId: string; doc: Record<string, unknown> }> {
+  const encoded = encodeURIComponent(symbolId.trim());
+  return valueInsightGet<{ symbolId: string; doc: Record<string, unknown> }>(
+    `/ism/symbols/${encoded}`,
+    'ism-symbol'
+  );
 }
