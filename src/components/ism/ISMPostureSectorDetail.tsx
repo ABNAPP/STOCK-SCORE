@@ -5,7 +5,7 @@ import type { ISMInstrumentIngest } from '../../types/ismIngest';
 import type { ParsedSectorIndexDaily } from '../../services/ism/dailySector/readSectorIndexDaily';
 import { useIsmSectorDetailData, type IsmConstituentTableRow } from '../../hooks/useIsmSectorDetailData';
 import { useToast } from '../../contexts/ToastContext';
-import { refreshSectorRebalanceSnapshotOnDemand } from '../../services/ism/rebalance';
+import { postIsmSectorDailyIndex, postIsmSectorRebalance } from '../../services/valueInsightClient';
 import { ISM_FULL_COVERAGE_TARGET } from '../../config/ismPostureDefaults';
 import { Badge } from '../ui/Badge';
 import { Card, CardContent, CardHeader } from '../ui/Card';
@@ -20,7 +20,6 @@ type ISMPostureSectorDetailProps = {
   sectorId: string;
   sectorDisplayName: string;
   ingestRows: ISMInstrumentIngest[];
-  getHasEntryExitRow: (ticker: string, companyName: string) => boolean;
   onBack: () => void;
 };
 
@@ -161,29 +160,68 @@ export default function ISMPostureSectorDetail({
   sectorId,
   sectorDisplayName,
   ingestRows,
-  getHasEntryExitRow,
   onBack,
 }: ISMPostureSectorDetailProps) {
   const { t } = useTranslation();
   const { showSuccess, showError } = useToast();
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [rebalanceRefreshing, setRebalanceRefreshing] = useState(false);
+  const [detailRefreshing, setDetailRefreshing] = useState(false);
   const { daily, docTradeDate, missingDailyDoc, constituents, activeSnapshotDiagnostics, loading, error, refetch } =
     useIsmSectorDetailData(sectorId);
 
   const buildingUx = isDataBuildingUx(missingDailyDoc, daily);
 
+  const handleRefreshDetail = async () => {
+    if (detailRefreshing || rebalanceRefreshing) return;
+    setDetailRefreshing(true);
+    try {
+      if (missingDailyDoc) {
+        const dailyRes = await postIsmSectorDailyIndex(sectorId, user);
+        if (!dailyRes.ok) {
+          showError(
+            t('ism.detail.refreshRebalanceSnapshotError', {
+              detail: (dailyRes.errors ?? []).join(' · ') || 'daily index failed',
+            })
+          );
+          return;
+        }
+      }
+      await refetch();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      showError(t('ism.detail.refreshRebalanceSnapshotError', { detail: msg }));
+    } finally {
+      setDetailRefreshing(false);
+    }
+  };
+
   const handleRefreshRebalanceSnapshot = async () => {
     if (rebalanceRefreshing) return;
     setRebalanceRefreshing(true);
     try {
-      const res = await refreshSectorRebalanceSnapshotOnDemand(user, sectorId, ingestRows, getHasEntryExitRow);
-      if (res.ok) {
-        showSuccess(t('ism.detail.refreshRebalanceSnapshotSuccess'));
-        await refetch();
-      } else {
-        showError(t('ism.detail.refreshRebalanceSnapshotError', { detail: (res.errors ?? []).join(' · ') }));
+      const rebalanceRes = await postIsmSectorRebalance(sectorId, user);
+      if (!rebalanceRes.ok) {
+        showError(
+          t('ism.detail.refreshRebalanceSnapshotError', {
+            detail: (rebalanceRes.errors ?? []).join(' · ') || 'rebalance failed',
+          })
+        );
+        return;
       }
+
+      const dailyRes = await postIsmSectorDailyIndex(sectorId, user);
+      if (!dailyRes.ok) {
+        showError(
+          t('ism.detail.refreshRebalanceSnapshotError', {
+            detail: (dailyRes.errors ?? []).join(' · ') || 'daily index failed',
+          })
+        );
+        return;
+      }
+
+      showSuccess(t('ism.detail.refreshRebalanceSnapshotSuccess'));
+      await refetch();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       showError(t('ism.detail.refreshRebalanceSnapshotError', { detail: msg }));
@@ -219,8 +257,14 @@ export default function ISMPostureSectorDetail({
               {t('ism.detail.tradeDate', { date: docTradeDate })}
             </span>
           )}
-          <Button type="button" variant="ghost" size="sm" onClick={() => void refetch()} disabled={loading}>
-            {t('ism.detail.refresh')}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => void handleRefreshDetail()}
+            disabled={loading || detailRefreshing || rebalanceRefreshing}
+          >
+            {detailRefreshing ? t('ism.detail.refreshRebalanceSnapshotRunning') : t('ism.detail.refresh')}
           </Button>
           <Button
             type="button"

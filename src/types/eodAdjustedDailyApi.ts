@@ -32,6 +32,11 @@ export interface EodAdjustedDailyApiResponse {
   generation?: number | null;
   refreshedCount?: number;
   cachedCount?: number;
+  eodhdApiCalls?: number;
+  cacheHitCount?: number;
+  staleCacheCount?: number;
+  skippedCount?: number;
+  fetchQueuedCount?: number;
   failed?: EodAdjustedDailyFailedDto[];
   entries: EodAdjustedDailyEntryDto[];
 }

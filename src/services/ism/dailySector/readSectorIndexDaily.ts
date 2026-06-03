@@ -1,13 +1,9 @@
 /**
- * Shared read path for official `sector_index_daily` documents (no motor).
+ * Parsed official `sector_index_daily` document shape (read via value-insight-be).
  */
 
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../../config/firebase';
 import type { IsmOverviewSectorRow } from '../../../types/ismSectorOverview';
 import type { ISMAllowedSizing, ISMRegime, ISMSectorCoverageStatus } from '../../../types/ismPosturePositioning';
-import { ISM_SECTOR_INDEX_DAILY_COLLECTION, ismSectorDailyDocId } from './ismDailySectorFirestorePersistence';
-import { addCalendarDays, isoTodayUtc } from '../fetchEngine/dateUtils';
 
 export const SECTOR_INDEX_DAILY_LOOKBACK_DAYS = 14;
 
@@ -113,39 +109,18 @@ export function parseSectorIndexDailyDocument(data: Record<string, unknown>): Pa
   };
 }
 
-export function parsedToOverviewRow(
+/** Map API overview sector row fields when client-side parsing is needed. */
+export function overviewRowFromParsed(
   sectorId: string,
   sectorDisplayName: string,
-  hit: { tradeDate: string; data: Record<string, unknown> } | null
+  docTradeDate: string | null,
+  p: ParsedSectorIndexDaily | null
 ): IsmOverviewSectorRow {
-  if (!hit) {
+  if (!p || !docTradeDate) {
     return {
       sectorId,
       sectorDisplayName,
-      docTradeDate: null,
-      firestoreReady: true,
-      missingDailyDoc: true,
-      coverage_status: null,
-      regime: null,
-      weighted_breadth_pct: null,
-      breadth_confirmed: null,
-      rs_above_rs_ma_252: null,
-      rs_ma_252_rising: null,
-      sector_above_sma_200: null,
-      sector_sma_200_rising: null,
-      allowed_sizing: null,
-      status_note: null,
-      computed_at: null,
-      active_rebalance_date: null,
-      active_rebalance_timestamp: null,
-    };
-  }
-  const p = parseSectorIndexDailyDocument(hit.data);
-  if (!p) {
-    return {
-      sectorId,
-      sectorDisplayName,
-      docTradeDate: hit.tradeDate,
+      docTradeDate,
       firestoreReady: true,
       missingDailyDoc: true,
       coverage_status: null,
@@ -166,7 +141,7 @@ export function parsedToOverviewRow(
   return {
     sectorId,
     sectorDisplayName,
-    docTradeDate: hit.tradeDate,
+    docTradeDate,
     firestoreReady: true,
     missingDailyDoc: false,
     coverage_status: p.coverage_status,
@@ -183,22 +158,4 @@ export function parsedToOverviewRow(
     active_rebalance_date: p.active_rebalance_date,
     active_rebalance_timestamp: p.active_rebalance_timestamp,
   };
-}
-
-export async function fetchLatestSectorIndexDailyDoc(
-  sectorId: string
-): Promise<{ tradeDate: string; data: Record<string, unknown> } | null> {
-  let iso = isoTodayUtc();
-  for (let i = 0; i < SECTOR_INDEX_DAILY_LOOKBACK_DAYS; i++) {
-    const ref = doc(db, ISM_SECTOR_INDEX_DAILY_COLLECTION, ismSectorDailyDocId(sectorId, iso));
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      const data = snap.data() as Record<string, unknown>;
-      if (data.sector_id === sectorId && data.trade_date === iso) {
-        return { tradeDate: iso, data };
-      }
-    }
-    iso = addCalendarDays(iso, -1);
-  }
-  return null;
 }
