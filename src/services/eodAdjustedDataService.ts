@@ -108,6 +108,44 @@ export function clearEodAdjustedBarsIndex(): void {
   barsIndexInFlight = null;
 }
 
+/** Merge warm API entries into the in-memory bar index (used after targeted eodSymbols fetch). */
+export function mergeEodAdjustedEntries(entries: EodAdjustedDailyEntryDto[]): void {
+  if (!entries.length) return;
+  const map = barsBySymbol ?? new Map<string, EodAdjustedDailyEntryDto>();
+  for (const entry of entries) {
+    if (entry.eodSymbol) {
+      map.set(entry.eodSymbol, entry);
+    }
+  }
+  barsBySymbol = map;
+}
+
+/**
+ * One backend request to warm/read adjusted daily bars for tickers (no browser EODHD).
+ */
+export async function prefetchEodAdjustedForTickers(tickerRaws: string[]): Promise<void> {
+  const eodSymbols = [
+    ...new Set(
+      tickerRaws
+        .map((raw) => {
+          try {
+            return resolveEodSymbol(raw);
+          } catch {
+            return '';
+          }
+        })
+        .filter(Boolean)
+    ),
+  ];
+  if (eodSymbols.length === 0) return;
+
+  const res = await fetchEodAdjustedDaily({ includeBars: true, eodSymbols });
+  if (typeof res.generation === 'number' && Number.isFinite(res.generation)) {
+    lastApiGeneration = res.generation;
+  }
+  mergeEodAdjustedEntries(res.entries);
+}
+
 export async function tryReadAdjustedEodCloseSeries(
   tickerRaw: string,
   fromIso: string,
